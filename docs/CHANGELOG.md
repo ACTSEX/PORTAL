@@ -41,6 +41,28 @@ Breaking Changes
 
 Histórico
 2026-07-31
+Versão 1.0.3
+Alterado
+ROADMAP.md sincronizado com o estado real da documentação existente, incluindo CONSTITUTION.md e CORE.md na Fase 0.
+
+Todos os itens documentais da Fase 0 foram auditados e marcados como concluídos.
+
+CORE.md sincronizado com os nomes oficiais `app/core/render.js` e `app/core/publish.js`, conforme TREE.md e ROADMAP.md.
+
+Corrigido
+Resolvida a divergência entre `render.js` e `renderer.js`, adotando oficialmente `render.js`.
+
+Resolvida a divergência entre `publish.js` e `publisher.js`, adotando oficialmente `publish.js`.
+
+Autorizado
+A Fase 1 — Infraestrutura está formalmente liberada, sem criação antecipada de código ou diretórios de implementação.
+
+O primeiro e único arquivo autorizado para início da implementação é `app/core/config.js`.
+
+Breaking Changes
+Nenhuma.
+
+2026-07-31
 Versão 1.0.2
 Alterado
 TREE.md sincronizado com os 40 arquivos de documentação existentes no repositório.

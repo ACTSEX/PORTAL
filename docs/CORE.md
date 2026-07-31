@@ -132,8 +132,8 @@ app/
     ├── validator.js
     ├── errors.js
     ├── logger.js
-    ├── publisher.js
-    ├── renderer.js
+    ├── publish.js
+    ├── render.js
     ├── scheduler.js
     ├── assets.js
     └── helpers.js
@@ -690,7 +690,7 @@ payload integral de webhook quando sensível.
 29. Publisher
 Arquivo previsto:
 ```text
-app/core/publisher.js
+app/core/publish.js
 ```
 Responsabilidade única:
 > Fornecer infraestrutura genérica para gerar, gravar e invalidar artefatos publicados.
@@ -709,7 +709,7 @@ Essa decisão pertence ao módulo `Publish` e aos módulos de domínio envolvido
 30. Renderer
 Arquivo previsto:
 ```text
-app/core/renderer.js
+app/core/render.js
 ```
 Responsabilidade única:
 > Coordenar renderização técnica de templates, layouts e componentes.
@@ -1048,8 +1048,8 @@ Como referência estrutural, a fundação tende a seguir:
 15. auth.js
 16. permissions.js
 17. validator.js
-18. renderer.js
-19. publisher.js
+18. publish.js
+19. render.js
 20. scheduler.js
 21. loader.js
 22. bootstrap.js
