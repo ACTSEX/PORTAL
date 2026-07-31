@@ -40,6 +40,16 @@ Breaking Changes
 ...
 
 Histórico
+
+2026-07-31
+Versão 1.4.0
+Adicionado
+Lote 3 com Event Bus técnico determinístico, acesso parametrizado ao D1, cache técnico por KV e armazenamento genérico de objetos no R2.
+
+Suíte integrada com bindings D1, KV e R2 simulados, cobertura de falhas seguras, expiração, normalização e isolamento de listeners.
+
+Breaking Changes
+Nenhuma.
 2026-07-31
 Versão 1.3.0
 Adicionado
