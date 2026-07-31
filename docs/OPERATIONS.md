@@ -150,6 +150,10 @@ Logs íntegros.
 
 Dashboards atualizados.
 
+Antes do aceite final do Lote 18 também devem estar comprovados: runbooks de deploy, rollback e incidente; responsáveis e canais de escalonamento; alertas com limiares; correlação por `requestId`/`correlationId`; restauração testada; e monitoramento capaz de detectar consulta pública direta ao D1.
+
+Após cada lote implantável, a observabilidade e os runbooks afetados acompanham a mesma PR. O Lote 18 valida o conjunto e não posterga requisitos operacionais conhecidos dos lotes anteriores.
+
 12. Regra final
 
 A operação do Portal ACTS deve ser continuamente monitorada, documentada eorientada por processos padronizados para garantir alta disponibilidade econfiabilidade.

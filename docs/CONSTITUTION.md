@@ -92,9 +92,11 @@ implementação existente.
 
 TREE.md define onde um arquivo pode existir.
 
-ROADMAP.md define quando um arquivo pode ser implementado.
+ROADMAP.md define quando um lote funcional pode ser implementado e quais arquivos pertencem a ele.
 
-Listas de referência de documentos especializados não substituem a ordem oficial do ROADMAP.md.
+Listas de referência de documentos especializados não autorizam arquivos: `TREE.md` controla caminhos e `ROADMAP.md` controla a ordem dos lotes.
+
+O lote funcional é a unidade oficial de implantação, testes, commit, revisão, Pull Request, aprovação e avanço. Cada arquivo conserva responsabilidade individual, mas não constitui uma etapa isolada de autorização.
 
 O código existente não se torna regra apenas por já estar implementado.
 
