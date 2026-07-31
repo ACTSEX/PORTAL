@@ -23,7 +23,7 @@ São proibidos placeholders, arquivos vazios, TODOs substitutivos, pastas vazias
 | 3 | Eventos/persistência | 5 | 2 | 4 |
 | 4 | Segurança/roteamento | 3 | 3 | 5 |
 | 5 | Render/publicação/composição | 4 | 4 | 6 |
-| 6 | Banco e schemas | 11 | 5 | 7 |
+| 6 | Banco e schemas | 10 | 5 | 7 |
 | 7 | Identidade/assinaturas | 6 | 6 | 8 |
 | 8 | Catálogo/mídia | 5 | 7 | 9 |
 | 9 | Descoberta/navegação | 6 | 8 | 10 |
@@ -96,7 +96,7 @@ Contagens incluem testes novos do lote e excluem ajustes documentais ocasionais.
 - **Dependências:** Lote 5 e modelo de domínio aprovado. Sem seed de produção.
 - **Testes:** migration em D1 local vazio, constraints/índices, snapshot e validação de cada schema.
 - **Aceite/riscos:** nomes/constraints explícitos, migration revisada e estratégia de restauração; riscos de perda e incompatibilidade futura.
-- **DoD/desbloqueio:** pode exceder 9 arquivos contando testes (11 no total); se passar 2.000 linhas, dividir 6A banco/6B schemas sem alterar ordem. Desbloqueia Lote 7.
+- **DoD/desbloqueio:** possui 10 arquivos contando testes; se passar 2.000 linhas, dividir 6A banco/6B schemas sem alterar ordem. Desbloqueia Lote 7.
 
 ### LOTE 7 — Identidade e assinaturas
 

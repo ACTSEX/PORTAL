@@ -240,6 +240,130 @@ Não foram encontrados arquivos duplicados no estado real. Nomes repetidos como 
 **Removidos do plano:** `database/seed.sql`, `site/css/bootstrap.min.css`, `site/css/tailwind.css`, diretórios vazios `site/images/` e `site/icons/`, além do caminho contraditório `app/modules/payments/gateways/Asaas.js`.
 **Não adicionados após auditoria:** candidatos genéricos do Core relacionados em `CORE.md` e qualquer asset ainda sem necessidade conhecida.
 
-## 7. Regra final
+## 7. Relação entre árvore e lotes
 
 A árvore define **onde** cada arquivo pode existir; o ROADMAP define **em qual lote** será entregue. Uma pasta só nasce no commit que inclua seu primeiro arquivo real.
+
+## 8. Responsabilidades dos diretórios
+
+### 8.1 `docs/`
+
+Contém visão, arquitetura, governança, contratos, especificações, implantação, operação e histórico. Documentação estrutural é atualizada antes da mudança correspondente; exemplos em documentos especializados não autorizam caminhos fora desta árvore.
+
+### 8.2 `app/core/`
+
+Contém somente infraestrutura técnica compartilhada. Seus 12 arquivos e responsabilidades estão definidos em `CORE.md`. Não contém domínio, SQL comercial nem integração específica. A divisão de responsabilidades técnicas rejeitadas como arquivos independentes permanece consolidada nos caminhos oficiais.
+
+### 8.3 `app/modules/`
+
+Contém regras, validações e SQL de cada domínio. Cada módulo começa coeso em um arquivo e só pode ser dividido após necessidade real registrada. Um módulo não acessa internos de outro; integração ocorre por eventos, contratos e APIs públicas.
+
+### 8.4 `app/gateways/`
+
+Isola protocolo externo sem regra comercial. `app/gateways/Asaas.js` é o único gateway aprovado e traduz autenticação, requests, responses e erros do Asaas. `Payments.js` conserva decisões financeiras. Não haverá interface genérica para provedores inexistentes.
+
+### 8.5 `app/components/`
+
+Contém elementos visuais reutilizáveis que recebem dados prontos. Componentes não consultam D1, não conhecem módulos, não decidem negócio e permanecem independentes de layout. Elemento sem reutilização fica no template correspondente.
+
+### 8.6 `app/layouts/` e `app/templates/`
+
+Layouts definem estruturas base pública, painel e administração. Templates compõem páginas específicas com layouts e componentes. Ambos recebem dados prontos, escapam apresentação e nunca acessam D1 diretamente.
+
+### 8.7 `app/schemas/`
+
+Contém os seis schemas JSON versionados para validação e contratos. Schemas não acessam banco nem substituem regra de domínio. Mudança incompatível requer versão/migration e atualização documental.
+
+### 8.8 `database/`
+
+`schema.sql` é o retrato canônico do D1 e `migrations/0001_initial_schema.sql` é a migration inicial imutável. Toda mudança posterior exigirá novo nome sequencial previamente registrado. Migration aplicada não é editada. Seed de produção não está autorizado.
+
+### 8.9 `functions/`
+
+Contém Pages Functions finas: middleware, APIs, painel, administração, webhook e agendamento. Elas interpretam o protocolo, validam formato básico, autenticam/autorizam, delegam ao Core/módulo e normalizam resposta. Não contêm regra comercial nem SQL.
+
+### 8.10 `site/`
+
+Contém HTML, CSS e JavaScript ES Modules públicos. Consome APIs e artefatos publicados em cache/KV/R2, nunca binding ou consulta direta ao D1. Imagens, ícones, fontes e outros assets somente entram com nome e necessidade concretos; diretório vazio é proibido.
+
+### 8.11 `tests/`
+
+Contém as 24 suítes nomeadas em `TESTING.md`, criadas junto ao primeiro teste real de cada fronteira. A organização por Core, database, schemas, modules, gateway, rendering, Functions, site, integração, contrato, E2E e segurança não autoriza pasta vazia.
+
+### 8.12 Arquivos da raiz
+
+| Arquivo | Responsabilidade |
+|---|---|
+| `.gitignore` | Excluir somente artefatos locais, segredos e saídas geradas. |
+| `LICENSE` | Declarar termos de licença. |
+| `README.md` | Apresentar instalação, desenvolvimento, testes e publicação. |
+| `package.json` | Declarar ESM, runtime, dependências e scripts técnicos. |
+| `package-lock.json` | Fixar resolução exata das dependências. |
+| `wrangler.toml` | Declarar Pages e bindings por ambiente, sem segredo. |
+
+Scripts técnicos conhecidos pertencem ao manifesto. Um diretório `scripts/` somente será autorizado se uma rotina concreta não puder permanecer legível no `package.json`.
+
+## 9. Inventário exato por lote
+
+Esta indexação complementa a árvore completa da seção 3. Um arquivo listado em mais de um sublote é atualizado, não duplicado.
+
+| Lote | Arquivos oficiais |
+|---|---|
+| 1 | `.gitignore`; `LICENSE`; `README.md`; `package.json`; `package-lock.json`; `wrangler.toml`. |
+| 2 | `app/core/config.js`; `app/core/helpers.js`; `app/core/logger.js`; `tests/core/config-helpers-logger.test.js`. |
+| 3 | `app/core/events.js`; `app/core/db.js`; `app/core/cache.js`; `app/core/storage.js`; `tests/core/events-persistence.test.js`. |
+| 4 | `app/core/auth.js`; `app/core/router.js`; `tests/core/auth-router.test.js`. |
+| 5 | `app/core/render.js`; `app/core/publish.js`; `app/core/app.js`; `tests/core/render-publish-app.test.js`. |
+| 6 | `database/schema.sql`; `database/migrations/0001_initial_schema.sql`; `app/schemas/listing.schema.json`; `app/schemas/user.schema.json`; `app/schemas/profile.schema.json`; `app/schemas/plan.schema.json`; `app/schemas/settings.schema.json`; `app/schemas/theme.schema.json`; `tests/database/schema-migrations.test.js`; `tests/schemas/schemas.test.js`. |
+| 7 | `app/modules/Auth.js`; `app/modules/Users.js`; `app/modules/Imobiliaristas.js`; `app/modules/Plans.js`; `app/modules/Subscriptions.js`; `tests/modules/identity-subscriptions.test.js`. |
+| 8 | `app/modules/Categories.js`; `app/modules/Listings.js`; `app/modules/Media.js`; `app/modules/Upload.js`; `tests/modules/catalog-media.test.js`. |
+| 9 | `app/modules/Search.js`; `app/modules/Geolocation.js`; `app/modules/Maps.js`; `app/modules/Favorites.js`; `app/modules/Compare.js`; `tests/modules/discovery.test.js`. |
+| 10 | `app/modules/Contacts.js`; `app/modules/Leads.js`; `app/modules/Reviews.js`; `app/modules/Notifications.js`; `tests/modules/relationship.test.js`. |
+| 11 | `app/modules/Payments.js`; `app/modules/Integrations.js`; `app/gateways/Asaas.js`; `tests/modules/payments-integrations.test.js`; `tests/gateways/asaas.contract.test.js`. |
+| 12 | `app/modules/Dashboard.js`; `app/modules/Analytics.js`; `app/modules/Reports.js`; `app/modules/AI.js`; `tests/modules/management-intelligence.test.js`. |
+| 13 | `app/modules/Publish.js`; `app/modules/Seo.js`; `tests/modules/publishing-seo.test.js`. |
+| 14A | `app/components/Alert.js`; `app/components/Breadcrumb.js`; `app/components/Button.js`; `app/components/Card.js`; `app/components/Grid.js`; `app/components/Menu.js`; `tests/components/components.test.js`. |
+| 14B | `app/components/Form.js`; `app/components/Gallery.js`; `app/components/Modal.js`; `app/components/Pagination.js`; `app/components/Table.js`; `app/components/Tabs.js`; atualização de `tests/components/components.test.js`. |
+| 15 | `app/layouts/public.js`; `app/layouts/panel.js`; `app/layouts/admin.js`; `app/templates/home.js`; `app/templates/listing.js`; `app/templates/listings.js`; `app/templates/profile.js`; `app/templates/location.js`; `app/templates/panel.js`; `app/templates/error.js`; `tests/rendering/layouts-templates.test.js`. |
+| 16A | `functions/_middleware.js`; `functions/api/auth.js`; `functions/api/listings.js`; `functions/api/users.js`; `functions/api/media.js`; `functions/api/payments.js`; `functions/api/publish.js`; `tests/functions/api.test.js`; `tests/contract/public-api.test.js`. |
+| 16B | `functions/painel/[[path]].js`; `functions/admin/[[path]].js`; `functions/webhooks/asaas.js`; `functions/scheduled.js`; `tests/functions/panel-admin.test.js`; `tests/functions/webhooks-scheduled.test.js`; atualização de `tests/contract/public-api.test.js`. |
+| 17 | `site/index.html`; `site/404.html`; `site/robots.txt`; `site/css/app.css`; `site/js/app.js`; `site/js/router.js`; `site/js/api.js`; `site/js/search.js`; `tests/site/public-frontend.test.js`; atualização de `tests/contract/public-api.test.js`. |
+| 18 | `tests/integration/publication-flow.test.js`; `tests/e2e/critical-flows.test.js`; `tests/security/security.test.js`; atualização de `tests/contract/public-api.test.js`. |
+
+## 10. Criação, alteração e remoção
+
+### 10.1 Inclusão de arquivo
+
+Antes de incluir um caminho é obrigatório:
+
+1. demonstrar necessidade concreta e responsabilidade principal;
+2. verificar se arquivo oficial existente comporta a responsabilidade;
+3. definir contratos, dependências, riscos e testes;
+4. registrar caminho no TREE e lote no ROADMAP;
+5. evitar abstração para possibilidade futura;
+6. implementar e testar dentro do lote autorizado;
+7. atualizar CHANGELOG quando a estrutura mudar.
+
+O registro prévio do caminho não permite antecipar o lote. A pasta nasce somente no commit que contém seu primeiro arquivo real.
+
+### 10.2 Alteração estrutural
+
+Renomear ou mover exige atualizar referências, contratos, testes, TREE, ROADMAP e CHANGELOG na mesma fronteira documental anterior à implementação. Caminhos antigos não permanecem simultaneamente como alternativa.
+
+### 10.3 Remoção
+
+Um arquivo pode ser removido quando a responsabilidade deixa de existir, é incorporada legitimamente a outro arquivo, a abstração não possui necessidade concreta ou a remoção reduz complexidade sem quebrar contratos. A decisão deve identificar destino da responsabilidade, consumidores, dados/migrations e estratégia de compatibilidade. Pastas vazias resultantes são removidas.
+
+### 10.4 Diretórios planejados
+
+Diretórios são apenas representação organizacional. Nenhum diretório da seção 3 deve ser criado antes de conter arquivo real do lote corrente. `images/`, `icons/`, `scripts/` e qualquer outro diretório sem arquivo exato não pertencem ao plano.
+
+## 11. Estados e manutenção do inventário
+
+- **[E]** descreve arquivo rastreado na `main` auditada.
+- **[P]** descreve arquivo aprovado, ainda ausente.
+- Itens hipotéticos não recebem marcador nem diretório.
+- Após o merge de cada lote, os arquivos correspondentes passam de [P] para [E] em atualização documental do próprio lote.
+- Arquivo presente no repositório e ausente do TREE é violação; arquivo no lote e ausente da árvore também é violação.
+
+A auditoria deve comparar `git ls-files`, árvore planejada e inventário por lote, procurando ausências, duplicações, caminhos contraditórios, pastas vazias e arquivos sem testes definidos.

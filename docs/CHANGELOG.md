@@ -47,6 +47,11 @@ Plano mestre de implantação em 18 lotes funcionais, com sublotes 14A/14B e 16A
 
 Nomes exatos para a migration inicial e para todas as suítes de teste planejadas.
 
+Restaurado
+Especificações técnicas detalhadas de Core, TREE e estratégia de testes que haviam sido excessivamente resumidas durante o replanejamento inicial.
+
+As responsabilidades técnicas de segurança, validação, request/response e erros foram preservadas nos 12 arquivos oficiais, sem recriar os caminhos independentes rejeitados.
+
 Alterado
 O lote funcional substitui o arquivo como unidade de implementação, commit, revisão, Pull Request, aprovação e avanço.
 

@@ -56,6 +56,111 @@ Critérios mínimos:
 
 Executar suíte completa, contrato, E2E, segurança, performance, migration/restore, publicação incremental e smoke pós-deploy. Validar rollback, correlação de logs, alertas e zero consulta pública direta ao D1. Nenhum achado crítico ou alto pode permanecer aberto no aceite final.
 
-## 5. Regra final
+## 5. Gate funcional
 
 Um lote só está pronto quando seus testes nomeados estão presentes e verdes, sua evidência é revisável e as regressões anteriores continuam aprovadas.
+
+## 6. Pirâmide de testes
+
+```text
+          E2E
+       Contratos
+      Integração
+       Unitários
+```
+
+A base unitária deve ser ampla e rápida. Integrações comprovam fronteiras reais. Contratos protegem consumidores e produtores. E2E são poucos e cobrem jornadas críticas. O formato não impede testes de segurança e performance em mais de um nível.
+
+## 7. Testes unitários
+
+Validam arquivo ou unidade coesa com dependências controladas. Devem cobrir Core, módulos, helpers, componentes, schemas e transformações das Functions, incluindo sucesso, limites, entrada inválida, falha e idempotência.
+
+Testes unitários do Core provam ausência de domínio, estado isolado e APIs compatíveis com Workers. Testes de módulo provam regras e SQL do próprio domínio. Componentes provam renderização, escaping, propriedades e acessibilidade sem banco.
+
+## 8. Testes de integração
+
+Validam interação entre Core, D1, KV, R2, Event Bus, Publisher, Renderer, módulos, gateway e APIs. Devem usar implementações locais compatíveis com Cloudflare quando disponíveis e verificar efeitos persistidos, ordem D1→evento→publicação, falhas parciais, retry e limpeza.
+
+Mocks não substituem a execução da migration em D1 limpo, a leitura/gravação real dos stores no ambiente de teste nem o ensaio do fluxo de publicação. A integração transversal final está em `tests/integration/publication-flow.test.js`; integrações menores acompanham seus lotes.
+
+## 9. Testes de contrato
+
+Protegem interfaces públicas, envelopes de eventos, schemas, APIs e gateway Asaas. Cada contrato define versão, campos obrigatórios, compatibilidade, status/erros e exemplos válidos/inválidos. Mudança incompatível exige estratégia explícita e atualização coordenada de produtor e consumidor.
+
+`tests/contract/public-api.test.js` evolui nos Lotes 16A, 16B, 17 e 18. `tests/gateways/asaas.contract.test.js` valida tradução do protocolo externo sem acoplar regras financeiras ao gateway.
+
+## 10. Testes End-to-End
+
+E2E valida o sistema pela superfície pública/protegida e cobre somente jornadas de alto valor:
+
+- cadastro, autenticação e sessão;
+- criação e publicação de anúncio;
+- busca pública sem consulta direta ao D1;
+- upload e associação de mídia;
+- assinatura/pagamento e webhook idempotente;
+- painel e administração autorizados;
+- falha, recuperação e conteúdo publicado atualizado.
+
+A suíte deve ser determinística, usar dados isolados e coletar evidência suficiente sem registrar segredo. `tests/e2e/critical-flows.test.js` é completado no Lote 18, depois que os testes próprios dos lotes estiverem verdes.
+
+## 11. Testes de performance
+
+Medem latência, throughput, tamanho de resposta, consultas, renderização, publicação, cache hit/miss, uso de memória/CPU e consumo dos bindings. Devem estabelecer orçamento por jornada e comparar regressões em ambiente representativo.
+
+Cenários mínimos incluem busca pública cacheada, publicação incremental, API autenticada, upload/streaming e carga concorrente. Uma otimização só é aceita com medição antes/depois e sem degradar correção, segurança ou observabilidade.
+
+## 12. Testes de segurança
+
+Devem cobrir autenticação, autorização, elevação de privilégio, token/cookie, SQL injection, XSS, CSRF, CORS, open redirect, uploads, path traversal, SSRF quando aplicável, webhook/assinatura/replay, rate limit, exposição de erro e segredos em logs.
+
+Casos negativos existem desde o lote funcional responsável. `tests/security/security.test.js` agrega varredura transversal no Lote 18. Nenhum achado crítico ou alto pode permanecer aberto no aceite final; exceções menores exigem risco, responsável e prazo documentados.
+
+## 13. Fixtures e dados de teste
+
+Fixtures devem ser pequenas, legíveis, versionadas, reutilizáveis sem acoplamento excessivo e específicas o suficiente para revelar intenção. Cada teste cria ou identifica seus dados e faz limpeza. Datas, IDs e relógio são controlados. Dados pessoais reais e credenciais de produção são proibidos.
+
+Factories podem reduzir repetição quando houver necessidade comprovada, mas não devem esconder campos relevantes ao cenário. A migration inicial, não um seed de produção, prepara o banco estrutural de teste.
+
+## 14. Mocks, stubs e fakes
+
+Mocks são apropriados para API Asaas, IA, mapas, filas e falhas remotas controladas. Fakes podem representar bindings em testes unitários. Spies comprovam que Functions apenas delegam.
+
+Não usar doubles para esconder incompatibilidade real, SQL inválido, contrato divergente ou migration quebrada. Teste de contrato deve usar payloads representativos e, quando possível, staging/sandbox não produtivo. Expectativas evitam conhecer detalhes internos sem relevância contratual.
+
+## 15. Cobertura
+
+Cobertura deve ser coletada para Core, módulos, Functions, contratos e apresentação crítica, com linhas, branches e funções. Percentual não substitui análise de risco nem exige teste sem significado.
+
+Queda injustificada bloqueia a PR. Código de autenticação, autorização, pagamento, publicação, migrations e webhook exige atenção a branches negativos, concorrência e idempotência. Exclusões de cobertura devem ser mínimas e justificadas no próprio mecanismo de configuração.
+
+## 16. Integração contínua
+
+Toda PR de lote executa instalação reproduzível, lint/verificação estática, testes novos, regressões afetadas, contratos e build. O pipeline deve falhar em teste instável, migration inválida, contrato incompatível, segredo detectado ou artefato fora do TREE.
+
+A `main` executa a suíte aplicável completa. Staging adiciona bindings reais não produtivos, migrations, smoke, segurança e publicação. Lote 18 acrescenta E2E, performance, restore, rollback e evidência de observabilidade. Resultados registram commit, ambiente, duração e versão das ferramentas.
+
+## 17. Critérios de aceite
+
+Uma suíte é aceita quando é determinística, legível, falha pelo motivo correto, controla dados/tempo, não depende de ordem e testa contrato público em vez de detalhe acidental.
+
+Um lote é aceito quando:
+
+- sua suíte nomeada existe e está verde;
+- regressões anteriores e checks estáticos passam;
+- casos negativos, autorização e falhas relevantes estão cobertos;
+- integração/contrato necessário não foi substituído apenas por mock;
+- evidência e cobertura estão disponíveis;
+- nenhum teste foi desabilitado para obter sucesso;
+- documentação e comportamento concordam.
+
+## 18. Observabilidade dos testes
+
+CI registra duração total e por suíte, falha, retry de infraestrutura, ambiente, commit e artefatos diagnósticos seguros. Flakiness é defeito: teste instável deve ser corrigido, não repetido indefinidamente. Logs de teste seguem as mesmas regras de redação de produção.
+
+Performance e E2E publicam tendências. Segurança preserva relatório e severidade. Deploy/rollback registra timestamps, versão, smoke e decisão de promover ou reverter.
+
+## 19. Relação entre lotes e as 24 suítes
+
+A tabela da seção 2 é normativa e contém 24 caminhos únicos. Suítes compartilhadas são iniciadas no primeiro sublote e ampliadas nos seguintes, sem criar duplicata. O Lote 18 não substitui nenhum teste unitário, de integração local, contrato ou Function exigido anteriormente.
+
+A revisão e o commit são feitos por lote funcional. Um arquivo de teste continua com responsabilidade clara, mas não se torna gate isolado de autorização para o próximo arquivo.
