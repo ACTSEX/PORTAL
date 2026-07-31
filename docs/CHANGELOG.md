@@ -41,6 +41,20 @@ Breaking Changes
 
 Histórico
 2026-07-31
+Versão 1.3.0
+Adicionado
+Lote 2 com configuração técnica centralizada e imutável, validação de ambientes e bindings Cloudflare e feature flags normalizadas.
+
+Helpers técnicos puros para reconhecimento e congelamento profundo de estruturas de configuração.
+
+Logger estruturado com níveis configuráveis, correlação, saída injetável, normalização segura de erros, redação profunda e proteção contra ciclos.
+
+Suíte unitária da fronteira de configuração, helpers e observabilidade, incluindo integração, imutabilidade e ausência de segredos.
+
+Breaking Changes
+Nenhuma.
+
+2026-07-31
 Versão 1.2.0
 Adicionado
 Lote 1 com arquivos da raiz, manifesto ESM e lockfile reproduzível, comandos técnicos e configuração Cloudflare separada para development, staging e production.
