@@ -40,6 +40,40 @@ Breaking Changes
 ...
 
 Histórico
+2026-07-31
+Versão 1.0.2
+Alterado
+TREE.md sincronizado com os 40 arquivos de documentação existentes no repositório.
+
+Todos os documentos existentes passaram a ser identificados como [EXISTE].
+
+A seção de estado atual foi atualizada para registrar que ainda não existem arquivos de código nem diretórios de implementação.
+
+Corrigido
+Removidos estados [PLANEJADO] incorretos de documentos já presentes no repositório.
+
+Breaking Changes
+Nenhuma.
+
+2026-07-31
+Versão 1.0.1
+Alterado
+A Constituição passou a declarar explicitamente que o Core fornece somente infraestrutura técnica genérica e que as regras de negócio pertencem exclusivamente aos módulos.
+
+Definida a precedência documental oficial, com CONSTITUTION.md como autoridade máxima.
+
+Esclarecidas as responsabilidades de ARCHITECTURE.md, documentos especializados, TREE.md e ROADMAP.md.
+
+Definido que listas de referência em documentos especializados não autorizam a criação antecipada de arquivos nem substituem a ordem do ROADMAP.md.
+
+Documentado o fluxo obrigatório para alterações estruturais, incluindo RFC e ADR quando aplicáveis.
+
+Corrigido
+Removida a contradição que permitia interpretar que regras de negócio poderiam permanecer no Core.
+
+Breaking Changes
+Nenhuma. A alteração formaliza a separação de responsabilidades já estabelecida nos documentos especializados.
+
 2026-07-29
 Versão 1.0.0
 Adicionado

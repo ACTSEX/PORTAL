@@ -1308,15 +1308,36 @@ docs/CHANGELOG.md
 ```
 Esses documentos devem permanecer sincronizados com a implementação.
 Decisões não devem depender apenas de conversas ou memória.
+93.1 Responsabilidades documentais
+`CONSTITUTION.md` define as regras permanentes e possui a maior autoridade documental.
+`ARCHITECTURE.md` define a arquitetura técnica oficial.
+Documentos especializados detalham responsabilidades dentro dos limites definidos pelos documentos superiores.
+`TREE.md` autoriza onde uma pasta ou arquivo pode existir.
+`ROADMAP.md` determina quando cada item aprovado pode ser implementado.
+Contratos e schemas definem estruturas públicas compartilhadas.
+Listas de referência presentes em documentos especializados não autorizam criação antecipada e não substituem a ordem do `ROADMAP.md`.
 ---
 94. Precedência das Regras
 Em caso de conflito, utilizar esta ordem:
-decisão explícita mais recente registrada na documentação;
+`CONSTITUTION.md`;
+decisão explícita mais recente, formalmente aprovada e registrada na documentação;
 `ARCHITECTURE.md`;
 ADR específico aprovado;
-documentação de módulo ou contrato;
+documentação especializada aplicável;
+`TREE.md`;
+`ROADMAP.md`;
+contratos e schemas;
 implementação existente.
 O código existente não se torna regra apenas por já estar implementado.
+Uma alteração estrutural deve seguir este fluxo:
+identificar a necessidade;
+resolver conflitos documentais;
+registrar RFC quando houver impacto relevante;
+registrar ADR quando houver decisão arquitetural permanente;
+atualizar a Constituição ou a arquitetura, quando aplicável;
+atualizar `TREE.md`;
+atualizar `ROADMAP.md`;
+implementar somente após aprovação.
 ---
 95. Compromisso Final
 O ACTS deve crescer em capacidade, não em desorganização.
@@ -1331,5 +1352,5 @@ integração exclusiva com Asaas;
 documentação atualizada;
 desenvolvimento arquivo por arquivo;
 simplicidade permanente.
-Este documento é a Constituição Técnica do Portal ACTS.
+Este documento é a referência técnica principal da arquitetura do Portal ACTS.
 Toda alteração estrutural deverá respeitá-lo ou atualizá-lo formalmente antes da implementação.

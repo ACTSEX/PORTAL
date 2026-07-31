@@ -52,16 +52,43 @@ PORTAL/
 │   ├── README.md                              [EXISTE]
 │   ├── PROJECT.md                             [EXISTE]
 │   ├── INDEX.md                               [EXISTE]
+│   ├── CONSTITUTION.md                        [EXISTE]
 │   ├── ARCHITECTURE.md                        [EXISTE]
-│   ├── TREE.md                                [PLANEJADO]
-│   ├── ROADMAP.md                             [PLANEJADO]
-│   ├── MODULES.md                             [PLANEJADO]
-│   ├── COMPONENTS.md                          [PLANEJADO]
-│   ├── EVENTS.md                              [PLANEJADO]
-│   ├── SCHEMAS.md                             [PLANEJADO]
-│   ├── CLOUDFLARE.md                          [PLANEJADO]
-│   ├── CHANGELOG.md                           [PLANEJADO]
-│   └── adr/                                   [FUTURO]
+│   ├── TREE.md                                [EXISTE]
+│   ├── ROADMAP.md                             [EXISTE]
+│   ├── CHANGELOG.md                           [EXISTE]
+│   ├── ADR_GUIDE.md                           [EXISTE]
+│   ├── RFC_GUIDE.md                           [EXISTE]
+│   ├── CORE.md                                [EXISTE]
+│   ├── BOOTSTRAP.md                           [EXISTE]
+│   ├── CONFIG.md                              [EXISTE]
+│   ├── ERRORS.md                              [EXISTE]
+│   ├── LOGGER.md                              [EXISTE]
+│   ├── DB.md                                  [EXISTE]
+│   ├── CACHE.md                               [EXISTE]
+│   ├── STORAGE.md                             [EXISTE]
+│   ├── AUTH.md                                [EXISTE]
+│   ├── SECURITY.md                            [EXISTE]
+│   ├── ROUTER.md                              [EXISTE]
+│   ├── EVENT_BUS.md                           [EXISTE]
+│   ├── EVENTS.md                              [EXISTE]
+│   ├── PUBLISHER.md                           [EXISTE]
+│   ├── RENDERER.md                            [EXISTE]
+│   ├── CONTRACTS.md                           [EXISTE]
+│   ├── INTERFACES.md                          [EXISTE]
+│   ├── API_GUIDELINES.md                      [EXISTE]
+│   ├── CODING_STANDARDS.md                    [EXISTE]
+│   ├── MODULES.md                             [EXISTE]
+│   ├── MODULE_SPECIFICATION.md                [EXISTE]
+│   ├── MODULE_TEMPLATE.md                     [EXISTE]
+│   ├── LISTINGS.md                            [EXISTE]
+│   ├── PLUGINS.md                             [EXISTE]
+│   ├── COMPONENTS.md                          [EXISTE]
+│   ├── SCHEMAS.md                             [EXISTE]
+│   ├── CLOUDFLARE.md                          [EXISTE]
+│   ├── TESTING.md                             [EXISTE]
+│   ├── DEPLOYMENT.md                          [EXISTE]
+│   └── OPERATIONS.md                          [EXISTE]
 │
 ├── app/                                       [PLANEJADO]
 │   │
@@ -512,17 +539,11 @@ A remoção deve ser registrada antes da alteração no código.
 
 19. Estado Atual
 
-No momento da criação deste documento, o repositório possui:
+Na revisão realizada em 2026-07-31, o repositório possui 40 arquivos de documentação em `docs/`, todos registrados como `[EXISTE]` na árvore oficial.
 
-docs/
-├── README.md
-├── PROJECT.md
-├── INDEX.md
-└── ARCHITECTURE.md
+Ainda não existem arquivos de código nem as pastas planejadas `app/`, `functions/`, `site/`, `database/` e `tests/`.
 
-O próprio TREE.md será o próximo arquivo adicionado.
-
-Nenhuma pasta de código deve ser criada antes da conclusão do ROADMAP.md.
+Nenhuma pasta de código deve ser criada antes da sincronização e aprovação do ROADMAP.md.
 
 20. Regra Final
 
