@@ -249,3 +249,16 @@ incremental de derivados e bootstrap determinístico, acompanhados pelos testes
 integrados oficiais do Core.
 
 Nenhuma alteração estrutural deve ocorrer sem atualização deste arquivo.
+
+2026-07-31
+Versão 1.6.0
+Adicionado
+Lote 6 com snapshot canônico do Cloudflare D1, migration inicial equivalente,
+constraints e índices para os domínios documentados, sem seed ou credenciais.
+
+Seis contratos JSON Schema versionados para anúncios, usuários, perfis, planos,
+configurações públicas e temas declarativos, acompanhados pelas suítes oficiais
+de banco e schemas.
+
+Breaking Changes
+Nenhuma.

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://portal.acts.example/schemas/v1/theme.schema.json",
+  "title": "Theme",
+  "description": "Version 1 declarative visual theme without executable HTML or JavaScript.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "pattern": "^[A-Za-z0-9 _-]+$", "minLength": 1, "maxLength": 80 },
+    "mode": { "type": "string", "enum": ["light", "dark", "system"] },
+    "colors": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "primary": { "$ref": "#/$defs/color" },
+        "secondary": { "$ref": "#/$defs/color" },
+        "background": { "$ref": "#/$defs/color" },
+        "surface": { "$ref": "#/$defs/color" },
+        "text": { "$ref": "#/$defs/color" }
+      },
+      "required": ["primary", "secondary", "background", "surface", "text"]
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contentWidth": { "type": "string", "enum": ["compact", "standard", "wide"] },
+        "density": { "type": "string", "enum": ["comfortable", "compact"] },
+        "borderRadius": { "type": "integer", "minimum": 0, "maximum": 32 }
+      },
+      "required": ["contentWidth", "density", "borderRadius"]
+    },
+    "components": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "buttonStyle": { "type": "string", "enum": ["solid", "outline"] },
+        "cardStyle": { "type": "string", "enum": ["flat", "bordered", "elevated"] }
+      },
+      "required": ["buttonStyle", "cardStyle"]
+    }
+  },
+  "required": ["name", "mode", "colors", "layout", "components"],
+  "$defs": {
+    "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
+  }
+}
