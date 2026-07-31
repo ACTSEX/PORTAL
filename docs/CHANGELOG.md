@@ -242,4 +242,10 @@ PATCH: correções sem quebra de compatibilidade.
 Estado
 Este documento é a referência oficial para o histórico do Portal ACTS.
 
+## Lote 5 — Core de renderização, publicação e composição
+
+Adicionado `render.js`, `publish.js` e `app.js` com registro explícito, publicação
+incremental de derivados e bootstrap determinístico, acompanhados pelos testes
+integrados oficiais do Core.
+
 Nenhuma alteração estrutural deve ocorrer sem atualização deste arquivo.
