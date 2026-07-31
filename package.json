@@ -1,0 +1,29 @@
+{
+  "name": "acts-portal",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "dev": "wrangler pages dev site --env development",
+    "lint": "npm run lint:js",
+    "lint:js": "files=$(find app functions site tests -type f -name '*.js' 2>/dev/null || true); test -z \"$files\" || node --check $files",
+    "test": "node --test",
+    "build": "mkdir -p .wrangler/tmp && wrangler types .wrangler/tmp/worker-configuration.d.ts --env development",
+    "cf:validate": "npm run cf:validate:development && npm run cf:validate:staging && npm run cf:validate:production",
+    "cf:validate:development": "mkdir -p .wrangler/tmp && wrangler types .wrangler/tmp/development.d.ts --env development",
+    "cf:validate:staging": "mkdir -p .wrangler/tmp && wrangler types .wrangler/tmp/staging.d.ts --env staging",
+    "cf:validate:production": "mkdir -p .wrangler/tmp && wrangler types .wrangler/tmp/production.d.ts --env production",
+    "db:migrate:local": "wrangler d1 migrations apply ACTS_DB --local --env development",
+    "db:migrate:staging": "wrangler d1 migrations apply ACTS_DB --remote --env staging",
+    "db:migrate:production": "wrangler d1 migrations apply ACTS_DB --remote --env production",
+    "deploy:staging": "wrangler pages deploy site --project-name acts-portal-staging --branch staging",
+    "deploy:production": "wrangler pages deploy site --project-name acts-portal-production --branch main"
+  },
+  "devDependencies": {
+    "wrangler": "4.118.0"
+  }
+}

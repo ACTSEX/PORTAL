@@ -1,0 +1,27 @@
+node_modules/
+
+# Generated build and Cloudflare state
+dist/
+.wrangler/
+.dev.vars*
+!.dev.vars.example
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Test and tooling output
+coverage/
+*.log
+npm-debug.log*
+
+# Editor and operating-system files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
