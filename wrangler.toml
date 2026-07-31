@@ -1,0 +1,82 @@
+name = "acts-portal"
+pages_build_output_dir = "site"
+compatibility_date = "2026-07-31"
+
+# IDs are non-secret placeholders required by Wrangler. Replace them with the
+# IDs of resources provisioned independently for each environment before deploy.
+[[d1_databases]]
+binding = "ACTS_DB"
+database_name = "acts-portal-development"
+database_id = "00000000-0000-0000-0000-000000000001"
+
+[[kv_namespaces]]
+binding = "ACTS_KV"
+id = "00000000000000000000000000000001"
+
+[[r2_buckets]]
+binding = "ACTS_FILES"
+bucket_name = "acts-portal-development"
+
+[[queues.producers]]
+binding = "ACTS_QUEUE"
+queue = "acts-portal-development"
+
+[env.development]
+name = "acts-portal-development"
+
+[[env.development.d1_databases]]
+binding = "ACTS_DB"
+database_name = "acts-portal-development"
+database_id = "00000000-0000-0000-0000-000000000001"
+
+[[env.development.kv_namespaces]]
+binding = "ACTS_KV"
+id = "00000000000000000000000000000001"
+
+[[env.development.r2_buckets]]
+binding = "ACTS_FILES"
+bucket_name = "acts-portal-development"
+
+[[env.development.queues.producers]]
+binding = "ACTS_QUEUE"
+queue = "acts-portal-development"
+
+[env.staging]
+name = "acts-portal-staging"
+
+[[env.staging.d1_databases]]
+binding = "ACTS_DB"
+database_name = "acts-portal-staging"
+database_id = "00000000-0000-0000-0000-000000000002"
+
+[[env.staging.kv_namespaces]]
+binding = "ACTS_KV"
+id = "00000000000000000000000000000002"
+
+[[env.staging.r2_buckets]]
+binding = "ACTS_FILES"
+bucket_name = "acts-portal-staging"
+
+[[env.staging.queues.producers]]
+binding = "ACTS_QUEUE"
+queue = "acts-portal-staging"
+
+[env.production]
+name = "acts-portal-production"
+
+[[env.production.d1_databases]]
+binding = "ACTS_DB"
+database_name = "acts-portal-production"
+database_id = "00000000-0000-0000-0000-000000000003"
+
+[[env.production.kv_namespaces]]
+binding = "ACTS_KV"
+id = "00000000000000000000000000000003"
+
+[[env.production.r2_buckets]]
+binding = "ACTS_FILES"
+bucket_name = "acts-portal-production"
+
+[[env.production.queues.producers]]
+binding = "ACTS_QUEUE"
+queue = "acts-portal-production"

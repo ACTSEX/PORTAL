@@ -41,6 +41,16 @@ Breaking Changes
 
 Histórico
 2026-07-31
+Versão 1.2.0
+Adicionado
+Lote 1 com arquivos da raiz, manifesto ESM e lockfile reproduzível, comandos técnicos e configuração Cloudflare separada para development, staging e production.
+
+Definidos bindings documentais de D1, KV, R2 e Queue, sem provisionar recursos ou registrar segredos.
+
+Breaking Changes
+Nenhuma.
+
+2026-07-31
 Versão 1.1.0
 Adicionado
 Plano mestre de implantação em 18 lotes funcionais, com sublotes 14A/14B e 16A/16B, arquivos, dependências, testes, riscos, aceite e definição de concluído.
