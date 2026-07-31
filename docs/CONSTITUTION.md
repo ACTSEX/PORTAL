@@ -22,7 +22,9 @@ Cloudflare Pages é a plataforma principal.
 
 Pages Functions apenas orquestram.
 
-Regras de negócio permanecem em módulos e no Core.
+O Core fornece exclusivamente infraestrutura técnica genérica.
+
+Regras de negócio permanecem exclusivamente nos módulos.
 
 3. Organização
 
@@ -65,6 +67,36 @@ ADR correspondente;
 documentação;
 
 testes, quando aplicável.
+
+8. Precedência documental
+
+Em caso de conflito, deve ser observada a seguinte ordem:
+
+esta Constituição;
+
+decisão explícita mais recente, formalmente aprovada e registrada;
+
+ARCHITECTURE.md;
+
+ADR específico aprovado;
+
+documentação especializada aplicável;
+
+TREE.md;
+
+ROADMAP.md;
+
+contratos e schemas;
+
+implementação existente.
+
+TREE.md define onde um arquivo pode existir.
+
+ROADMAP.md define quando um arquivo pode ser implementado.
+
+Listas de referência de documentos especializados não substituem a ordem oficial do ROADMAP.md.
+
+O código existente não se torna regra apenas por já estar implementado.
 
 Regra Final
 
