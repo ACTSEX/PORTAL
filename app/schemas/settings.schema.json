@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://portal.acts.example/schemas/v1/settings.schema.json",
+  "title": "Public Settings",
+  "description": "Version 1 non-sensitive settings that may be published to clients.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "siteName": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "locale": { "type": "string", "pattern": "^[a-z]{2}(?:-[A-Z]{2})?$" },
+    "timezone": { "type": "string", "pattern": "^[A-Za-z_]+(?:/[A-Za-z0-9_+\\-]+)+$", "maxLength": 64 },
+    "contactEmail": { "type": "string", "format": "email", "maxLength": 254 },
+    "features": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z][a-zA-Z0-9]{1,63}$" },
+      "additionalProperties": { "type": "boolean" },
+      "maxProperties": 100
+    },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  },
+  "required": ["siteName", "locale", "timezone", "features", "updatedAt"]
+}
