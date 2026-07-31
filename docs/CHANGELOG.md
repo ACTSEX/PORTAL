@@ -42,6 +42,18 @@ Breaking Changes
 Histórico
 
 2026-07-31
+Versão 1.5.0
+Adicionado
+Lote 4 com autenticação técnica por credenciais assinadas, autorização genérica com negação por padrão, validação de origem e identificadores seguros.
+
+Router determinístico com normalização imutável de requisições, middlewares, despacho autenticado, respostas HTTP padronizadas, erros públicos seguros e observabilidade por Logger e Event Bus.
+
+Suíte integrada de autenticação, autorização, segurança, requisições, roteamento, respostas e falhas, sem dependências de domínio ou persistência.
+
+Breaking Changes
+Nenhuma.
+
+2026-07-31
 Versão 1.4.0
 Adicionado
 Lote 3 com Event Bus técnico determinístico, acesso parametrizado ao D1, cache técnico por KV e armazenamento genérico de objetos no R2.
@@ -229,5 +241,11 @@ PATCH: correções sem quebra de compatibilidade.
 
 Estado
 Este documento é a referência oficial para o histórico do Portal ACTS.
+
+## Lote 5 — Core de renderização, publicação e composição
+
+Adicionado `render.js`, `publish.js` e `app.js` com registro explícito, publicação
+incremental de derivados e bootstrap determinístico, acompanhados pelos testes
+integrados oficiais do Core.
 
 Nenhuma alteração estrutural deve ocorrer sem atualização deste arquivo.
