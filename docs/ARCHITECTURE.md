@@ -51,8 +51,8 @@ Responsabilidades não devem ser espalhadas por diferentes partes da aplicação
 Sempre que possível, comportamento deve ser definido por configuração.
 Não deve ser criado código novo quando uma configuração resolver o problema.
 4.6 Evolução incremental
-O projeto será desenvolvido um arquivo por vez.
-Nenhum arquivo será criado por antecipação.
+O projeto será desenvolvido por lotes funcionais ordenados no `ROADMAP.md`.
+Arquivos do mesmo lote podem ser implementados, testados, commitados e revisados juntos; nenhum arquivo de lote futuro será antecipado.
 ---
 5. Arquitetura Geral
 A plataforma é organizada em cinco grandes camadas:
@@ -1118,13 +1118,11 @@ Um módulo só deve ser dividido quando existirem responsabilidades independente
 Integrações externas devem permanecer isoladas.
 Exemplo aprovado para o módulo financeiro:
 ```text
-app/modules/payments/
-├── Payments.js
-└── gateways/
-    └── Asaas.js
+app/modules/Payments.js
+app/gateways/Asaas.js
 ```
-O módulo financeiro controla as regras do negócio.
-`Asaas.js` controla exclusivamente a comunicação com a API do Asaas.
+`Payments.js` controla as regras financeiras.
+`app/gateways/Asaas.js` controla exclusivamente a comunicação com a API do Asaas; não existe um segundo caminho de gateway dentro do módulo.
 A plataforma utilizará somente o Asaas como gateway financeiro.
 Não devem ser criadas abstrações para gateways que não serão utilizados.
 ---

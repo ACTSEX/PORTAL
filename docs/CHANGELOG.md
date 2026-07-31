@@ -41,6 +41,33 @@ Breaking Changes
 
 Histórico
 2026-07-31
+Versão 1.1.0
+Adicionado
+Plano mestre de implantação em 18 lotes funcionais, com sublotes 14A/14B e 16A/16B, arquivos, dependências, testes, riscos, aceite e definição de concluído.
+
+Nomes exatos para a migration inicial e para todas as suítes de teste planejadas.
+
+Restaurado
+Especificações técnicas detalhadas de Core, TREE e estratégia de testes que haviam sido excessivamente resumidas durante o replanejamento inicial.
+
+As responsabilidades técnicas de segurança, validação, request/response e erros foram preservadas nos 12 arquivos oficiais, sem recriar os caminhos independentes rejeitados.
+
+Alterado
+O lote funcional substitui o arquivo como unidade de implementação, commit, revisão, Pull Request, aprovação e avanço.
+
+TREE.md passou a inventariar integralmente o estado real e todos os caminhos planejados; ROADMAP.md agora cobre raiz, Cloudflare, Core, banco, módulos, gateway, interface, Functions, frontend, testes, segurança, deploy e operação.
+
+CORE.md foi reconciliado com os 12 caminhos oficiais e consolidou responsabilidades que não justificavam arquivos independentes.
+
+Corrigido
+Adotado exclusivamente `app/gateways/Asaas.js`, removendo do plano o caminho contraditório sob `app/modules/payments/`.
+
+Removidos do plano seed de produção, frameworks CSS sem origem definida e diretórios vazios de imagens/ícones.
+
+Breaking Changes
+Sim, apenas de governança documental: a autorização sequencial por arquivo foi substituída por gates de lote funcional. Não há breaking change de runtime, API ou dados, pois ainda não existe código de produto.
+
+2026-07-31
 Versão 1.0.3
 Alterado
 ROADMAP.md sincronizado com o estado real da documentação existente, incluindo CONSTITUTION.md e CORE.md na Fase 0.

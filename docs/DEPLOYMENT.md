@@ -42,6 +42,8 @@ Monitoramento
 
 Nenhum deploy deve ignorar etapas obrigatórias.
 
+O pipeline é promovido por lote funcional. Cada PR contém uma única fronteira, seus testes e no máximo os limites de revisão definidos no `ROADMAP.md`. O lote seguinte somente parte da `main` depois do merge aprovado do anterior.
+
 4. Cloudflare
 
 O processo de implantação deve considerar:
@@ -86,6 +88,8 @@ Todo deploy deve possuir estratégia documentada de rollback.
 
 Sempre preservar integridade dos dados.
 
+Antes do aceite do Lote 18, o rollback deve ser ensaiado em staging, incluindo versão anterior da aplicação, artefatos publicados, invalidação de cache e restauração verificada quando uma migration não puder ser revertida com segurança.
+
 8. Checklist
 
 Antes do deploy verificar:
@@ -113,6 +117,8 @@ filas;
 cache;
 
 disponibilidade.
+
+O deploy final é incremental: validar migrations, publicar em staging, executar smoke e segurança, promover de forma gradual, observar métricas e interromper ou reverter ao ultrapassar os limiares aprovados. A evidência integra o aceite final do Lote 18.
 
 10. Regra final
 
