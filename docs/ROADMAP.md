@@ -19,17 +19,24 @@ Fase 0 — Documentação
 [x] README.md
 [x] PROJECT.md
 [x] INDEX.md
+[x] CONSTITUTION.md
 [x] ARCHITECTURE.md
 [x] TREE.md
-[ ] ROADMAP.md
-[ ] MODULES.md
-[ ] COMPONENTS.md
-[ ] EVENTS.md
-[ ] SCHEMAS.md
-[ ] CLOUDFLARE.md
-[ ] CHANGELOG.md
+[x] ROADMAP.md
+[x] CORE.md
+[x] MODULES.md
+[x] COMPONENTS.md
+[x] EVENTS.md
+[x] SCHEMAS.md
+[x] CLOUDFLARE.md
+[x] CHANGELOG.md
 Objetivo:
 Concluir toda a documentação estrutural antes da criação da camada de código.
+
+Estado:
+Fase 0 concluída após auditoria dos documentos existentes e sincronização da nomenclatura do Core.
+A Fase 1 — Infraestrutura está formalmente liberada.
+O primeiro e único arquivo autorizado para início da implementação é `app/core/config.js`.
 ---
 Fase 1 — Infraestrutura
 Ordem prevista:
