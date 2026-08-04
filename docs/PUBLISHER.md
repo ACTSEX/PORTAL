@@ -194,3 +194,47 @@ A publicação pública normal tem unidade de cidade. O Core recebe uma projeç�
 A Queue transporta somente identificadores técnicos. No processamento testável, mensagens do mesmo batch são agregadas por `cityId` e `citySlug`, duplicatas convergem por `eventId`, e toda mensagem entregue recebe confirmação ou retry. `dueAt` é cálculo informativo: não existe espera persistente entre batches. KV não armazena catálogo ou manifest e permanece técnico/privado; compressão é responsabilidade HTTP do Edge.
 
 O Lote 9A implementou configuração técnica, producer e batch testáveis, allowlist, catálogo determinístico, digest da projeção e do artefato, objeto versionado imutável, confirmação por `head`, ativação posterior do manifest, preservação em falha, rollback, pacote/cota explícitos e idempotência persistida do pacote. Não implementou `queue()` de produção, binding do consumer ao runtime, projeção real do domínio, identidade canônica, versão concorrente persistente, conversão de eventos, janela entre batches, dead-letter, Cron, Cache Rules/domínio ou validação staging; essas entregas permanecem nos Lotes 13, 16B e 18.
+
+## Decisão preparatória do Lote 13 — publicação por cidade (2026-08-04)
+
+Esta decisão é documental; o Lote 13 continua não implementado. A auditoria encontrou incompatibilidade estrutural: `listings` tem apenas localização textual livre, o Core exige `cityId`, `citySlug` e versão inteira, e `publication_jobs` não conserva identidade, versão e manifest vigentes por cidade. Grafias, acentos, caixa, espaços e abreviações podem dividir uma cidade; homônimos e slugs repetidos podem uni-las. Mudança de cidade pode perder a origem, agrupar ou recompilar o destino errado e produzir manifest divergente. O schema é **insuficiente** e fica autorizada, somente como caminho `[P]`, `database/migrations/0003_city_publication_state.sql`.
+
+### Cidade canônica e URL
+
+`cities` nascerá sob demanda, após necessidade real e validação, sem carga preventiva de municípios. Terá `id` textual opaco, aleatório e estável no padrão aceito pelo Core (por exemplo `city_<id>`, nunca derivado do nome), `country_code` ISO alfa-2 maiúsculo, `region_name`, `region_key`, `name`, `city_key`, `slug`, `canonical_key`, `active`, `created_at` e `updated_at`.
+
+A identidade inequívoca é `country_code + region_key + city_key`, nunca nome ou slug isolado. Exibição usa Unicode NFC; comparação usa NFKD, remoção de marcas diacríticas, casefold documentado, trim, espaços colapsados e pontuação/separadores normalizados. As keys não são exibidas. `canonical_key` e a tripla têm unicidade. O slug usa ASCII minúsculo, transliteração sem acentos, não alfanuméricos como hífen e hífens colapsados. Como o caminho atual usa somente slug, este é globalmente único: começa no nome; colisão recebe região/país (`santa-maria-rs-br`) e, se necessário, sufixo determinístico do `id`, nunca ordem de inserção. Homônimos regionais são cidades distintas.
+
+Após primeira publicação, `id`, identidade e slug são imutáveis. Correção legítima muda o nome público; mudança real de identidade cria cidade nova e preserva a antiga/redirect em SEO. Cidade inativa não recebe anúncio novo, mas permanece auditável e referenciável, garantindo estabilidade de URLs.
+
+### Projeção pública real
+
+`Publish.js` carregará do D1 fotografia determinística da cidade: cidade; apenas anúncios `published`; categorias ativas efetivamente usadas; anunciantes distintos referenciados; perfis e mídia aprovados; reviews `published`; média e contagem; filtros, ordenações e dados de cidade, cards, detalhe, busca local, comparação e minisites. Ordenação tem desempate por id e anunciantes formam dicionário por id, sem duplicação por anúncio.
+
+Allowlists: cidade (`id`, `slug`, `name`, `region`, `countryCode`); categoria (`id`, `slug`, `name`, `description`, `parentId`); anunciante (`id`, `name`, `slug`, `displayName`, `biography`, `avatarUrl`, `coverUrl`, `publicPhone`, `website`); anúncio (`id`, `slug`, `title`, `description`, `listingType`, `status`, `priceMinor`, `currency`, `categoryId`, `advertiserId`, `district`, `approximateLocation`, `attributes`, mídia pública, agregados aprovados, `publishedAt`, `updatedAt`); filtros/metadados calculados. Novo campo exige revisão e teste.
+
+São proibidos e-mail privado, telefone sem autorização, documento, endereço completo, coordenada precisa, contatos, leads, notificações, pagamentos, assinaturas, moderação, tokens, chaves idempotentes, dados administrativos e `r2_key` quando se exige URL pública. Review não expõe PII do autor. SEO não consulta nem deriva dados privados.
+
+### Estado, versão, concorrência e recuperação
+
+`city_publication_state`, uma linha por cidade, complementará jobs e conterá `current_version`, `next_version`, digests ativos de projeção/artefato, caminho ativo, estado, `lease_token`, `lease_expires_at`, tentativas consecutivas, erro normalizado, última publicação, timestamps e revisão para compare-and-swap. Estados técnicos: `idle`, `queued`, `compiling`, `published`, `recoverable_failure`, `definitive_failure`; nunca estados de negócio.
+
+Operação D1 atômica/condicional adquire lease ausente ou expirado e reserva/incrementa `next_version` no mesmo sucesso. Token e revisão elegem um vencedor: versões não colidem nem regridem. A reserva vira job antes da escrita; abandono fica como lacuna auditável. Retry do mesmo evento/job reutiliza a reserva. Nova versão só ocorre para projeção nova ou republicação explícita; digest igual conclui sem ativação e sem avalanche.
+
+O lease inicial é 60 segundos, renovado pelo proprietário antes de restarem 20 segundos via `city_id + lease_token + revisão`. Expiração permite recuperação. Só o portador vigente registra sucesso/falha/ativação; concorrente faz ack se absorvido/atualizado ou retry com atraso e jitter. Worker morto nunca bloqueia indefinidamente.
+
+Falhas transitórias de D1, Queue, R2, rede, timeout e confirmação são recuperáveis, com backoff exponencial+jitter e máximo de 5 tentativas por execução; contrato inválido, cidade inexistente, projeção inconsistente e violação de privacidade são definitivos até correção. O Core escreve catálogo imutável, confirma tamanho/digest e só então troca manifest. Depois, compare-and-swap no D1 registra versão/digests/caminho, libera lease e marca `published`. Confirmação ambígua reconcilia D1 com manifest validado, nunca por listagem R2.
+
+Rollback valida artefato histórico da mesma cidade e troca manifest, mas não reduz `next_version`, apaga histórico ou reutiliza número. D1 registra o alvo ativo; a próxima publicação usa número maior que qualquer reserva. D1 segue fonte operacional e R2 origem pública. Cron complementar recupera leases/divergências no Lote 16B; o Lote 18 valida alarmes, retenção e reconciliação. Memória, timestamp, cliente, KV e listagem R2 não alocam versão.
+
+`publication_jobs` continua histórico de **execução/tentativa**: id, recurso, alvo, status, artifact key, hash, tentativas, erro e publicação. Não é catálogo, vínculo listing–cidade, contador nem estado integral do manifest. Estados atuais podem representar o job; `target=kv` é legado e não pode servir catálogo/manifest 2.0. A `0003` complementa e só ajusta jobs para ligar cidade, reserva/versão e erro quando necessário, sem semântica falsa; vigente fica em `city_publication_state`.
+
+### Agregação e fronteira
+
+Publish decide **o que** publicar: fato confirmado, consulta D1, impacto, cidade(s), projeção e Queue. Core executa **como**: valida, serializa, calcula digest, grava/confirma R2, ativa manifest e rollback. Publish nunca grava R2, ativa manifest ou duplica Core.
+
+Auditoria de `app/core/publish.js` confirma que o contrato atual cobre catálogo JSON e manifest de cidade (`publishCity`/`rollback`), mas não oferece contrato completo para sitemap e demais artefatos SEO. O Lote 13 pode alterar o Core existente, sem criar novos arquivos, para receber de módulos chaves previamente validadas, conteúdo serializado, content type allowlist, cache control autorizado, digest, metadados técnicos, estratégia de confirmação e operação técnica de ativação/substituição. Essa ampliação deve ser genérica: o Core não decide canonical, title, description, robots, noindex, URLs do sitemap, regra de indexação nem conteúdo SEO.
+
+Fluxo autorizado: `Seo.js decide conteúdo e elegibilidade → Publish.js coordena o domínio → Core Publisher grava, confirma e ativa tecnicamente → R2/Edge entrega`. `Seo.js` permanece dono das decisões SEO e o Core apenas executa escrita, confirmação por `head`, digest, headers/cache e ativação técnica preservando artefato anterior em falha.
+
+Pedido contém `eventId`, `type`, `version`, `cityId`, `citySlug`, `reason`, `correlationId`, `source`, `occurredAt`, sem PII/snapshot. `eventId + cityId + type/version` dá idempotência persistente. Agrupamento dentro do batch já é Core; cidades afetadas são Lote 13; janela entre batches é 16B; reconciliação é 16B/18. D1 não vira fila paralela.

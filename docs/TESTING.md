@@ -189,3 +189,11 @@ Esta seção substitui qualquer descrição anterior incompatível neste documen
 - Falha de publicação não reverte o negócio confirmado: D1 permanece verdadeiro. Publicação é repetível/idempotente, suporta republicação e retenção temporária de versões para rollback; falha em R2 não aponta manifest a arquivo parcial.
 - O navegador prioriza cache HTTP, memória, Cache Storage quando necessário, IndexedDB para persistência estruturada e `localStorage` somente para pequenos metadados/preferências. A JSON completa não tem `localStorage` como armazenamento principal.
 - Catálogos contêm somente projeções públicas aprovadas: sem e-mail privado, dados administrativos, tokens, pagamentos, endereço privado não autorizado ou coordenada precisa proibida.
+
+## Cobertura futura obrigatória — Lote 13 e migration 0003
+
+Nenhum teste executável foi criado nesta decisão. A migration deverá testar: aplicação limpa pelo snapshot; `0001 → 0002 → 0003`; FKs; unicidade; homônimos regionais; slugs/colisões/estabilidade; registros preexistentes; backfill/falha atômica; anúncio sem cidade inválida; versão monotônica; duas reservas concorrentes; lease expirado; retry; rollback; equivalência snapshot/migrations; e migration inicial imutável.
+
+`tests/modules/publishing-seo.test.js` deverá cobrir: somente publicados; cidade correta; cidade anterior/nova; categoria usada; anunciante multicidade; reviews de anúncio/perfil; mídia; PII ausente; envelope completo; idempotência; versão/concorrência; falhas antes de catálogo/manifest; manifest anterior; rollback; sitemap; canonical; noindex; remoção; nenhum KV público; nenhum Worker na leitura; estados/limite de retry; lease; erro definitivo; ordenação/digest determinísticos; e coerência SEO–manifest.
+
+`tests/core/render-publish-app.test.js` deverá ser atualizado no Lote 13 somente se `app/core/publish.js` receber contrato técnico genérico para artefatos SEO. A cobertura mínima será escrita, digest, confirmação por `head`, falha antes da ativação, preservação do artefato anterior, cache headers, chave segura, content type allowlist e ausência de regra SEO no Core.

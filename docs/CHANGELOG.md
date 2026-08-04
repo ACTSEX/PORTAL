@@ -1,5 +1,17 @@
 CHANGELOG.md
 
+## 2026-08-04 — complemento técnico da preparação do Lote 13
+
+- Auditado o contrato atual do Core Publisher: ele cobre catálogo e manifest de cidade, mas não contrato completo para sitemap e demais artefatos SEO.
+- ROADMAP e TREE passam a autorizar, no Lote 13 e somente se necessário, atualização técnica/genérica de `app/core/publish.js` e `tests/core/render-publish-app.test.js`, preservando decisões SEO em `Seo.js`.
+- Backfill da cidade canônica passa a exigir prova de executabilidade no SQLite/D1 antes da `0003`; se uma migration única não for segura, será necessária evolução faseada e autorização documental própria.
+
+## 2026-08-04 — decisão documental para cidade e publicação do Lote 13
+
+- Auditados documentos, schema/migrations, Core Publisher/Queue, módulos públicos, testes e inventários após o merge do Lote 12.
+- Demonstrada a insuficiência do schema e definidos cidade canônica, FK/backfill, estado por cidade, versão monotônica, concorrência, lease, retry, reconciliação e rollback.
+- Definidas cidades afetadas, projeção allowlist, fronteiras Publish/Core, SEO e papel de `publication_jobs`.
+- Autorizado somente como `[P]` o inventário futuro, inclusive `0003_city_publication_state.sql`; nenhum código, schema, migration ou teste foi alterado.
 ## 2026-08-04 — Lote 12: Gestão
 
 - Implementados Dashboard, Analytics e Reports privados, com D1 injetado como única fonte, ownership derivado do contexto autenticado e capacidades administrativas explícitas.

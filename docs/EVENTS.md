@@ -235,3 +235,16 @@ Esta seção substitui qualquer descrição anterior incompatível neste documen
 ## Review e pedido técnico de publicação
 
 `Reviews.js` emite hoje um fato de domínio que indica impacto público, mas esse evento não é sozinho o envelope completo do producer. O fluxo futuro é `Review pública alterada → evento de domínio → Publish.js resolve cidade canônica → CityPublicationRequested → Queue → Publisher`. No Lote 13, `Publish.js` deverá fornecer `eventId`, `cityId`, `citySlug`, `reason`, `correlationId`, `source` e `occurredAt`, sem dados privados.
+
+## Transformação e cidades afetadas no Lote 13 (decisão documental)
+
+`Publish.js` recebe fatos de domínio, consulta o D1 após commit e envia por cidade o envelope `eventId`, `type`, `version`, `cityId`, `citySlug`, `reason`, `correlationId`, `source`, `occurredAt`. `version` aqui é versão contratual; catálogo é reservado no processamento. Não há PII.
+
+- anúncio privado criado não publica; entrada em `published`, atualização pública, arquivamento ou remoção recompila sua cidade;
+- mudança conserva cidade anterior e resolve a nova: **A → B recompila A e B**; categoria/anunciante alterado recompila quando antes ou depois público;
+- inclusão, remoção, reordenação, troca principal e metadado público de mídia recompilam cidade de anúncio publicado;
+- categoria pública alterada consulta somente cidades distintas com anúncios publicados daquela categoria;
+- dado público de perfil/anunciante recompila todas as cidades distintas onde possui anúncio publicado; dado privado não publica;
+- review pendente não publica; aprovação/retirada pública de review de anúncio afeta sua cidade; de perfil/anunciante, todas onde ele aparece.
+
+Remoção/mudança preserva identidade anterior no fato ou histórico transacional para resolver o conjunto, mas o pedido leva só ids técnicos. Duplicatas convergem por idempotência persistente e batch.

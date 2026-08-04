@@ -259,3 +259,13 @@ O painel mantém alterações pendentes preferencialmente em IndexedDB. O rascun
 Decisão inicial: **até cinco envios de alterações por usuário por dia**, configurável e contado por ciclo explícito, não por item. Falha técnica após persistência confirmada não consome novo envio. A implementação definirá timezone, administradores, exceções, reset, auditoria e proteção contra repetição. Cada pacote preserva autenticação, autorização, propriedade, plano, domínio, concorrência/versão, transações e idempotência.
 
 Progresso usa fatos do cliente ou estados confirmados pelo backend: preparando, validando, enviando, persistindo, alterações salvas, aguardando agregação, compilando, publicando, concluído, falha recuperável ou falha definitiva. Sem progresso numérico real, exibem-se etapas, nunca percentuais inventados.
+
+## Contratos decididos para Publish e SEO (Lote 13 ainda não implementado)
+
+`Publish.js` é fronteira de domínio: fatos confirmados, consulta D1, impacto público, cidade canônica/cidades afetadas, projeção allowlist e Queue. Não grava R2, ativa manifest, aceita versão do cliente ou replica serialização/digest/rollback do Core.
+
+`Seo.js` decide, somente da mesma projeção pública aprovada, canonical absoluto/único, title, description, robots/noindex, sitemap e URLs de cidade, anúncio e perfil/minisite. Conteúdo ativo, publicado e indexável entra; draft, pendente, removido, arquivado ou não autorizado sai do sitemap e recebe noindex/remoção conforme política. Nome corrigido preserva slug; identidade nova retira URL antiga e só autoriza redirect/canonical quando semanticamente equivalente.
+
+Seo entrega especificação determinística de metatags, canonical, robots e entradas/remoções do sitemap. O Core renderiza, grava e confirma artefatos estáticos/versionados; Seo nunca escreve manifest do catálogo. Sitemap/páginas não anunciam versão diferente do manifest vigente e Seo não consulta tabelas privadas.
+
+Para artefatos SEO, o fluxo futuro é `Seo.js decide conteúdo e elegibilidade → Publish.js coordena o domínio → Core Publisher grava, confirma e ativa tecnicamente → R2/Edge entrega`. O Core poderá receber chave validada, conteúdo serializado, content type allowlist, cache control, digest, metadados e estratégia técnica de confirmação/ativação; não poderá conter regra de canonical, title, description, robots, noindex, elegibilidade de sitemap ou indexação.
