@@ -81,7 +81,7 @@ Validação de entrada.
 
 9. Erros
 
-Utilizar exclusivamente a camada Errors.
+Erros técnicos comuns são normalizados nas fronteiras já autorizadas do Core; erros de domínio permanecem no módulo. Router e Functions convertem falhas em respostas públicas seguras. Não há autorização para `errors.js`.
 
 Respostas devem conter:
 
@@ -124,3 +124,8 @@ eventos relacionados.
 12. Regra final
 
 Todas as APIs do Portal ACTS devem seguir este padrão para garantircompatibilidade, estabilidade e evolução controlada.
+
+
+## Limite dos contratos HTTP
+
+Respostas públicas nunca expõem stack, SQL, segredo ou caminho interno. Os contratos HTTP executáveis serão definidos nas Functions finas dos Lotes 16A e 16B; este guia não cria caminho novo. Exemplos de `ERRORS.md` são vocabulário, não autorização de arquivo.

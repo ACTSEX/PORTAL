@@ -72,7 +72,7 @@ Preferir interfaces e contratos.
 
 7. Tratamento de erros
 
-Utilizar exclusivamente a camada Errors.
+Usar erros de domínio no módulo e normalização técnica nas fronteiras já autorizadas; não criar `errors.js`.
 
 Nunca ignorar exceções silenciosamente.
 

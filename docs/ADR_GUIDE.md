@@ -1,86 +1,24 @@
-ACTS Portal
+# ACTS Portal — Guia de ADR
 
-ADR_GUIDE
+**Versão:** 1.1
+**Status:** Oficial
 
-Versão: 1.0Status: Oficial
+## Objetivo
 
-1. Objetivo
+ADR registra decisão arquitetural relevante, seu contexto, alternativas, decisão e consequências. Não substitui Constituição, TREE ou ROADMAP.
 
-Este documento define o padrão oficial para Architecture Decision Records (ADRs)do Portal ACTS.
+## Conteúdo mínimo
 
-Toda decisão arquitetural permanente deve possuir um ADR.
+Um ADR deve informar título, status, data, contexto, problema, alternativas, decisão, consequências e referências. Trata uma única decisão, preserva histórico e, quando substituído, aponta a decisão sucessora.
 
-2. Estrutura
+## Caminho e autorização
 
-Cada ADR deve conter:
+Um ADR novo somente pode ser criado depois que seu caminho exato estiver previamente autorizado no `TREE.md`. Nomes ou números mencionados como exemplo não constituem autorização. A numeração autorizada não pode ser reutilizada.
 
-Número
+Não se cria pasta `docs/ADR/` vazia, placeholder ou ADR automaticamente. Esta auditoria não autoriza nem cria ADR.
 
-Título
+A futura decisão sobre cidade canônica e estado/versionamento da publicação deve avaliar a necessidade de ADR quando o modelo estiver definido. Até essa análise específica, nenhum caminho é reservado.
 
-Status
+## Aprovação
 
-Data
-
-Contexto
-
-Problema
-
-Alternativas
-
-Decisão
-
-Consequências
-
-Referências
-
-3. Numeração
-
-docs/ADR/
-├── 0001-edge-first.md
-├── 0002-event-bus.md
-├── 0003-publisher.md
-├── 0004-d1-first.md
-└── 0005-modular-architecture.md
-
-Os números nunca devem ser reutilizados.
-
-4. Status permitidos
-
-Proposto
-
-Aprovado
-
-Substituído
-
-Obsoleto
-
-5. Regras
-
-Um ADR trata apenas uma decisão.
-
-ADRs aprovados tornam-se referência oficial.
-
-Mudanças arquiteturais devem atualizar o ADR correspondente.
-
-6. Template
-
-# ADR 000X
-
-## Status
-
-## Contexto
-
-## Problema
-
-## Alternativas
-
-## Decisão
-
-## Consequências
-
-## Referências
-
-7. Regra final
-
-Nenhuma alteração estrutural importante deve ser implementada sem um ADRaprovado e documentado.
+Status possíveis são proposto, aprovado, substituído e obsoleto. Uma proposta só se torna regra depois da revisão exigida pela governança e das atualizações coerentes em Constituição, arquitetura, TREE, ROADMAP e documentos especializados aplicáveis.

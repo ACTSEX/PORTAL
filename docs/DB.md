@@ -151,19 +151,17 @@ Operações
  ↓
 ROLLBACK
 
-12. Repositórios
+12. Acesso dos módulos
 
-Os módulos acessam o banco através de repositórios.
-
-Fluxo:
+Fluxo oficial:
 
 Módulo
  ↓
-Repository
- ↓
-DB
+primitivas técnicas de app/core/db.js
  ↓
 D1
+
+SQL de domínio, CRUD, validação e regras permanecem no arquivo principal do módulo. `app/core/db.js` fornece somente primitivas técnicas; repositories separados não são criados por padrão. Gateway/provider externo autorizado é exceção legítima por responsabilidade externa distinta.
 
 13. Paginação
 
@@ -213,19 +211,13 @@ menor privilégio.
 
 17. Relação com outras camadas
 
-Módulos
+Módulo
    ↓
-Repositories
+primitivas técnicas de app/core/db.js
    ↓
-DB
+D1 confirmado
    ↓
-D1
-   ↓
-Event Bus
-   ↓
-Publisher
-   ↓
-KV / Cache
+Event Bus → Queue → Publisher → R2 → Edge Cache
 
 O DB nunca grava diretamente em KV.
 
@@ -341,9 +333,7 @@ resultado técnico e não alteram o estado comercial de `payments`.
 
 A migration imutável `0002_payment_event_ordering.sql` acrescenta somente
 `payments.external_updated_at`. O campo registra o timestamp do último evento
-Asaas efetivamente aplicado e permite rejeitar eventos antigos. A mudança de
-pagamento e a conclusão idempotente usam batch D1 e `changes()`; update de zero
-linhas não registra aplicação nem emite evento.
+Asaas efetivamente aplicado e permite rejeitar eventos antigos. A mudança de pagamento e a conclusão idempotente usam batch D1 e `changes()`. Batch reverte quando um statement falha; condição que altera zero linhas é sucesso técnico e não causa rollback. O domínio deve conferir o resultado. Conferência posterior ao commit detecta conflito, mas não desfaz statement anterior já confirmado; coerência atômica deve estar no próprio SQL ou em operação que falhe.
 
 ## Arquitetura 2.0 — decisão vigente (2026-08-04)
 
@@ -359,7 +349,7 @@ Esta seção substitui qualquer descrição anterior incompatível neste documen
 - Catálogos usam nomes imutáveis versionados, como `cidades/londrina/catalogo-v145.json`. Um manifest estável, como `cidades/londrina/manifest.json`, informa ao menos versão, caminho vigente, atualização e integridade aplicável. O catálogo admite cache longo/imutável e o manifest cache curto. O manifest só muda após confirmação integral do novo objeto.
 - R2 é origem e Edge Cache é a camada principal de entrega. JSON exige Cache Rules explícitas e validadas no domínio dos artefatos; hits devem atender o tráfego normal e apenas misses alcançam R2. Não há promessa de latência fixa.
 - Cloudflare Queue é o transporte principal da publicação assíncrona, com desacoplamento, recompilação, retries, agrupamento e recuperação. Não substitui D1. O fluxo é `Painel → Function/Worker de escrita → módulo → D1 → evento → Queue → Publisher → JSON otimizada → R2 → Edge Cache → navegador`. Separadamente: escrita `Painel → backend privado → D1`; publicação `D1 confirmado → Queue → Publisher → R2`; leitura `Pages + Edge Cache + R2 → navegador`.
-- Alterações marcam cidades afetadas. Uma janela curta, configurável e limitada agrega eventos da mesma cidade, preserva idempotência e trata chegadas durante compilação; não pode adiar indefinidamente. Só cidades afetadas são recompiladas e mudanças convergem quando possível. Cron é complementar para reconciliação, recuperação, manutenção, limpeza, auditoria e tarefas periódicas, nunca caminho obrigatório de cada alteração.
+- Alterações marcam cidades afetadas e somente elas são recompiladas. O Lote 9A agrega mensagens da mesma cidade apenas dentro do batch entregue; `dueAt` calculado não executa espera persistente. A janela entre batches/invocações permanece pendente para o runtime do Lote 16B, enquanto regras de domínio são do Lote 13 e reconciliação operacional pertence aos Lotes 16B e 18. Cron é complementar, nunca o caminho obrigatório de cada alteração.
 - Falha de publicação não reverte o negócio confirmado: D1 permanece verdadeiro. Publicação é repetível/idempotente, suporta republicação e retenção temporária de versões para rollback; falha em R2 não aponta manifest a arquivo parcial.
 - O navegador prioriza cache HTTP, memória, Cache Storage quando necessário, IndexedDB para persistência estruturada e `localStorage` somente para pequenos metadados/preferências. A JSON completa não tem `localStorage` como armazenamento principal.
 - Catálogos contêm somente projeções públicas aprovadas: sem e-mail privado, dados administrativos, tokens, pagamentos, endereço privado não autorizado ou coordenada precisa proibida.

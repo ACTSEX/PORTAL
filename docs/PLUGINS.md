@@ -467,7 +467,7 @@ plugin → import direto de arquivo interno do módulo
 
 Exemplo proibido:
 
-import { saveListing } from "../../modules/listings/internal/repository.js";
+// Plugins usam apenas a API pública autorizada do módulo; internos não são importados.
 
 Exemplo permitido:
 
