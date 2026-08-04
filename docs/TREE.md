@@ -2,7 +2,7 @@
 
 **Versão:** 1.2
 **Status:** Oficial
-**Auditoria:** 2026-08-04, sobre o merge `9c59ba1` da PR #19 (Lote 11)
+**Auditoria:** 2026-08-04, Lote 12 sobre o merge `8f82070` da PR #20
 
 ## 1. Autoridade
 
@@ -10,7 +10,7 @@
 
 ## 2. Contagem real
 
-A árvore possui **100 arquivos rastreados: 40 documentos e 60 não documentais**. Existem 2 migrations e 12 suítes de teste. A contagem deriva de `git ls-files`, não inclui `.git` nem caminhos planejados.
+A árvore possui **104 arquivos após o commit do lote: 40 documentos e 64 não documentais**. Existem 2 migrations e 13 suítes de teste. A contagem inclui os quatro caminhos novos deste lote e não inclui `.git` nem caminhos planejados.
 
 ## 3. Caminhos existentes
 
@@ -31,9 +31,11 @@ A árvore possui **100 arquivos rastreados: 40 documentos e 60 não documentais*
 - `app/core/storage.js` [E]
 - `app/gateways/Asaas.js` [E]
 - `app/modules/Auth.js` [E]
+- `app/modules/Analytics.js` [E]
 - `app/modules/Categories.js` [E]
 - `app/modules/Compare.js` [E]
 - `app/modules/Contacts.js` [E]
+- `app/modules/Dashboard.js` [E]
 - `app/modules/Favorites.js` [E]
 - `app/modules/Geolocation.js` [E]
 - `app/modules/Imobiliaristas.js` [E]
@@ -46,6 +48,7 @@ A árvore possui **100 arquivos rastreados: 40 documentos e 60 não documentais*
 - `app/modules/Payments.js` [E]
 - `app/modules/Plans.js` [E]
 - `app/modules/Reviews.js` [E]
+- `app/modules/Reports.js` [E]
 - `app/modules/Search.js` [E]
 - `app/modules/Subscriptions.js` [E]
 - `app/modules/Upload.js` [E]
@@ -112,15 +115,13 @@ A árvore possui **100 arquivos rastreados: 40 documentos e 60 não documentais*
 - `tests/modules/identity-subscriptions.test.js` [E]
 - `tests/modules/payments-integrations.test.js` [E]
 - `tests/modules/relationship.test.js` [E]
+- `tests/modules/management.test.js` [E]
 - `tests/schemas/schemas.test.js` [E]
 - `wrangler.toml` [E]
 
 ## 4. Caminhos planejados e ainda ausentes
 
-- `app/modules/Analytics.js` [P]
-- `app/modules/Dashboard.js` [P]
 - `app/modules/Publish.js` [P]
-- `app/modules/Reports.js` [P]
 - `app/modules/Seo.js` [P]
 - `app/components/Alert.js` [P]
 - `app/components/Breadcrumb.js` [P]
@@ -170,7 +171,6 @@ A árvore possui **100 arquivos rastreados: 40 documentos e 60 não documentais*
 - `tests/functions/panel-admin.test.js` [P]
 - `tests/functions/webhooks-scheduled.test.js` [P]
 - `tests/integration/publication-flow.test.js` [P]
-- `tests/modules/management.test.js` [P]
 - `tests/modules/publishing-seo.test.js` [P]
 - `tests/rendering/layouts-templates.test.js` [P]
 - `tests/security/security.test.js` [P]
@@ -194,7 +194,7 @@ Não estão autorizados `app/modules/AI.js`, `tests/modules/management-intellige
 | 9A | [E, alterados] `wrangler.toml`, `app/core/app.js`, `config.js`, `events.js`, `publish.js`, `storage.js`, `tests/core/config-helpers-logger.test.js`, `events-persistence.test.js`, `render-publish-app.test.js`. Nenhum arquivo novo. |
 | 10 | [E] `app/modules/Contacts.js`, `Leads.js`, `Reviews.js`, `Notifications.js`; `tests/modules/relationship.test.js`. |
 | 11 | [E] `app/modules/Payments.js`, `Integrations.js`, `app/gateways/Asaas.js`, `database/migrations/0002_payment_event_ordering.sql`, atualização [E] de `database/schema.sql` e `tests/database/schema-migrations.test.js`; [E] `tests/modules/payments-integrations.test.js`, `tests/gateways/asaas.contract.test.js`. |
-| 12 | [P] `app/modules/Dashboard.js`, `Analytics.js`, `Reports.js`; `tests/modules/management.test.js`. |
+| 12 | [E] `app/modules/Dashboard.js`, `Analytics.js`, `Reports.js`; `tests/modules/management.test.js`. |
 | 13 | [P] `app/modules/Publish.js`, `Seo.js`; `tests/modules/publishing-seo.test.js`. |
 | 14A/14B | [P] 12 componentes e `tests/components/components.test.js`, compartilhado e atualizado no 14B. |
 | 15 | [P] 3 layouts, 7 templates e `tests/rendering/layouts-templates.test.js`. |

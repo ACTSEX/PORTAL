@@ -40,6 +40,10 @@ A pirâmide prioriza unidade, seguida de integração/contrato e poucos E2E crí
 
 ## 3. Gates por lote
 
+O Lote 12 implementa 44 casos individuais em `management.test.js`, cobrindo
+autenticação, RBAC, ownership, períodos, allowlists, parametrização, limites,
+ordenação, minimização, logs e CSV seguro, além das proibições arquiteturais.
+
 Cada lote deve executar a suíte nova, todas as suítes afetadas e verificações estáticas. Um teste falho bloqueia a conclusão. Contratos incompatíveis exigem documentação e estratégia de migração. Integrações Cloudflare usam ambiente local controlado e, antes de produção, staging com bindings reais não produtivos.
 
 Critérios mínimos:

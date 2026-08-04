@@ -207,6 +207,31 @@ sucesso idempotente só é marcado quando o update condicional altera uma linha.
 A borda HTTP do webhook continua pertencendo ao Lote 16B. Nenhuma
 operação financeira acessa KV/R2, chama Publisher ou altera catálogo público.
 
+## Lote 12 — Gestão
+
+`Dashboard.js` entrega somente indicadores privados agregados. Proprietários
+consultam anúncios, contatos, leads, avaliações, assinatura e pagamentos
+próprios; agregados globais exigem a capacidade autenticada específica. Os
+períodos fixos são 7, 30 ou 90 dias em UTC.
+
+`Analytics.js` expõe exclusivamente anúncios por estado, contatos por período,
+leads por estado, avaliações agregadas e pagamentos por estado. Granularidades
+são dia, semana ou mês, o intervalo máximo é 366 dias e as respostas limitam-se
+a 100 pontos ou 20 grupos. Métrica, dimensão e ordenação são mapeadas
+internamente; não há coluna, função ou SQL livre.
+
+`Reports.js` produz, sem persistência, relatórios privados de anúncios, leads e
+pagamentos próprios ou resumo administrativo agregado. JSON e CSV são os únicos
+formatos; há limites de 500 linhas, 8 colunas e 512.000 bytes. CSV usa UTF-8,
+cabeçalhos fixos, ordem determinística, escaping e neutralização de formula
+injection. Nenhuma saída inclui mensagens, observações, contatos privados,
+referência financeira externa ou payload de gateway.
+
+Os três módulos recebem D1 e Logger por injeção, não emitem eventos e não usam
+KV, R2, Publisher, Queue ou catálogo. Não houve migration nem implementação de
+IA. O risco residual de desempenho dos agregados administrativos deve ser
+medido antes de ampliar indicadores; o Lote 13 não foi iniciado.
+
 ---
 
 ## Arquitetura 2.0 — decisão vigente (2026-08-04)
