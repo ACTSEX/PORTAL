@@ -62,6 +62,8 @@ test('config applies documented technical defaults', () => {
   assert.deepEqual(config, {
     environment: 'development', service: 'acts-portal', version: '0.1.0',
     locale: 'pt-BR', timezone: 'UTC', logLevel: 'info', features: {},
+    publication: { aggregationWindowMs: 1000, maximumWaitMs: 10000, submissionDailyLimit: 5,
+      maximumBatchOperations: 50, maximumBatchBytes: 262144 },
   });
 });
 

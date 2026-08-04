@@ -22,6 +22,7 @@ const DEFAULTS = deepFreeze({
   timezone: 'UTC',
   logLevel: 'info',
   features: {},
+  publication: { aggregationWindowMs: 1_000, maximumWaitMs: 10_000, submissionDailyLimit: 5, maximumBatchOperations: 50, maximumBatchBytes: 262_144 },
 });
 
 const LOG_LEVELS = new Set(['debug', 'info', 'warn', 'error', 'fatal']);
@@ -94,7 +95,20 @@ export function createConfig(environment) {
     timezone: text(environment.TIMEZONE, DEFAULTS.timezone, 'timezone'),
     logLevel,
     features: normalizeFeatures(environment.FEATURE_FLAGS),
+    publication: {
+      aggregationWindowMs: positiveInteger(environment.PUBLICATION_AGGREGATION_MS, DEFAULTS.publication.aggregationWindowMs, 'publication aggregation'),
+      maximumWaitMs: positiveInteger(environment.PUBLICATION_MAX_WAIT_MS, DEFAULTS.publication.maximumWaitMs, 'publication maximum wait'),
+      submissionDailyLimit: positiveInteger(environment.SUBMISSION_DAILY_LIMIT, DEFAULTS.publication.submissionDailyLimit, 'submission daily limit'),
+      maximumBatchOperations: positiveInteger(environment.SUBMISSION_MAX_OPERATIONS, DEFAULTS.publication.maximumBatchOperations, 'submission operations'),
+      maximumBatchBytes: positiveInteger(environment.SUBMISSION_MAX_BYTES, DEFAULTS.publication.maximumBatchBytes, 'submission bytes'),
+    },
   });
 
   return Object.freeze({ public: publicConfig, bindings: validateBindings(environment) });
+}
+
+function positiveInteger(value, fallback, name) {
+  const output = value === undefined ? fallback : Number(value);
+  if (!Number.isSafeInteger(output) || output <= 0) throw new TypeError(`Invalid configuration: ${name}`);
+  return output;
 }

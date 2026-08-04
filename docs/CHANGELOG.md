@@ -281,3 +281,13 @@ de banco e schemas.
 
 Breaking Changes
 Nenhuma.
+
+## 2026-08-04 — Lote 9A: Adequação da Arquitetura 2.0
+
+- `config.js` passa a validar Queue e limites técnicos de agregação, pacote e cota diária, sem `process.env`.
+- `events.js` implementa producer individual/em lote com envelope mínimo, correlação, cidade e idempotência; `app.js` compõe producer e consumer em lote explicitamente.
+- `publish.js` agrega mensagens por cidade, normaliza a projeção pública por allowlist, gera catálogo JSON determinístico versionado e digest SHA-256, confirma o objeto no R2 antes de ativar o manifest, permite retry/republicação e rollback do manifest.
+- `storage.js` preserva metadados R2 e diferencia cache curto do manifest de cache longo/imutável do catálogo. O KV permanece exclusivamente técnico e privado, fora do fluxo público.
+- Foi preparada a fronteira backend de pacote explícito: quantidade/tamanho, autorização injetada, idempotência/cota persistidas, limite inicial de cinco ciclos por usuário/dia e erro público seguro. A adaptação HTTP e a interface do painel continuam nos lotes futuros.
+- Testes existentes dos Lotes 2, 3 e 5 cobrem Queue, agregação, catálogo sem PII, R2/manifest, falhas, idempotência, rollback e cota. Não foi criada migration: `publication_jobs` e `idempotency_records` já oferecem a persistência necessária aos módulos consumidores.
+- Riscos residuais operacionais — domínio R2, Cache Rules, consumer implantado, retries finais e staging — permanecem para validação operacional do Lote 18. O Lote 10 não foi iniciado e continua bloqueado até merge/aprovação deste lote.

@@ -206,3 +206,7 @@ Esta seção substitui qualquer descrição anterior incompatível neste documen
 - Falha de publicação não reverte o negócio confirmado: D1 permanece verdadeiro. Publicação é repetível/idempotente, suporta republicação e retenção temporária de versões para rollback; falha em R2 não aponta manifest a arquivo parcial.
 - O navegador prioriza cache HTTP, memória, Cache Storage quando necessário, IndexedDB para persistência estruturada e `localStorage` somente para pequenos metadados/preferências. A JSON completa não tem `localStorage` como armazenamento principal.
 - Catálogos contêm somente projeções públicas aprovadas: sem e-mail privado, dados administrativos, tokens, pagamentos, endereço privado não autorizado ou coordenada precisa proibida.
+
+## Lote 9A — publicação assíncrona
+
+`CityPublicationRequested` versão `1.0` é o envelope técnico da Queue: `eventId`, `cityId`, `citySlug`, `reason`, `correlationId`, `source` e `occurredAt`. Não contém catálogo nem dados pessoais. O Publisher emite `CityPublicationCompleted`, `CityPublicationFailed` e `CityPublicationRolledBack`; todos preservam correlação e carregam somente identificadores técnicos.

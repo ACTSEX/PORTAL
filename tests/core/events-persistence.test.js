@@ -69,3 +69,12 @@ test('Lote 2 Config and Logger compose all explicitly injected services', async 
   assert.equal(output.some(({ message }) => message === 'Event published'), true);
   assert.equal(config.public.environment, 'test');
 });
+
+test('publication Queue validates, correlates and sends individual and batch messages safely', async () => {
+  const { createPublicationQueue } = await import('../../app/core/events.js'); const sent = []; const capture = logger();
+  const queue = createPublicationQueue({ binding: { async send(body) { sent.push(body); }, async sendBatch(entries) { sent.push(...entries.map(({ body }) => body)); } }, logger: capture.log });
+  const message = { eventId: 'evt_123', type: 'CityPublicationRequested', version: '1.0', cityId: 'city_1', citySlug: 'londrina', reason: 'listing.updated', correlationId: 'corr_123', source: 'Listings', occurredAt: '2026-08-04T00:00:00Z' };
+  await queue.send(message); await queue.sendBatch([message, { ...message, eventId: 'evt_456' }]); assert.equal(sent.length, 3); assert.equal(sent[0].correlationId, 'corr_123'); assert.throws(() => queue.validate({ ...message, citySlug: '../secret' }));
+  await assert.rejects(createPublicationQueue({ binding: { async send() { throw new Error('token=secret'); } }, logger: capture.log }).send(message), /enqueue failed/); assert.doesNotMatch(JSON.stringify(capture.records), /token=secret/);
+  assert.throws(() => createPublicationQueue({ binding: {}, logger: capture.log }), /binding/);
+});

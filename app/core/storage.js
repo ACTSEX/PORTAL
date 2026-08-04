@@ -14,11 +14,12 @@ export function createStorage({ binding, logger }) {
   async function perform(operation, action) {
     try { return await action(); } catch (error) { logger.error('Storage operation failed', { operation, status: 'failed', error }); throw new Error('Storage operation failed', { cause: error }); }
   }
-  async function put(key, value, { contentType, metadata = {} } = {}) {
+  async function put(key, value, { contentType, metadata = {}, cacheControl } = {}) {
     validateKey(key);
     if (value === undefined || value === null || !isPlainObject(metadata)) throw new TypeError('Invalid storage object');
     if (contentType !== undefined && (typeof contentType !== 'string' || contentType.trim() === '')) throw new TypeError('Invalid content type');
-    return perform('storage.put', async () => normalizeObject(await binding.put(key, value, { httpMetadata: contentType ? { contentType } : undefined, customMetadata: metadata })));
+    if (cacheControl !== undefined && (typeof cacheControl !== 'string' || cacheControl.trim() === '')) throw new TypeError('Invalid cache control');
+    return perform('storage.put', async () => normalizeObject(await binding.put(key, value, { httpMetadata: (contentType || cacheControl) ? { ...(contentType && { contentType }), ...(cacheControl && { cacheControl }) } : undefined, customMetadata: metadata })));
   }
   const get = (key) => perform('storage.get', async () => normalizeObject(await binding.get(validateKey(key))));
   const head = (key) => perform('storage.head', async () => normalizeObject(await binding.head(validateKey(key))));
