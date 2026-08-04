@@ -1,5 +1,13 @@
 CHANGELOG.md
 
+## 2026-08-04 — Auditoria documental após o Lote 11
+
+- Sincronizados 100 caminhos rastreados (40 documentos e 60 não documentais), Lotes 9A–11 e migrations `0001`/`0002`.
+- Consolidada a Arquitetura 2.0; corrigidas camadas DB/erros e distinção entre agregação no batch e janela persistente.
+- Registrados limites de produção do 9A e riscos residuais financeiros do 11.
+- IA retirada do MVP; Lote 12 redefinido como Gestão e Lote 13 condicionado à decisão sobre cidade/versionamento. Nenhum código, schema, migration ou configuração foi alterado.
+
+
 ## 2026-08-04 — Lote 11: Pagamentos e integrações
 
 - Correção pré-merge: a chave idempotente passa a ser reservada no D1 antes do POST. `INSERT OR IGNORE` e a chave primária elegem um único vencedor; concorrentes consultam o resultado persistido e não chamam o Asaas.
