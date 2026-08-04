@@ -505,3 +505,9 @@ Não são autorizados `queue.js`, `manifest.js`, `batch.js`, `draft.js`, `progre
 ### 7.6 Resultado estrutural
 
 A auditoria atribui todas as responsabilidades a caminhos existentes ou já planejados e, portanto, **não altera o `TREE.md` nem autoriza novos caminhos**. Os inventários dos Lotes 1–9 e seus arquivos permanecem intactos; o Lote 10 não foi iniciado. Qualquer migration ou arquivo adicional que se revele indispensável no planejamento do 9A exige justificativa, atualização documental prévia e respeito à regra de um arquivo coeso por módulo.
+
+## 8. Estado de implementação do Lote 9A (2026-08-04)
+
+O Lote 9A foi implementado nos caminhos existentes autorizados: configuração/bindings, producer e consumo em lote da Queue, agregação por cidade, projeção pública normalizada, catálogo versionado e imutável, confirmação e manifest no R2, idempotência de conteúdo/pacote, retry, republicação, rollback e base da cota diária. O KV foi retirado da composição pública e permanece técnico/privado. Não houve lacuna que justificasse migration ou arquivo novo.
+
+Os testes do lote e a regressão dos Lotes 1–9 devem permanecer verdes. O aceite operacional de domínio R2, Cache Rules e staging continua no Lote 18. Por governança, o Lote 10 permanece bloqueado e intacto até aprovação e merge da PR do Lote 9A.

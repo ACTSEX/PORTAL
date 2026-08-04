@@ -37,6 +37,49 @@ function validateEvent(event) {
   }
 }
 
+const CITY_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{1,127}$/;
+const CITY_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const SAFE_REASON = /^[a-z][a-z0-9.-]{1,79}$/;
+
+export function validatePublicationRequest(message) {
+  if (!isPlainObject(message) || !/^evt_[A-Za-z0-9_-]{3,}$/.test(message.eventId ?? '')
+    || message.type !== 'CityPublicationRequested' || message.version !== '1.0'
+    || !CITY_ID.test(message.cityId ?? '') || !CITY_SLUG.test(message.citySlug ?? '')
+    || !SAFE_REASON.test(message.reason ?? '') || !/^corr_[A-Za-z0-9_-]{3,}$/.test(message.correlationId ?? '')
+    || typeof message.source !== 'string' || !/^[A-Za-z][A-Za-z0-9.-]{1,63}$/.test(message.source)
+    || typeof message.occurredAt !== 'string' || Number.isNaN(Date.parse(message.occurredAt))) {
+    throw new TypeError('Invalid city publication request');
+  }
+  return deepFreeze({ ...message });
+}
+
+/** Cloudflare Queue producer kept beside the Event Bus contract. */
+export function createPublicationQueue({ binding, logger } = {}) {
+  if (!binding || typeof binding.send !== 'function') throw new TypeError('Invalid Queue binding');
+  if (!logger || typeof logger.info !== 'function' || typeof logger.error !== 'function') throw new TypeError('Queue requires a valid logger');
+  async function send(input) {
+    const message = validatePublicationRequest(input);
+    try {
+      await binding.send(message, { contentType: 'json' });
+      logger.info('Publication enqueued', { operation: 'queue.send', status: 'enqueued', eventId: message.eventId, correlationId: message.correlationId, cityId: message.cityId });
+      return message;
+    } catch (error) {
+      logger.error('Publication enqueue failed', { operation: 'queue.send', status: 'recoverable-failure', eventId: message.eventId, correlationId: message.correlationId, error });
+      throw new Error('Publication enqueue failed', { cause: error });
+    }
+  }
+  async function sendBatch(inputs) {
+    if (!Array.isArray(inputs) || inputs.length < 1 || inputs.length > 100) throw new TypeError('Invalid publication batch');
+    const messages = inputs.map(validatePublicationRequest);
+    if (typeof binding.sendBatch === 'function') {
+      try { await binding.sendBatch(messages.map((body) => ({ body, contentType: 'json' }))); }
+      catch (error) { logger.error('Publication batch enqueue failed', { operation: 'queue.sendBatch', status: 'recoverable-failure', count: messages.length, error }); throw new Error('Publication enqueue failed', { cause: error }); }
+    } else for (const message of messages) await send(message);
+    return Object.freeze(messages);
+  }
+  return Object.freeze({ send, sendBatch, validate: validatePublicationRequest });
+}
+
 /** Create an isolated, deterministic in-process event bus. */
 export function createEventBus({ logger, clock = () => new Date(), id = () => crypto.randomUUID() }) {
   validateLogger(logger);

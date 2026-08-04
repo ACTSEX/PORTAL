@@ -186,3 +186,9 @@ Esta seção substitui qualquer descrição anterior incompatível neste documen
 - Falha de publicação não reverte o negócio confirmado: D1 permanece verdadeiro. Publicação é repetível/idempotente, suporta republicação e retenção temporária de versões para rollback; falha em R2 não aponta manifest a arquivo parcial.
 - O navegador prioriza cache HTTP, memória, Cache Storage quando necessário, IndexedDB para persistência estruturada e `localStorage` somente para pequenos metadados/preferências. A JSON completa não tem `localStorage` como armazenamento principal.
 - Catálogos contêm somente projeções públicas aprovadas: sem e-mail privado, dados administrativos, tokens, pagamentos, endereço privado não autorizado ou coordenada precisa proibida.
+
+## Lote 9A — contrato implementado da Arquitetura 2.0
+
+A publicação pública normal tem unidade de cidade. O Core recebe uma projeção autorizada reconstruída do D1, aplica allowlists e ordenação determinística e grava `cidades/<slug>/catalogo-vNNNNNN.json` no R2 com JSON UTF-8, schema `2.0`, SHA-256, tamanho, cidade e cache longo imutável. Após `head` confirmar tamanho e digest, grava `cidades/<slug>/manifest.json` com cache curto, versão vigente e referência anterior. O manifest anterior não é removido em falha e o rollback valida cidade, caminho, objeto e digest sem alterar o D1.
+
+A Queue transporta somente identificadores técnicos. Entregas em lote são agregadas deterministicamente por `cityId` e `citySlug`, duplicatas convergem por `eventId`, sucesso confirma mensagens e falha solicita retry. A janela e espera máxima vêm da configuração. KV não armazena catálogo ou manifest e permanece cache técnico privado. Compressão é responsabilidade HTTP do Edge.
