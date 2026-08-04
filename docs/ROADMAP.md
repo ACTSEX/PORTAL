@@ -26,8 +26,9 @@ São proibidos placeholders, arquivos vazios, TODOs substitutivos, pastas vazias
 | 6 | Banco e schemas | 10 | 5 | 7 |
 | 7 | Identidade/assinaturas | 6 | 6 | 8 |
 | 8 | Catálogo/mídia | 5 | 7 | 9 |
-| 9 | Descoberta/navegação | 6 | 8 | 10 |
-| 10 | Relacionamento | 5 | 9 | 11 |
+| 9 | Descoberta/navegação | 6 | 8 | 9A |
+| 9A | Adequação da Arquitetura 2.0 | Ajustes em caminhos existentes | 9 | 10 |
+| 10 | Relacionamento | 5 | 9A | 11 |
 | 11 | Pagamentos/integrações | 5 | 10 | 12 |
 | 12 | Gestão/inteligência | 5 | 11 | 13 |
 | 13 | Publicação/SEO | 3 | 12 | 14A |
@@ -123,13 +124,13 @@ Contagens incluem testes novos do lote e excluem ajustes documentais ocasionais.
 - **Dependências:** Lote 8.
 - **Testes:** filtros/ordenação, coordenadas/consentimento, links de mapa, idempotência de favoritos e limites de comparação.
 - **Aceite/riscos:** dados públicos vêm de índices publicados; riscos de privacidade geográfica e resultados obsoletos.
-- **DoD/desbloqueio:** DoD comum; desbloqueia Lote 10.
+- **DoD/desbloqueio:** DoD comum; desbloqueia Lote 9A.
 
 ### LOTE 10 — Relacionamento
 
 - **Objetivo:** contatos, leads, avaliações e notificações.
 - **Arquivos:** `app/modules/Contacts.js`, `app/modules/Leads.js`, `app/modules/Reviews.js`, `app/modules/Notifications.js`; `tests/modules/relationship.test.js`.
-- **Dependências:** Lote 9.
+- **Dependências:** Lote 9A.
 - **Testes:** anti-spam, consentimento, transições de lead, moderação/rating e preferências/retry de notificação.
 - **Aceite/riscos:** PII minimizada e auditoria; riscos de abuso, duplicação e envio indevido.
 - **DoD/desbloqueio:** DoD comum; desbloqueia Lote 11.
@@ -227,7 +228,7 @@ Contagens incluem testes novos do lote e excluem ajustes documentais ocasionais.
 
 ## 4. Dependências e publicação
 
-A cadeia obrigatória é linear: `1→2→3→4→5→6→7→8→9→10→11→12→13→14A→14B→15→16A→16B→17→18`. Dependências técnicas internas não autorizam antecipação. Cada PR parte da `main` já contendo o lote anterior.
+A cadeia obrigatória é linear: `1→2→3→4→5→6→7→8→9→9A→10→11→12→13→14A→14B→15→16A→16B→17→18`. Dependências técnicas internas não autorizam antecipação. Cada PR parte da `main` já contendo o lote anterior.
 
 A publicação é incremental: ambientes locais no Lote 1; infraestrutura e pipeline técnico nos Lotes 3–5; regras de publicação no 13; endpoints no 16; consumidor público no 17; ensaio integral, staging, rollback e aceite no 18. Nenhum merge ou deploy é autorizado por este documento sem os gates correspondentes.
 
@@ -276,3 +277,231 @@ Impactos nos lotes futuros:
 - **14–16:** componentes, layouts, templates e Functions suportam rascunho, revisão, envio explícito e estados reais; Cron permanece reconciliador.
 - **17:** consome obrigatoriamente a JSON unificada e versionada da cidade via Pages + Edge Cache + R2, inclusive minisites, sem D1, KV ou Worker na leitura normal.
 - **18:** prova ausência de D1/KV/Worker público, entrega Edge, Cache Rules, versão e integridade do manifest, somente cidades afetadas, retry/republicação/rollback e funcionamento do rascunho e envio em lote.
+
+## 7. Fase 2 — Auditoria técnica dos Lotes (2026-08-04)
+
+### 7.1 Decisão e ordem de continuidade
+
+A auditoria determina a criação do **LOTE 9A — Adequação da Arquitetura 2.0**, obrigatório e imediatamente anterior ao Lote 10. A decisão é necessária porque os Lotes 1–9 continuam válidos e concluídos, porém o Core atual ainda publica derivados no KV, não integra o binding de Queue ao fluxo, não compila a projeção unificada por cidade nem ativa catálogo versionado por manifest no R2. Prosseguir diretamente ao relacionamento ampliaria contratos e eventos sobre uma base pública incompatível e transferiria risco aos Lotes 10–18.
+
+A ordem técnica oficial passa a ser:
+
+`1→2→3→4→5→6→7→8→9→9A→10→11→12→13→14A→14B→15→16A→16B→17→18`.
+
+O próximo e único lote de implementação autorizado após o merge desta auditoria é o **Lote 9A**. O Lote 10 fica bloqueado até o 9A ser implementado, testado, revisado, aprovado e mesclado. Esta autorização não inicia implementação, migration, provisionamento ou configuração de produção.
+
+### 7.2 Matriz de resultados
+
+| Lote | Estado | Compatível | Ajuste necessário | Responsável futuro |
+|---|---|---|---|---|
+| 1 | concluído com adequação futura | Parcial | Validar bindings reais, consumer da Queue, domínio R2, Cache Rules e produção; manter D1 único. | 9A; 18 para aceite operacional |
+| 2 | concluído com adequação futura | Parcial | Estender correlação segura de pacote, evento, Queue, compilação e versão, sem payload privado em logs. | 9A |
+| 3 | concluído com adequação futura | Parcial | Integrar Queue, restringir KV ao técnico e orientar Storage ao R2 público versionado. | 9A |
+| 4 | concluído com adequação futura | Parcial | Aplicar lote idempotente, concorrência e cota diária nas futuras APIs privadas; nenhuma API pública obrigatória. | 9A e 16A |
+| 5 | concluído com adequação futura | Parcial | Substituir publicação pública via KV por pipeline por cidade, R2, manifest, agregação e recuperação. | 9A; regras de domínio no 13 |
+| 6 | concluído com adequação futura | Parcial | Formalizar cidade canônica, auditoria/versão de publicação e separação explícita da projeção pública; migration só se comprovada. | 9A |
+| 7 | concluído com adequação futura | Parcial | Definir cota de cinco pacotes/dia, timezone, exceções e projeção pública estrita de anunciante. | 9A; 11 para limites por plano |
+| 8 | concluído com adequação futura | Parcial | Projetar catálogo unificado, URLs R2, eventos com cidades afetadas e efeitos de arquivo/exclusão. | 9A e 13 |
+| 9 | concluído com adequação futura | Parcial | Fazer descoberta pública consumir catálogo local e eliminar dependência de consulta pública ao D1. | 9A e 17 |
+| 9A | planejado e compatível | Sim | Executar a adequação transversal definida nesta auditoria, sem ampliar domínios de negócio. | 9A |
+| 10 | bloqueado por adequação | Não até 9A | Separar contatos/leads/notificações privados de avaliações públicas e republicar cidades quando necessário. | 10, após 9A |
+| 11 | planejado com ajuste | Sim, condicionado | Isolar finanças e webhooks da publicação; mudança de plano recalcula limites sem expor dados. | 11 |
+| 12 | planejado com ajuste | Sim, condicionado | Relatórios privados no D1; IA/analytics assíncronos, limitados e sem contaminar catálogo. | 12 |
+| 13 | planejado com ajuste | Sim, condicionado | Conservar regras de publicação/SEO; infraestrutura de Queue, R2, versão e manifest é antecipada ao 9A. | 13 |
+| 14A | planejado com ajuste | Sim, condicionado | Incluir estados básicos de pendência, cota, envio e publicação em primitives existentes. | 14A |
+| 14B | planejado com ajuste | Sim, condicionado | Compor resumo do pacote, progresso real, falha, recuperação e conflito nos componentes existentes. | 14B |
+| 15 | planejado com ajuste | Sim, condicionado | Receber dados preparados para portal, cidade, anúncio, perfil, minisite e painel, sem D1 ou negócio. | 15 |
+| 16A | planejado com ajuste | Sim, condicionado | APIs somente privadas/escrita; validar pacote, cota, idempotência, concorrência e uploads separados. | 16A |
+| 16B | planejado com ajuste | Sim, condicionado | Painel IndexedDB, envio explícito, estados reais; jobs/Queue/retries e Cron reconciliador. | 16B |
+| 17 | planejado com ajuste | Sim, condicionado | Ler JSON unificada via Edge/R2, resolver minisites e executar filtros/busca locais, sem backend público. | 17 |
+| 18 | planejado com ajuste | Sim, condicionado | Provar todos os invariantes 2.0, segurança, rollback, lote, cota, progresso e desempenho móvel. | 18 |
+
+### 7.3 Auditoria dos lotes concluídos
+
+#### Lote 1 — Raiz e ambiente Cloudflare
+
+1. **Objetivo original:** toolchain reproduzível e declaração de ambientes/bindings Cloudflare.
+2. **Arquivos implementados:** `.gitignore`, `LICENSE`, `README.md`, `package.json`, `package-lock.json` e `wrangler.toml`.
+3. **Compatibilidade 2.0:** parcial e evolutiva; há um D1 por ambiente e bindings D1, KV, R2 e producer de Queue, sem segundo D1, mas os identificadores são placeholders e não há consumer, domínio público do R2 ou Cache Rules validados.
+4. **Responsabilidades válidas:** scripts, lockfile, separação development/staging/production, nomes estáveis de bindings e ausência de segredos.
+5. **Adequação futura:** provisionar/validar recursos reais, consumer, domínio de artefatos, CORS/headers quando aplicável, Cache Rules/Edge Cache e configuração de produção.
+6. **Risco atual:** configuração documental pode parecer implantável; sem consumer e Edge configurados, a publicação assíncrona e a leitura direta não fecham.
+7. **Necessidade:** nenhuma mudança nesta auditoria; implementação obrigatória antes do Lote 10.
+8. **Responsável:** Lote 9A; ensaio final no Lote 18.
+
+#### Lote 2 — Fundação e observabilidade
+
+1. **Objetivo original:** configuração, helpers puros e logging seguro.
+2. **Arquivos implementados:** `app/core/config.js`, `helpers.js`, `logger.js` e `tests/core/config-helpers-logger.test.js`.
+3. **Compatibilidade 2.0:** compatível como fundação; reconhece todos os bindings e protege segredos, mas não modela o ciclo completo de publicação.
+4. **Responsabilidades válidas:** validação central, imutabilidade, correlação, redação profunda e logs estruturados.
+5. **Adequação futura:** campos técnicos para `batchId`, idempotência, cidade afetada, mensagem Queue, tentativa, job, versão e artefato, sempre por identificadores e nunca por conteúdo privado.
+6. **Risco atual:** correlação interrompida entre envio, persistência, Queue e Publisher dificulta auditoria/recuperação; metadados livres podem vazar dados.
+7. **Necessidade:** evolução, sem invalidar contratos atuais.
+8. **Responsável:** Lote 9A.
+
+#### Lote 3 — Eventos e persistência
+
+1. **Objetivo original:** Event Bus e adaptadores técnicos para D1, KV e R2.
+2. **Arquivos implementados:** `app/core/events.js`, `db.js`, `cache.js`, `storage.js` e `tests/core/events-persistence.test.js`.
+3. **Compatibilidade 2.0:** D1 e R2 são aproveitáveis; Event Bus é apenas interno/síncrono, Queue não está integrada e KV ainda admite visibilidade pública.
+4. **Responsabilidades válidas:** eventos desacoplados, SQL parametrizado, cache não autoritativo, chaves R2 seguras e falhas sem segredo.
+5. **Adequação futura:** evento pós-commit deve carregar envelope mínimo/cidade; Queue transporta publicação; KV fica técnico; Storage grava objetos imutáveis e manifest no R2.
+6. **Risco atual:** listener em processo não oferece durabilidade/retry; `KV.get()` público e derivados em KV violariam o fluxo 2.0; Storage genérico não garante ativação atômica.
+7. **Necessidade:** alteração obrigatória, preservando APIs úteis quando compatíveis.
+8. **Responsável:** Lote 9A.
+
+#### Lote 4 — Segurança e roteamento
+
+1. **Objetivo original:** autenticação/autorização técnica e roteamento seguro.
+2. **Arquivos implementados:** `app/core/auth.js`, `router.js` e `tests/core/auth-router.test.js`.
+3. **Compatibilidade 2.0:** compatível para superfícies privadas; não implementa pacote, cota diária ou concorrência editorial, que são regras posteriores.
+4. **Responsabilidades válidas:** deny-by-default, identidade/políticas técnicas, validação de origem, despacho e erros públicos redigidos.
+5. **Adequação futura:** autenticar pacote explícito, aplicar idempotência e concorrência, contar no timezone definido, auditar exceções e manter leitura de catálogo fora do Router.
+6. **Risco atual:** iniciar APIs de escrita sem esses gates permitiria duplicação, perda de atualização e evasão da cota.
+7. **Necessidade:** Core continua válido; capacidades novas devem anteceder consumo pelos lotes futuros.
+8. **Responsável:** Lote 9A para contrato/base; Lote 16A para adaptação HTTP.
+
+#### Lote 5 — Renderização, publicação e composição
+
+1. **Objetivo original:** renderizar, publicar derivados e compor o Core.
+2. **Arquivos implementados:** `app/core/render.js`, `publish.js`, `app.js` e `tests/core/render-publish-app.test.js`.
+3. **Compatibilidade 2.0:** Renderer/composição são reaproveitáveis; Publisher atual suporta KV/R2 genéricos, usa KV na publicação e o app não injeta Queue no Publisher.
+4. **Responsabilidades válidas:** Renderer sem negócio, composição explícita, checksum/idempotência básica, persistência pós-render e relato de falha parcial.
+5. **Adequação futura:** Queue, unidade cidade, projeção JSON unificada/compacta, chave imutável versionada, integridade, manifest estável ativado só após R2, cache headers, agregação limitada, recompilação seletiva, retry, republicação e rollback.
+6. **Risco atual:** manifesto/cache no KV, ausência de atomicidade cidade-versão e falhas parciais podem expor artefato obsoleto/incompleto; publicação síncrona não é recuperável.
+7. **Necessidade:** adequação obrigatória sem apagar a implementação existente; compactação é HTTP no Edge, não arquivo manual por antecipação.
+8. **Responsável:** Lote 9A para mecanismo; Lote 13 para regras de domínio e SEO.
+
+#### Lote 6 — Banco e schemas
+
+1. **Objetivo original:** snapshot/migration D1 e seis contratos JSON versionados.
+2. **Arquivos implementados:** `database/schema.sql`, migration `0001_initial_schema.sql`, seis schemas em `app/schemas/` e duas suítes correspondentes.
+3. **Compatibilidade 2.0:** existe um único modelo D1; anúncios possuem cidade e há `publication_jobs`/idempotência, mas cidade é texto livre e o catálogo unificado/auditoria de versões não têm contrato dedicado.
+4. **Responsabilidades válidas:** D1 canônico, constraints, índices, migration imutável, cidade derivável dos anúncios e separações públicas já oferecidas por projeções de módulos.
+5. **Adequação futura:** normalização inequívoca de cidade, cidades afetadas, versão/manifest/checksum/tentativas e classificação de campos públicos/privados; avaliar se tabelas atuais bastam.
+6. **Risco atual:** variações de cidade geram recompilações/chaves divergentes; `publication_jobs` pode não registrar todo o ciclo e schemas de entidade não impedem vazamento na projeção agregada.
+7. **Necessidade:** análise no 9A; migration nova somente se a implementação demonstrar lacuna, nunca alteração da migration inicial.
+8. **Responsável:** Lote 9A.
+
+#### Lote 7 — Identidade e assinaturas
+
+1. **Objetivo original:** contas, perfis profissionais, planos e assinaturas.
+2. **Arquivos implementados:** `app/modules/Auth.js`, `Users.js`, `Imobiliaristas.js`, `Plans.js`, `Subscriptions.js` e teste do lote.
+3. **Compatibilidade 2.0:** autenticação, permissões, auditoria por eventos e projeção pública de perfil são aproveitáveis; falta governança de cinco envios/dia.
+4. **Responsabilidades válidas:** dados pessoais privados, documentos fora da projeção pública, termos de assinatura, transições e referências de mídia R2.
+5. **Adequação futura:** limite inicial configurável por pacote/usuário/dia, timezone, reset, planos, administradores/exceções, auditoria e lista explícita dos campos públicos do anunciante.
+6. **Risco atual:** sem cota/idempotência do pacote há abuso; projeção futura mal montada pode incluir e-mail, telefone privado, documentos, tokens ou dados administrativos.
+7. **Necessidade:** evolução transversal; módulos concluídos permanecem válidos.
+8. **Responsável:** Lote 9A; mudança de plano no Lote 11 respeita o contrato.
+
+#### Lote 8 — Catálogo e mídia
+
+1. **Objetivo original:** categorias, anúncios, mídia e upload seguro.
+2. **Arquivos implementados:** `app/modules/Categories.js`, `Listings.js`, `Media.js`, `Upload.js` e teste do lote.
+3. **Compatibilidade 2.0:** domínio e R2 de mídia são válidos; ainda não existe projeção pública unificada/versionada por cidade nem URL pública final.
+4. **Responsabilidades válidas:** associação anúncio–proprietário–categoria–cidade, estados, ordenação, ownership, validação de upload e eventos pós-persistência.
+5. **Adequação futura:** projetar somente campos públicos, referências reutilizadas de anunciante, URLs R2/Edge, imagens/minisites, cidade afetada em criar/editar/publicar/arquivar/excluir e tombstone/recompilação quando conteúdo sai.
+6. **Risco atual:** eventos sem unidade canônica podem não recompilar todas as cidades; chave interna de mídia não é automaticamente URL pública; exclusões podem deixar catálogo obsoleto.
+7. **Necessidade:** mecanismo no 9A e regras finais no 13.
+8. **Responsável:** Lotes 9A e 13.
+
+#### Lote 9 — Descoberta e navegação
+
+1. **Objetivo original:** busca, geolocalização, mapas, favoritos e comparação.
+2. **Arquivos implementados:** `app/modules/Search.js`, `Geolocation.js`, `Maps.js`, `Favorites.js`, `Compare.js` e teste do lote.
+3. **Compatibilidade 2.0:** filtros, comparação, consentimento e projeções são reutilizáveis; Search/Favorites usam D1 em contexto de módulo e a superfície pública estática ainda não consome catálogo.
+4. **Responsabilidades válidas:** busca determinística, geolocalização com consentimento/precisão reduzida, links de mapa sem SDK, favoritos privados por usuário e comparação sem campos internos.
+5. **Adequação futura:** Search/Compare públicos operam sobre JSON em memória; favoritos autenticados permanecem privados e fora da navegação anônima; catálogo inclui campos de filtro/ordenação/mapa sem coordenada proibida.
+6. **Risco atual:** reutilizar consulta D1 no frontend público violaria zero D1/Worker; precisão geográfica excessiva ameaça privacidade; catálogo insuficiente induziria APIs públicas obrigatórias.
+7. **Necessidade:** nenhuma invalidação do lote; adaptar fronteira de consumo.
+8. **Responsável:** 9A define contrato do catálogo; Lote 17 implementa consumidor local.
+
+### 7.4 LOTE 9A — Adequação da Arquitetura 2.0
+
+- **Objetivo:** adequar a infraestrutura já implementada ao fluxo oficial antes que novos domínios dependam dela, preservando o comportamento válido dos Lotes 1–9.
+- **Escopo autorizado em caminhos existentes:** `app/core/config.js`, `logger.js`, `events.js`, `cache.js`, `storage.js`, `auth.js`, `publish.js` e `app.js`; módulos existentes somente onde seja indispensável emitir cidade/projeção; schemas/database apenas se lacuna comprovada exigir nova migration sequencial; testes existentes dos Lotes 2–9 e testes de integração já autorizados somente conforme a governança permitir no planejamento de implementação.
+- **Responsabilidades:** integrar producer/consumer Queue ao Core; envelope correlacionado e idempotente; cidade afetada; agregação curta/configurável/limitada; compilação seletiva; JSON pública unificada, compacta e versionada; checksum/integridade; objeto imutável e manifest estável no R2 com ativação atômica; KV somente técnico; cache headers/Cache Rules e domínio R2/Edge; retries, concorrência, retenção/rollback, reconciliação; base segura de pacote explícito e cota de cinco envios/dia.
+- **Dependências:** Lotes 1–9 e esta auditoria mesclada. Não depende do domínio de Relacionamento.
+- **Testes:** fluxo `D1 confirmado→evento→Queue→agregação→Publisher→R2→manifest`; duplicação/reordenação/retry; evento durante compilação; somente cidades afetadas; falhas antes/depois do objeto; manifest nunca parcial; rollback/republicação; nenhuma leitura pública D1/KV/Worker; projeção sem PII; correlação sem payload; cota/timezone/exceções; contratos atuais preservados quando compatíveis.
+- **Aceite:** R2 é a única origem dos catálogos/manifests; Queue é o transporte normal; manifest aponta somente objeto íntegro; KV não serve catálogo; publicação converge e é observável; Cache Rules são verificáveis; não há segundo D1; nenhuma regra comercial migra para o Core.
+- **Riscos e mitigação:** duplicação/perda de mensagem (idempotência e reconciliação), corrida de versão (controle por cidade), avalanche (janela limitada), catálogo grande (medição antes de chunk), PII (allowlist/testes), cache obsoleto (manifest curto e objetos imutáveis), falha operacional (retenção e rollback).
+- **DoD/desbloqueio:** plano de implementação detalha arquivos/migration sem criar caminhos preventivos; testes verdes; configuração staging validada; documentação atualizada; PR própria aprovada e mesclada. Desbloqueia o Lote 10.
+
+Não são autorizados `queue.js`, `manifest.js`, `batch.js`, `draft.js`, `progress.js`, `compression.js` ou `edge-cache.js`. Queue/Event Bus cabem em `events.js`/`app.js`; compilação, versionamento, manifest, integridade e headers em `publish.js`; primitivas R2 em `storage.js`; KV técnico em `cache.js`; configuração/correlação nos arquivos já existentes. Rascunho e progresso pertencem aos caminhos planejados do painel/frontend. Nenhum caminho novo foi autorizado por esta auditoria.
+
+### 7.5 Ajustes dos lotes futuros
+
+#### Lote 10 — Relacionamento
+
+- **Objetivo validado:** contatos, leads e notificações são privados; somente avaliação moderada e agregados expressamente públicos entram no catálogo.
+- **Dependência/desbloqueio:** depende do 9A; desbloqueia 11. Alteração de avaliação pública emite cidade afetada e republica; contato, lead ou entrega de notificação não publica catálogo.
+- **Testes/aceite:** anti-spam, consentimento, PII, ownership, moderação, idempotência e evento de cidade somente na transição pública correta.
+- **Risco:** vazamento de contato/lead e republicação excessiva; mitigado por allowlist e eventos sem payload privado.
+
+#### Lote 11 — Pagamentos e integrações
+
+- **Objetivo validado:** finanças e Asaas permanecem privados e isolados do catálogo.
+- **Dependência/desbloqueio:** depende de 10; desbloqueia 12. Webhook não integra leitura pública; mudança de plano pode recalcular cota futura por contrato, sem publicar evento financeiro.
+- **Testes/aceite:** assinatura, replay, idempotência, cobrança duplicada, segredo/log, transição de plano/cota e prova de ausência no JSON.
+- **Risco:** acoplamento financeiro–publicação; mitigado por eventos contratuais mínimos e consumidores separados.
+
+#### Lote 12 — Gestão e inteligência
+
+- **Objetivo validado:** dashboard, analytics e relatórios privados consultam D1; IA opera com dados minimizados, limite, custo e processamento assíncrono.
+- **Dependência/desbloqueio:** depende de 11; desbloqueia 13. Nenhuma resposta analítica/IA entra na JSON sem regra pública futura aprovada.
+- **Testes/aceite:** RBAC, consultas limitadas, exportação, timeout/cota/custo, anonimização e ausência de PII no prompt/log/catalogo.
+- **Risco:** consulta cara e exfiltração; mitigado por agregação, filas próprias quando necessárias, budgets e allowlist.
+
+#### Lote 13 — Publicação e SEO
+
+- **Objetivo ajustado:** `Publish.js` decide quais cidades/artefatos publicar e `Seo.js` produz sitemap, canonical e metadados a partir da projeção pública; o Core 9A executa Queue, Publisher, JSON unificada, versão, manifest, R2, integridade, invalidação, rollback e seleção.
+- **Dependência/desbloqueio:** depende de 12 e do 9A já concluído; desbloqueia 14A.
+- **Testes/aceite:** cidade afetada, sitemap/canonical, noindex, metadados, idempotência, objeto/manifest íntegros, cache correto, exclusão/rollback e nenhuma PII.
+- **Risco:** duplicar infraestrutura no módulo ou indexar versão indevida; mitigado por contrato “módulo decide o quê, Core executa como”.
+
+#### Lotes 14A e 14B — Componentes
+
+- **Objetivo ajustado:** 14A fornece primitives para pendência, cota, envio e estados; 14B compõe resumo do pacote, conflitos, progresso factual, falha e recuperação nos arquivos já planejados.
+- **Dependência/desbloqueio:** 14A depende de 13 e desbloqueia 14B; 14B desbloqueia 15.
+- **Testes/aceite:** acessibilidade, estado desabilitado pela cota, confirmação explícita, etapas reais sem percentual inventado, retry e preservação de conflito; componentes não persistem nem decidem regra.
+- **Risco:** UI afirmar sucesso antes do backend; mitigado por estados confirmados e contratos de propriedades.
+
+#### Lote 15 — Layouts e templates
+
+- **Objetivo ajustado:** portal, cidade, anúncio, perfil, minisite e painel compõem dados preparados; `location.js` cobre cidade e `profile.js` cobre perfil/minisite sem novo caminho antecipado.
+- **Dependência/desbloqueio:** depende de 14B; desbloqueia 16A.
+- **Testes/aceite:** fixtures de projeção, acesso direto ao minisite, estados de painel, escaping e inspeção de zero D1/negócio.
+- **Risco:** lógica de domínio/apresentação acoplada; mitigado por view-models e componentes puros.
+
+#### Lote 16A — Middleware e APIs privadas
+
+- **Objetivo ajustado:** APIs atendem autenticação, painel e escrita; navegação normal não exige API pública de catálogo.
+- **Dependência/desbloqueio:** depende de 15; desbloqueia 16B.
+- **Testes/aceite:** pacote validado no servidor, autenticação/ownership/plano, idempotência, concorrência, limite diário, transação, resposta correlacionada e upload separado quando necessário.
+- **Risco:** bypass da cota ou pacote parcial; mitigado por gate central e persistência atômica conforme domínio.
+
+#### Lote 16B — Painel, jobs, scheduled e webhook
+
+- **Objetivo ajustado:** painel mantém rascunho preferencialmente em IndexedDB, revisa e envia lote explícito; exibe estados reais. Jobs consomem Queue/retries e publicam cidades; Cron apenas reconcilia, mantém e recupera.
+- **Dependência/desbloqueio:** depende de 16A; desbloqueia 17.
+- **Testes/aceite:** reload/offline do rascunho, conflito, pacote/cota, progresso por estados, retry/dead-letter/reconciliação, idempotência e webhook isolado.
+- **Risco:** perda local, progresso fictício ou Cron virar caminho primário; mitigado por IndexedDB, protocolo de status e testes de fluxo.
+
+#### Lote 17 — Frontend público
+
+- **Objetivo ajustado:** Pages serve shell estático; navegador resolve cidade/manifest e consome diretamente a JSON unificada versionada e mídia pelo R2/Edge, reutilizando-a no portal e minisites.
+- **Dependência/desbloqueio:** depende de 16B; desbloqueia 18.
+- **Testes/aceite:** cache HTTP/memória; Cache Storage ou IndexedDB somente se medição justificar; deep link de minisite; filtros/busca/comparação locais; zero D1, KV, Worker/Function e API de catálogo no fluxo normal.
+- **Risco:** payload excessivo, cache quebrado e fallback dinâmico; mitigado por budget móvel, manifest curto, catálogo imutável e teste de rede.
+
+#### Lote 18 — Aceite transversal
+
+- **Objetivo ajustado:** provar a Arquitetura 2.0 completa e operação recuperável.
+- **Dependência/desbloqueio:** depende de 17 e de todos os gates anteriores; desbloqueia produção aceita.
+- **Testes/aceite obrigatório:** zero D1/KV/Worker público; R2/Edge/Cache Rules; JSON/manifest/versionamento/integridade; segurança de dados; cidades afetadas/agregação/idempotência; falha/retry/reconciliação/rollback; lote/cota/progresso; acesso direto a minisites; compressão HTTP e budgets em dispositivo/rede móvel.
+- **Risco:** diferença staging/produção ou evidência incompleta; mitigado por smoke/canário, headers/traces de cache, restore/rollback ensaiado e aceite humano.
+
+### 7.6 Resultado estrutural
+
+A auditoria atribui todas as responsabilidades a caminhos existentes ou já planejados e, portanto, **não altera o `TREE.md` nem autoriza novos caminhos**. Os inventários dos Lotes 1–9 e seus arquivos permanecem intactos; o Lote 10 não foi iniciado. Qualquer migration ou arquivo adicional que se revele indispensável no planejamento do 9A exige justificativa, atualização documental prévia e respeito à regra de um arquivo coeso por módulo.

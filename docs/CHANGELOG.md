@@ -1,6 +1,16 @@
 CHANGELOG.md
 
 
+## 2026-08-04 — Fase 2: auditoria técnica dos Lotes
+
+- Auditados integralmente os Lotes 1 a 9 já concluídos, registrando objetivo, arquivos, compatibilidade evolutiva, responsabilidades preservadas, lacunas, riscos, necessidade e responsável futuro, sem invalidar ou alterar código existente.
+- Auditados e ajustados documentalmente objetivos, dependências, testes, aceite, riscos e desbloqueios dos Lotes 10 a 18 para D1 único, Queue, Publisher por cidade, JSON unificada/versionada, manifest no R2 e entrega por Edge Cache sem D1/KV/Worker público.
+- Aprovado o **Lote 9A — Adequação da Arquitetura 2.0** como gate obrigatório antes do Lote 10; ele concentra a adequação da infraestrutura existente, preservando no Lote 13 as regras de domínio e SEO.
+- Registradas matriz executiva e ordem oficial `1→2→3→4→5→6→7→8→9→9A→10→11→12→13→14A→14B→15→16A→16B→17→18`.
+- Nenhum caminho novo foi autorizado: Queue, Publisher, manifest, R2, KV técnico, cache/Edge e composição permanecem atribuídos a arquivos existentes; rascunho IndexedDB, pacote e progresso permanecem nos caminhos de painel/frontend já planejados.
+- Alteração exclusivamente documental: nenhum código, teste, schema, migration, lockfile, binding ou configuração de runtime foi modificado; o Lote 10 não foi iniciado.
+- **Próximo passo autorizado após o merge:** planejar e executar o Lote 9A em PR própria; o Lote 10 permanece bloqueado até seu merge.
+
 ## 2026-08-04 — Arquitetura 2.0 (documentação)
 
 - Formalizados D1 único por ambiente e retirada de qualquer segundo D1 do modelo; R2 passa a originar artefatos públicos reconstruíveis e KV sai da leitura pública.
