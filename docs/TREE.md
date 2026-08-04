@@ -368,6 +368,10 @@ Diretórios são apenas representação organizacional. Nenhum diretório da se�
 
 A auditoria deve comparar `git ls-files`, árvore planejada e inventário por lote, procurando ausências, duplicações, caminhos contraditórios, pastas vazias e arquivos sem testes definidos.
 
+### Estado do Lote 10 (2026-08-04)
+
+Os caminhos `app/modules/Contacts.js`, `app/modules/Leads.js`, `app/modules/Reviews.js`, `app/modules/Notifications.js` e `tests/modules/relationship.test.js` passam a existir nesta implementação. Nenhum caminho auxiliar ou migration foi acrescentado; o inventário planejado dos Lotes 11 a 18 permanece inalterado.
+
 ---
 
 ## Arquitetura 2.0 — decisão vigente (2026-08-04)
