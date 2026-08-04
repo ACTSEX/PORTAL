@@ -85,7 +85,7 @@ Contagens incluem testes novos do lote e excluem ajustes documentais ocasionais.
 - **Objetivo:** compor a aplicação e gerar derivados sem violar D1 como fonte.
 - **Arquivos:** `app/core/render.js` (composição visual); `app/core/publish.js` (pipeline de artefatos); `app/core/app.js` (bootstrap/registro explícito); `tests/core/render-publish-app.test.js` (ordem, falha, idempotência e composição).
 - **Dependências:** Lote 4.
-- **Testes:** unitários e integração do fluxo D1→evento→publicação→KV/R2/cache.
+- **Testes:** unitários e integração do fluxo D1 confirmado→Queue→Publisher→R2→Edge Cache.
 - **Aceite/riscos:** nenhuma descoberta mágica, publicação após persistência, saída segura; riscos de artefato parcial e cache obsoleto.
 - **DoD/desbloqueio:** DoD comum; desbloqueia Lote 6.
 
@@ -212,7 +212,7 @@ Contagens incluem testes novos do lote e excluem ajustes documentais ocasionais.
 - **Arquivos:** `site/index.html`, `site/404.html`, `site/robots.txt`, `site/css/app.css`, `site/js/app.js`, `site/js/router.js`, `site/js/api.js`, `site/js/search.js`; `tests/site/public-frontend.test.js`; atualização de `tests/contract/public-api.test.js` para o consumidor público.
 - **Dependências:** 16B.
 - **Testes:** HTML/links, módulos ES, busca, navegação/404, robots, acessibilidade, performance budget e inspeção que proíbe binding/query D1.
-- **Aceite/riscos:** somente APIs/artefatos publicados; nenhum diretório de asset vazio. Imagem/ícone só entra após nome e necessidade definidos no TREE; riscos de cache, SEO e progressive enhancement.
+- **Aceite/riscos:** JSON unificada versionada da cidade e artefatos publicados no R2/Edge; nenhum diretório de asset vazio. Imagem/ícone só entra após nome e necessidade definidos no TREE; riscos de cache, SEO e progressive enhancement.
 - **DoD/desbloqueio:** DoD comum; desbloqueia Lote 18.
 
 ### LOTE 18 — Testes, segurança, implantação e aceite final
@@ -220,7 +220,7 @@ Contagens incluem testes novos do lote e excluem ajustes documentais ocasionais.
 - **Objetivo:** validar transversalmente o portal completo, ensaiar deploy/rollback e obter aceite operacional; não concentrar testes funcionais já entregues.
 - **Arquivos novos:** `tests/integration/publication-flow.test.js`, `tests/e2e/critical-flows.test.js`, `tests/security/security.test.js`; atualizações de `tests/contract/public-api.test.js` e dos documentos operacionais apenas se os ensaios revelarem ajustes.
 - **Dependências:** Lote 17 e todos os testes anteriores verdes.
-- **Testes/checks:** suíte completa unitária/integrada/contrato/Functions/E2E; autenticação/autorização, SQLi, XSS, CSRF, upload e webhook; migrations em banco limpo e cópia restaurável; `wrangler` para development/staging/production; publicação incremental; prova automatizada de zero consulta pública direta ao D1; carga/performance; backup/restore; deploy gradual, smoke, rollback e observabilidade/alertas.
+- **Testes/checks:** suíte completa unitária/integrada/contrato/Functions/E2E; autenticação/autorização, SQLi, XSS, CSRF, upload e webhook; migrations em banco limpo e cópia restaurável; `wrangler` para development/staging/production; publicação incremental; prova automatizada de zero consulta pública ao D1, zero leitura pública no KV e zero Worker na navegação normal; carga/performance; backup/restore; deploy gradual, smoke, rollback e observabilidade/alertas.
 - **Aceite:** CI verde; segurança sem achado crítico/alto; migrations e restauração validadas; staging aprovado; runbooks de deploy, rollback e incidente executáveis; logs correlacionados sem segredos; SLOs/alertas ativos; proprietário registra aceite final antes de produção.
 - **Riscos:** diferença entre staging/produção, perda de dados, regressão de cache, alarmes ausentes; mitigar com canário, backup, rollback ensaiado e monitoramento pós-deploy.
 - **DoD/desbloqueio:** evidências arquivadas, aceite humano registrado e DoD comum; desbloqueia implantação de produção e operação contínua, não um lote de código posterior.
@@ -233,4 +233,46 @@ A publicação é incremental: ambientes locais no Lote 1; infraestrutura e pipe
 
 ## 5. Situação do Lote 0
 
-Este replanejamento é exclusivamente documental. Na `main` auditada, os 40 arquivos rastreados são documentos e `app/core/config.js` não existe. Nenhum código, diretório de implementação, migration, teste ou asset foi criado pelo Lote 0. Após revisão, aprovação e merge desta documentação, o Lote 1 — e não um arquivo isolado — será o primeiro lote desbloqueado.
+O Lote 0 foi o replanejamento documental histórico. A auditoria atual comprova os Lotes 1 a 9 implementados e mesclados, com 49 caminhos não documentais rastreados. A Arquitetura 2.0 não invalida esse trabalho nem inicia o Lote 10.
+
+---
+
+## Arquitetura 2.0 — decisão vigente (2026-08-04)
+
+Esta seção substitui qualquer descrição anterior incompatível neste documento. A evolução preserva os Lotes 1 a 9 já concluídos; ajustes de implementação dependem de necessidade concreta, autorização e lote futuro. Esta revisão é exclusivamente documental.
+
+- Há **um único D1 operacional por ambiente**, única fonte de verdade relacional para usuários, anúncios, clientes, planos, assinaturas, pagamentos, configurações e demais dados oficiais. Não existe segundo D1 público. Toda mutação é validada e confirmada no D1 antes de publicar; derivados nunca se tornam fonte de verdade.
+- O R2 é a origem oficial de JSONs públicos compilados, catálogos de cidades, manifests, mídia, imagens e demais artefatos públicos aprovados. Esses objetos são reconstruíveis do D1.
+- O KV fica fora da navegação pública normal: visitantes não fazem `KV.get()` para catálogos e KV não origina os JSONs públicos. Seu uso limita-se a configuração, feature flags, coordenação, cache interno de baixo volume e metadados operacionais quando comprovado.
+- Valem simultaneamente: `navegação pública normal = zero consultas ao D1`, `navegação pública normal = zero leituras no KV` e `navegação pública normal = zero Worker/Pages Function`. Pages entrega HTML, CSS e JavaScript; R2 com Cloudflare Edge Cache entrega JSON e mídia. Functions e Workers servem escrita, autenticação, administração, integrações e processamento privado.
+- A unidade principal é **uma cidade = uma JSON pública unificada e versionada**. Ela reutiliza anunciantes por identificador e atende cidade, categorias, filtros, busca local, cards, detalhes, dados públicos de anunciantes, minisites e comparação. Não se adota como padrão JSON completa por anúncio, cliente ou minisite. Acesso direto a minisite resolve anunciante, cidade e versão, então reutiliza o catálogo da cidade.
+- A JSON permanece unificada enquanto tamanho e carregamento medidos forem aceitáveis. Divisão por categoria, página, chunk, geografia ou outro grupo exige necessidade real, aprovação, poucas requisições e reutilização dos dados carregados.
+- O Publisher produz projeções compactas, serializáveis, minificáveis, sem campos internos, dados privados ou duplicação evitável, adequadas a parsing e compressão HTTP no Edge. Otimização estrutural, minificação e compressão HTTP são etapas distintas; não se exige Brotli/Gzip manual sem validação futura.
+- Catálogos usam nomes imutáveis versionados, como `cidades/londrina/catalogo-v145.json`. Um manifest estável, como `cidades/londrina/manifest.json`, informa ao menos versão, caminho vigente, atualização e integridade aplicável. O catálogo admite cache longo/imutável e o manifest cache curto. O manifest só muda após confirmação integral do novo objeto.
+- R2 é origem e Edge Cache é a camada principal de entrega. JSON exige Cache Rules explícitas e validadas no domínio dos artefatos; hits devem atender o tráfego normal e apenas misses alcançam R2. Não há promessa de latência fixa.
+- Cloudflare Queue é o transporte principal da publicação assíncrona, com desacoplamento, recompilação, retries, agrupamento e recuperação. Não substitui D1. O fluxo é `Painel → Function/Worker de escrita → módulo → D1 → evento → Queue → Publisher → JSON otimizada → R2 → Edge Cache → navegador`. Separadamente: escrita `Painel → backend privado → D1`; publicação `D1 confirmado → Queue → Publisher → R2`; leitura `Pages + Edge Cache + R2 → navegador`.
+- Alterações marcam cidades afetadas. Uma janela curta, configurável e limitada agrega eventos da mesma cidade, preserva idempotência e trata chegadas durante compilação; não pode adiar indefinidamente. Só cidades afetadas são recompiladas e mudanças convergem quando possível. Cron é complementar para reconciliação, recuperação, manutenção, limpeza, auditoria e tarefas periódicas, nunca caminho obrigatório de cada alteração.
+- Falha de publicação não reverte o negócio confirmado: D1 permanece verdadeiro. Publicação é repetível/idempotente, suporta republicação e retenção temporária de versões para rollback; falha em R2 não aponta manifest a arquivo parcial.
+- O navegador prioriza cache HTTP, memória, Cache Storage quando necessário, IndexedDB para persistência estruturada e `localStorage` somente para pequenos metadados/preferências. A JSON completa não tem `localStorage` como armazenamento principal.
+- Catálogos contêm somente projeções públicas aprovadas: sem e-mail privado, dados administrativos, tokens, pagamentos, endereço privado não autorizado ou coordenada precisa proibida.
+
+### Painel, lote explícito e progresso
+
+O painel mantém alterações pendentes preferencialmente em IndexedDB. O rascunho sobrevive quando possível a reload/fechamento, mas não é fonte de verdade, autorização nem substituto de validação. O fluxo é `editar localmente → acumular → revisar pacote → Enviar alterações → backend validar e persistir lote`. A interface mostra contagem, resumo, botão explícito, processamento e resultado.
+
+Decisão inicial: **até cinco envios de alterações por usuário por dia**, configurável e contado por ciclo explícito, não por item. Falha técnica após persistência confirmada não consome novo envio. A implementação definirá timezone, administradores, exceções, reset, auditoria e proteção contra repetição. Cada pacote preserva autenticação, autorização, propriedade, plano, domínio, concorrência/versão, transações e idempotência.
+
+Progresso usa fatos do cliente ou estados confirmados pelo backend: preparando, validando, enviando, persistindo, alterações salvas, aguardando agregação, compilando, publicando, concluído, falha recuperável ou falha definitiva. Sem progresso numérico real, exibem-se etapas, nunca percentuais inventados.
+
+
+## 6. Adequação à Arquitetura 2.0 antes do Lote 10
+
+Os Lotes 1 a 9 permanecem concluídos e válidos. Antes de iniciar o Lote 10 é necessário um **lote futuro de adequação arquitetural**, ainda não implementado, porque o Core existente precede esta decisão. Ele deverá limitar o KV técnico, adaptar Publisher/Storage/Cache a catálogos de cidade versionados no R2, manifest atômico, Queue, otimização, publicação seletiva e janela de agregação. Também deverá introduzir no painel rascunho IndexedDB, pacote explícito, limite configurável e progresso real nos caminhos já autorizados pelo TREE. O escopo final deve ser aprovado antes do código; nenhum arquivo novo é autorizado por esta seção.
+
+Impactos nos lotes futuros:
+
+- **10–12:** eventos de mutação devem identificar cidades afetadas; superfícies privadas respeitam pacote, limite e privacidade.
+- **13:** formaliza regras de publicação por cidade, Queue, versionamento, manifest, projeção pública compacta, idempotência e recuperação.
+- **14–16:** componentes, layouts, templates e Functions suportam rascunho, revisão, envio explícito e estados reais; Cron permanece reconciliador.
+- **17:** consome obrigatoriamente a JSON unificada e versionada da cidade via Pages + Edge Cache + R2, inclusive minisites, sem D1, KV ou Worker na leitura normal.
+- **18:** prova ausência de D1/KV/Worker público, entrega Edge, Cache Rules, versão e integridade do manifest, somente cidades afetadas, retry/republicação/rollback e funcionamento do rascunho e envio em lote.

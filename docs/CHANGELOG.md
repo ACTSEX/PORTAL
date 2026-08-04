@@ -1,6 +1,15 @@
 CHANGELOG.md
 
 
+## 2026-08-04 — Arquitetura 2.0 (documentação)
+
+- Formalizados D1 único por ambiente e retirada de qualquer segundo D1 do modelo; R2 passa a originar artefatos públicos reconstruíveis e KV sai da leitura pública.
+- Definidos catálogo JSON unificado/versionado por cidade, referências de anunciante, manifest estável, imutabilidade, otimização/minificação separadas da compressão HTTP e entrega por Edge Cache.
+- Queue e Publisher passam a reger publicação assíncrona, idempotente, agregada e somente das cidades afetadas; Cron fica complementar e falhas preservam o D1.
+- Formalizados rascunho IndexedDB, envio explícito em lote, limite inicial configurável de cinco ciclos por usuário/dia e progresso por estados reais.
+- Preservados os Lotes 1 a 9 comprovados pelos 49 arquivos não documentais rastreados; ROADMAP e TREE foram sincronizados e lotes futuros revisados, sem código ou novo caminho.
+
+
 ACTS Portal
 CHANGELOG
 Versão: 1.0
@@ -203,7 +212,7 @@ Definida oficialmente a arquitetura Edge-first.
 
 D1 definido como única fonte de verdade.
 
-KV definido para cache e artefatos publicados.
+KV definido historicamente para cache; a Arquitetura 2.0 limita seu uso a necessidades técnicas internas.
 
 R2 definido para armazenamento permanente.
 
