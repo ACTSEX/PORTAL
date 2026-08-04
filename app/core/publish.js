@@ -61,14 +61,15 @@ export function createPublisher({ renderer, storage, logger, events, crypto: cry
       const generatedAt = clock().toISOString();
       const catalog = normalizeCityCatalog(await input.loadProjection({ cityId: input.cityId, citySlug: input.citySlug }), generatedAt);
       if (catalog.city.id !== input.cityId || catalog.city.slug !== input.citySlug) throw new TypeError('City projection mismatch');
+      const projectionDigest = await sha256(JSON.stringify({ ...catalog, metadata: { ...catalog.metadata, generatedAt: undefined } }, (_key, value) => value === undefined ? undefined : value), cryptoApi);
       const content = JSON.stringify(catalog); const digest = await sha256(content, cryptoApi); const size = encoder.encode(content).byteLength;
       const keys = cityKeys(input.citySlug, input.version); const previousObject = await storage.get(keys.manifest);
       const previous = previousObject?.body ? JSON.parse(typeof previousObject.body === 'string' ? previousObject.body : await new Response(previousObject.body).text()) : null;
-      if (previous?.digest === digest) return deepFreeze({ ok: true, changed: false, publicationId, correlationId, manifest: previous });
-      await storage.put(keys.catalog, content, { contentType: 'application/json; charset=utf-8', cacheControl: 'public, max-age=31536000, immutable', metadata: { digest, size: String(size), version: String(input.version), cityId: input.cityId, schemaVersion: CONTRACT_VERSION } });
+      if (previous?.projectionDigest === projectionDigest) return deepFreeze({ ok: true, changed: false, publicationId, correlationId, manifest: previous });
+      await storage.put(keys.catalog, content, { contentType: 'application/json; charset=utf-8', cacheControl: 'public, max-age=31536000, immutable', metadata: { digest, projectionDigest, size: String(size), version: String(input.version), cityId: input.cityId, schemaVersion: CONTRACT_VERSION } });
       const confirmed = await storage.head(keys.catalog);
       if (!confirmed || Number(confirmed.size) !== size || confirmed.metadata?.digest !== digest) throw new Error('Catalog confirmation failed');
-      const manifest = deepFreeze({ city: { id: input.cityId, slug: input.citySlug }, version: input.version, catalogPath: keys.catalog, updatedAt: generatedAt, digest, size, schemaVersion: CONTRACT_VERSION, previous: previous ? { version: previous.version, catalogPath: previous.catalogPath, digest: previous.digest, size: previous.size } : null });
+      const manifest = deepFreeze({ city: { id: input.cityId, slug: input.citySlug }, version: input.version, catalogPath: keys.catalog, updatedAt: generatedAt, digest, projectionDigest, size, schemaVersion: CONTRACT_VERSION, previous: previous ? { version: previous.version, catalogPath: previous.catalogPath, digest: previous.digest, size: previous.size } : null });
       await storage.put(keys.manifest, JSON.stringify(manifest), { contentType: 'application/json; charset=utf-8', cacheControl: 'public, max-age=60, must-revalidate', metadata: { digest, version: String(input.version), cityId: input.cityId, schemaVersion: CONTRACT_VERSION } });
       await emit('CityPublicationCompleted', { publicationId, cityId: input.cityId, citySlug: input.citySlug, version: input.version }, correlationId);
       return deepFreeze({ ok: true, changed: true, publicationId, correlationId, catalogKey: keys.catalog, manifest });
@@ -102,7 +103,7 @@ export async function consumePublicationBatch(messages, { compile, now = Date.no
   for (const message of messages) {
     const body = message?.body ?? message; if (!isPlainObject(body) || !ID.test(body.cityId ?? '') || !SLUG.test(body.citySlug ?? '') || typeof body.eventId !== 'string') throw new TypeError('Invalid publication message');
     const key = `${body.cityId}:${body.citySlug}`; const group = groups.get(key) ?? { cityId: body.cityId, citySlug: body.citySlug, eventIds: new Set(), messages: [], firstAt: Date.parse(body.occurredAt) || now };
-    if (!group.eventIds.has(body.eventId)) { group.eventIds.add(body.eventId); group.messages.push(message); } groups.set(key, group);
+    group.eventIds.add(body.eventId); group.messages.push(message); groups.set(key, group);
   }
   const results = [];
   for (const group of [...groups.values()].sort((a, b) => a.citySlug.localeCompare(b.citySlug))) {
@@ -120,5 +121,6 @@ export async function submitChangePackage(input, { authorize, persist, quota, li
   await authorize(input.userId, input.operations);
   const decision = await quota({ userId: input.userId, idempotencyKey: input.idempotencyKey, limit, timezone, exempt: input.exempt === true });
   if (!decision.allowed) { const error = new Error('Daily submission limit exceeded'); error.code = 'SUBMISSION_LIMIT_EXCEEDED'; throw error; }
-  const result = await persist(input); return deepFreeze({ ...result, duplicated: decision.duplicate === true, quota: { limit, remaining: decision.remaining } });
+  if (decision.duplicate === true) return deepFreeze({ ...(isPlainObject(decision.result) ? decision.result : { ok: true }), duplicated: true, quota: { limit, remaining: decision.remaining } });
+  const result = await persist(input); return deepFreeze({ ...result, duplicated: false, quota: { limit, remaining: decision.remaining } });
 }
