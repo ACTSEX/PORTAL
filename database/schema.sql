@@ -276,6 +276,7 @@ CREATE TABLE payments (
   external_reference TEXT NOT NULL,
   due_at TEXT,
   paid_at TEXT,
+  external_updated_at TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE RESTRICT,

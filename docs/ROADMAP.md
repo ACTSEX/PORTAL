@@ -140,11 +140,13 @@ Contagens incluem testes novos do lote e excluem ajustes documentais ocasionais.
 ### LOTE 11 — Pagamentos e integrações
 
 - **Objetivo:** cobrança e integração externa isolada com Asaas.
-- **Arquivos:** `app/modules/Payments.js` (regras financeiras), `app/modules/Integrations.js` (catálogo/configuração de integrações), `app/gateways/Asaas.js` (protocolo Asaas), `tests/modules/payments-integrations.test.js`, `tests/gateways/asaas.contract.test.js`.
+- **Arquivos:** `app/modules/Payments.js` (regras financeiras), `app/modules/Integrations.js` (catálogo/configuração de integrações), `app/gateways/Asaas.js` (protocolo Asaas), migration corretiva `database/migrations/0002_payment_event_ordering.sql`, snapshot/teste de evolução do banco, `tests/modules/payments-integrations.test.js`, `tests/gateways/asaas.contract.test.js`.
 - **Dependências:** Lote 10.
 - **Testes:** valores/estados/idempotência, timeout/retry, tradução de payload e contrato sandbox/double; nenhum segredo em log.
 - **Aceite/riscos:** caminho único do gateway, assinatura e idempotência prontas para webhook; riscos de cobrança dupla e divergência externa.
 - **DoD/desbloqueio:** DoD comum; desbloqueia Lote 12.
+
+**Estado de implementação (2026-08-04):** Payments conserva o D1 como fonte de verdade, resolve valores do plano, reserva idempotência antes da rede e elege um único vencedor por constraint persistente. Identificador e POST são determinísticos; timeout ambíguo conserva resultado técnico recuperável. Webhooks reservam antes do efeito, conferem updates condicionais e ordenam eventos por `external_updated_at`, incluído pela migration `0002` sem alterar a inicial. Integrations registra somente Asaas sem segredo e o gateway aplica injeção, timeout, retry e tradução fechada. A Function HTTP permanece no Lote 16B; nenhum dado financeiro entra no catálogo e o Lote 12 não foi iniciado.
 
 ### LOTE 12 — Gestão e inteligência
 

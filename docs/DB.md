@@ -331,6 +331,20 @@ A exceção de tamanho do arquivo app/core/db.js é válida apenas para estacama
 
 ---
 
+## Lote 11 — reserva financeira e ordenação externa
+
+`idempotency_records` é reutilizada como coordenação persistente. `NULL` em
+`response_status` representa operação técnica reservada/em processamento,
+`201` representa cobrança interna confirmada, `202` resultado externo
+desconhecido e recuperável e `409` operação não aplicada. Esses códigos são
+resultado técnico e não alteram o estado comercial de `payments`.
+
+A migration imutável `0002_payment_event_ordering.sql` acrescenta somente
+`payments.external_updated_at`. O campo registra o timestamp do último evento
+Asaas efetivamente aplicado e permite rejeitar eventos antigos. A mudança de
+pagamento e a conclusão idempotente usam batch D1 e `changes()`; update de zero
+linhas não registra aplicação nem emite evento.
+
 ## Arquitetura 2.0 — decisão vigente (2026-08-04)
 
 Esta seção substitui qualquer descrição anterior incompatível neste documento. A evolução preserva os Lotes 1 a 9 já concluídos; ajustes de implementação dependem de necessidade concreta, autorização e lote futuro. Esta revisão é exclusivamente documental.
