@@ -51,9 +51,10 @@ test('publisher creates deterministic unified city catalog in R2 before manifest
 });
 
 test('publisher preserves previous manifest on failure, is content-idempotent and rolls back safely', async () => {
-  const storage = memoryStorage(); const options = { renderer: { render() {} }, storage, logger: logger(), clock: () => new Date('2026-08-04T12:00:00Z'), id: () => 'two' }; const publisher = createPublisher(options);
+  const storage = memoryStorage(); let instant = 0; const options = { renderer: { render() {} }, storage, logger: logger(), clock: () => new Date(`2026-08-04T12:00:0${instant++}Z`), id: () => 'two' }; const publisher = createPublisher(options);
   const first = await publisher.publishCity({ cityId: 'city_1', citySlug: 'londrina', version: 1, loadProjection: projection });
   assert.equal((await publisher.publishCity({ cityId: 'city_1', citySlug: 'londrina', version: 2, loadProjection: projection })).changed, false);
+  assert.equal(storage.writes.length, 2);
   const changed = () => ({ ...projection(), listings: [{ ...projection().listings[0], title: 'Nova' }] }); await publisher.publishCity({ cityId: 'city_1', citySlug: 'londrina', version: 2, loadProjection: changed });
   const rolled = await publisher.rollback({ cityId: 'city_1', citySlug: 'londrina', target: { version: 1, catalogPath: first.catalogKey, digest: first.manifest.digest, size: first.manifest.size } }); assert.equal(rolled.manifest.version, 1);
   const failing = createPublisher({ ...options, storage: memoryStorage({ failManifest: true }) }); assert.equal((await failing.publishCity({ cityId: 'city_1', citySlug: 'londrina', version: 1, loadProjection: projection })).ok, false);
@@ -64,14 +65,14 @@ test('Queue batch aggregation coalesces cities, duplicates, acknowledges success
   const ack = []; const retry = []; const base = { occurredAt: '2026-08-04T00:00:00Z' };
   const messages = [{ body: { ...base, eventId: 'evt_1', cityId: 'city_1', citySlug: 'londrina' }, ack: () => ack.push(1), retry: () => retry.push(1) }, { body: { ...base, eventId: 'evt_1', cityId: 'city_1', citySlug: 'londrina' }, ack: () => ack.push(2) }, { body: { ...base, eventId: 'evt_2', cityId: 'city_2', citySlug: 'curitiba' }, retry: () => retry.push(2) }];
   const seen = []; const result = await consumePublicationBatch(messages, { now: Date.parse('2026-08-04T00:00:20Z'), maximumWaitMs: 10000, compile(group) { seen.push(group); if (group.cityId === 'city_2') throw new Error('retry'); return { ok: true }; } });
-  assert.equal(seen.length, 2); assert.equal(seen.find((x) => x.cityId === 'city_1').eventIds.length, 1); assert.deepEqual(ack, [1]); assert.deepEqual(retry, [2]); assert.equal(result.some((x) => x.retry), true);
+  assert.equal(seen.length, 2); assert.equal(seen.find((x) => x.cityId === 'city_1').eventIds.length, 1); assert.deepEqual(ack, [1, 2]); assert.deepEqual(retry, [2]); assert.equal(result.some((x) => x.retry), true);
 });
 
 test('explicit package enforces atomic limits, persisted idempotency and safe daily quota', async () => {
-  let persisted = 0; const deps = { authorize: async () => {}, persist: async () => ({ ok: true, operations: [{ status: 'persisted' }] }), quota: async () => ({ allowed: ++persisted <= 5, remaining: Math.max(0, 5 - persisted) }) };
+  let attempts = 0; let writes = 0; const deps = { authorize: async () => {}, persist: async () => { writes += 1; return { ok: true, operations: [{ status: 'persisted' }] }; }, quota: async () => ({ allowed: ++attempts <= 5, remaining: Math.max(0, 5 - attempts) }) };
   for (let index = 0; index < 5; index += 1) assert.equal((await submitChangePackage({ userId: 'user_1', idempotencyKey: `pkg_${index}abc`, operations: [{ type: 'listing.update', data: {} }] }, deps)).ok, true);
   await assert.rejects(submitChangePackage({ userId: 'user_1', idempotencyKey: 'pkg_six', operations: [{}] }, deps), { code: 'SUBMISSION_LIMIT_EXCEEDED' });
-  const duplicate = await submitChangePackage({ userId: 'user_1', idempotencyKey: 'pkg_dup', operations: [{}] }, { ...deps, quota: async () => ({ allowed: true, duplicate: true, remaining: 0 }) }); assert.equal(duplicate.duplicated, true);
+  const duplicate = await submitChangePackage({ userId: 'user_1', idempotencyKey: 'pkg_dup', operations: [{}] }, { ...deps, quota: async () => ({ allowed: true, duplicate: true, remaining: 0, result: { ok: true, operations: [{ status: 'persisted' }] } }) }); assert.equal(duplicate.duplicated, true); assert.equal(writes, 5);
 });
 
 function environment() {

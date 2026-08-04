@@ -1,5 +1,12 @@
 CHANGELOG.md
 
+## 2026-08-04 — Auditoria técnica do Lote 9A
+
+- Corrigida a idempotência de conteúdo do catálogo: `generatedAt` deixa de provocar republicação quando a projeção pública não mudou, enquanto o digest do artefato completo continua garantindo sua integridade.
+- Corrigido o consumo de entregas duplicadas da Queue para confirmar ou solicitar retry de todas as mensagens recebidas, compilando apenas uma vez cada `eventId` por cidade.
+- Corrigida a idempotência do pacote explícito para reutilizar a decisão persistida e não executar novamente operações de uma chave já processada.
+- Acrescentados testes de regressão para relógios distintos, confirmação de duplicatas e ausência de segunda persistência. A suíte completa dos Lotes 1–9 permanece verde.
+
 
 ## 2026-08-04 — Fase 2: auditoria técnica dos Lotes
 
