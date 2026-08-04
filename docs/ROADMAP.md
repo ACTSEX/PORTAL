@@ -30,7 +30,7 @@ São proibidos placeholders, arquivos vazios, TODOs substitutivos, pastas vazias
 | 9A | Adequação da Arquitetura 2.0 | Ajustes em caminhos existentes | 9 | 10 |
 | 10 | Relacionamento | 5 | 9A | 11 |
 | 11 | Pagamentos/integrações | 5 | 10 | 12 |
-| 12 | Gestão/inteligência | 5 | 11 | 13 |
+| 12 | Gestão | 5 | 11 | 13 |
 | 13 | Publicação/SEO | 3 | 12 | 14A |
 | 14A | Componentes básicos | 7 | 13 | 14B |
 | 14B | Componentes compostos | 7 | 14A | 15 |
@@ -166,6 +166,8 @@ Contagens incluem testes novos do lote e excluem ajustes documentais ocasionais.
 - **Limites:** nenhuma migration, R2, KV, Publisher ou catálogo público preventivo. Uma lacuna real de índice interrompe a implementação até migration específica documentalmente justificada; índice hipotético não é autorizado.
 - **IA:** não integra o MVP nem bloqueia Gestão. Não há finalidade aprovada, provider, contrato de custo, persistência ou caminho autorizado; `ai_jobs`, ledger/budgets, Queue/provider/prompt storage de IA e `0003_ai_governance.sql` estão rejeitados. Avaliação pós-MVP exige RFC/ADR e lote futuro específico.
 - **DoD:** testes de autorização, limites, paginação, métricas e exportação segura; desbloqueia Lote 13.
+
+**Estado de implementação (2026-08-04):** concluído com Dashboard privado por indicadores allowlist, Analytics privado com cinco métricas controladas e Reports síncrono em JSON/CSV. Ownership sempre usa o usuário autenticado; escopos globais exigem `management.dashboard.global`, `management.analytics.global` ou `management.reports.global` no contexto. UTC, períodos de 7/30/90 dias no Dashboard, intervalo máximo de 366 dias, 100 pontos, 20 grupos, 500 linhas, 8 colunas e 512.000 bytes limitam consultas e exportações. Projeções excluem PII e referências externas, e o CSV neutraliza formula injection. A suíte oficial possui 44 casos; nenhuma migration, IA, KV, R2, Publisher, Queue ou publicação foi adicionada. O Lote 13 permanece intacto e não iniciado.
 
 ### LOTE 13 — Publicação e SEO
 

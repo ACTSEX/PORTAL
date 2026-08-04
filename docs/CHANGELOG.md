@@ -1,5 +1,15 @@
 CHANGELOG.md
 
+## 2026-08-04 — Lote 12: Gestão
+
+- Implementados Dashboard, Analytics e Reports privados, com D1 injetado como única fonte, ownership derivado do contexto autenticado e capacidades administrativas explícitas.
+- Dashboard oferece agregados de anúncios, contatos, leads, avaliações, assinatura e pagamentos próprios; a visão global autorizada permanece agregada.
+- Analytics limita-se a anúncios, contatos, leads, avaliações e pagamentos por allowlist, com UTC, granularidades dia/semana/mês, até 366 dias, 100 pontos e 20 grupos.
+- Reports gera sincronamente JSON ou CSV de anúncios, leads e pagamentos próprios e resumo administrativo agregado, com até 500 linhas, 8 colunas e 512.000 bytes.
+- CSV usa BOM UTF-8, cabeçalhos e ordem fixos, escaping e neutralização de `=`, `+`, `-`, `@`, tab e carriage return. Logs não recebem dados, CSV, SQL ou PII.
+- Nenhuma migration, persistência de relatório, IA, KV, R2, Publisher, Queue, catálogo ou impacto público foi criado. O Lote 13 não foi iniciado.
+- A suíte oficial contém 44 casos. Risco residual: agregados administrativos de período devem ser medidos com D1 representativo antes de ampliar métricas ou limites; novo índice dependerá de evidência e lote próprio.
+
 ## 2026-08-04 — Auditoria documental após o Lote 11
 
 - Sincronizados 100 caminhos rastreados (40 documentos e 60 não documentais), Lotes 9A–11 e migrations `0001`/`0002`.
