@@ -186,6 +186,26 @@ Esta lista representa os eventos oficiais iniciais.
 
 Novos eventos deverão ser documentados antes da implementação.
 
+## Eventos financeiros do Lote 11
+
+Todos usam versão `1.0`, são privados, possuem `source` igual a `Payments` ou
+`Integrations` e transportam apenas identificadores e transições controladas.
+Nenhum deles é evento de publicação ou consumidor do Publisher.
+
+| Evento | Produtor | Payload mínimo |
+|---|---|---|
+| `IntegrationConfigured` | Integrations | `integrationId`, `provider` |
+| `PaymentCreated` | Payments | `paymentId`, `subscriptionId` |
+| `PaymentUpdated` | Payments | `paymentId`, `subscriptionId`, `from`, `to` |
+| `PaymentReceived` | Payments | `paymentId`, `subscriptionId`, `from`, `to` |
+| `PaymentFailed` | Payments | `paymentId`, `subscriptionId`, `from`, `to` |
+| `PaymentCanceled` | Payments | `paymentId`, `subscriptionId`, `from`, `to` |
+| `PaymentRefunded` | Payments | `paymentId`, `subscriptionId`, `from`, `to` |
+
+O payload Asaas, token, documento, e-mail, valor, URL de pagamento e resposta
+integral do provedor não entram no Event Bus. A entrega externa duplicada é
+deduplicada no D1 antes da emissão do fato interno.
+
 ---
 
 ## Arquitetura 2.0 — decisão vigente (2026-08-04)

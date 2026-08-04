@@ -182,6 +182,31 @@ Todos os módulos encontram-se planejados.
 
 A implementação seguirá rigorosamente a ordem definida em ROADMAP.md.
 
+## Lote 11 — Payments e Integrations
+
+`Payments.js` é o proprietário das regras financeiras. Ele resolve o valor em
+unidade mínima inteira a partir do plano vinculado à assinatura, exige
+ownership, limita formas de cobrança a `BOLETO`, `CREDIT_CARD` e `PIX`, grava a
+cobrança no D1 e aplica os estados canônicos `pending`, `paid`, `failed`,
+`refunded` e `canceled`. Criação e eventos externos usam
+`idempotency_records`; uma mesma chave com conteúdo diferente é conflito. A
+reserva ocorre por `INSERT OR IGNORE` antes da rede: a chave primária escolhe um
+único vencedor, enquanto concorrentes aguardam/reutilizam o resultado. O
+identificador interno é derivado de escopo, usuário e hashes, tornando
+referência externa e POST idênticos em replay ou recuperação de timeout.
+
+`Integrations.js` mantém exclusivamente o registro operacional privado do
+provedor `asaas` na tabela `integrations`. Segredos não são persistidos nesse
+catálogo. `app/gateways/Asaas.js` recebe URL, credencial e `fetch` por injeção,
+aplica HTTPS, timeout e retry limitado, e devolve apenas contratos internos.
+
+Eventos Asaas autenticados e normalizados podem ser aplicados pelo módulo com
+deduplicação, conferência do vínculo e do valor e prevenção de regressão de
+estado. O checkpoint `payments.external_updated_at` rejeita evento antigo e o
+sucesso idempotente só é marcado quando o update condicional altera uma linha.
+A borda HTTP do webhook continua pertencendo ao Lote 16B. Nenhuma
+operação financeira acessa KV/R2, chama Publisher ou altera catálogo público.
+
 ---
 
 ## Arquitetura 2.0 — decisão vigente (2026-08-04)

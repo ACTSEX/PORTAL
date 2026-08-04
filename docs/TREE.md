@@ -149,7 +149,9 @@ PORTAL/
 │       └── user.schema.json
 ├── database/
 │   ├── schema.sql
-│   └── migrations/0001_initial_schema.sql
+│   └── migrations/
+│       ├── 0001_initial_schema.sql
+│       └── 0002_payment_event_ordering.sql
 ├── functions/
 │   ├── _middleware.js
 │   ├── scheduled.js
@@ -276,7 +278,7 @@ Contém os seis schemas JSON versionados para validação e contratos. Schemas n
 
 ### 8.8 `database/`
 
-`schema.sql` é o retrato canônico do D1 e `migrations/0001_initial_schema.sql` é a migration inicial imutável. Toda mudança posterior exigirá novo nome sequencial previamente registrado. Migration aplicada não é editada. Seed de produção não está autorizado.
+`schema.sql` é o retrato canônico do D1, `migrations/0001_initial_schema.sql` é a migration inicial imutável e `0002_payment_event_ordering.sql` acrescenta o checkpoint externo estritamente necessário ao Lote 11. Toda mudança posterior exigirá novo nome sequencial previamente registrado. Migration aplicada não é editada. Seed de produção não está autorizado.
 
 ### 8.9 `functions/`
 
@@ -319,7 +321,7 @@ Esta indexação complementa a árvore completa da seção 3. Um arquivo listado
 | 8 | `app/modules/Categories.js`; `app/modules/Listings.js`; `app/modules/Media.js`; `app/modules/Upload.js`; `tests/modules/catalog-media.test.js`. |
 | 9 | `app/modules/Search.js`; `app/modules/Geolocation.js`; `app/modules/Maps.js`; `app/modules/Favorites.js`; `app/modules/Compare.js`; `tests/modules/discovery.test.js`. |
 | 10 | `app/modules/Contacts.js`; `app/modules/Leads.js`; `app/modules/Reviews.js`; `app/modules/Notifications.js`; `tests/modules/relationship.test.js`. |
-| 11 | `app/modules/Payments.js`; `app/modules/Integrations.js`; `app/gateways/Asaas.js`; `tests/modules/payments-integrations.test.js`; `tests/gateways/asaas.contract.test.js`. |
+| 11 | `app/modules/Payments.js`; `app/modules/Integrations.js`; `app/gateways/Asaas.js`; `database/migrations/0002_payment_event_ordering.sql`; atualização de `database/schema.sql` e `tests/database/schema-migrations.test.js`; `tests/modules/payments-integrations.test.js`; `tests/gateways/asaas.contract.test.js`. |
 | 12 | `app/modules/Dashboard.js`; `app/modules/Analytics.js`; `app/modules/Reports.js`; `app/modules/AI.js`; `tests/modules/management-intelligence.test.js`. |
 | 13 | `app/modules/Publish.js`; `app/modules/Seo.js`; `tests/modules/publishing-seo.test.js`. |
 | 14A | `app/components/Alert.js`; `app/components/Breadcrumb.js`; `app/components/Button.js`; `app/components/Card.js`; `app/components/Grid.js`; `app/components/Menu.js`; `tests/components/components.test.js`. |

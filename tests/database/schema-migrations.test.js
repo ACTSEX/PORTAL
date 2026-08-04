@@ -7,8 +7,10 @@ import { join } from 'node:path';
 
 const schemaPath = 'database/schema.sql';
 const migrationPath = 'database/migrations/0001_initial_schema.sql';
+const paymentMigrationPath = 'database/migrations/0002_payment_event_ordering.sql';
 const schema = readFileSync(schemaPath, 'utf8');
 const migration = readFileSync(migrationPath, 'utf8');
+const paymentMigration = readFileSync(paymentMigrationPath, 'utf8');
 const expectedTables = [
   'categories', 'comparisons', 'contacts', 'favorites', 'idempotency_records',
   'integrations', 'leads', 'listings', 'media', 'notifications', 'payments',
@@ -37,11 +39,20 @@ function lines(database, query) {
   return sqlite(database, `.mode list\n${query}`).trim().split('\n').filter(Boolean);
 }
 
-test('canonical schema and initial migration are present, complete and byte-equivalent', () => {
-  assert.equal(schema, migration);
+test('canonical schema and versioned migrations are present and complete', () => {
+  assert.notEqual(schema, migration);
   assert.match(schema, /^PRAGMA foreign_keys = ON;/);
   assert.ok(schema.endsWith('\n'));
   assert.equal((schema.match(/CREATE TABLE /g) ?? []).length, expectedTables.length);
+});
+
+test('payment ordering migration evolves an existing database to the canonical snapshot', () => {
+  withDatabase(`${migration}\n${paymentMigration}`, database => {
+    assert.deepEqual(lines(database, "SELECT name FROM pragma_table_info('payments') WHERE name = 'external_updated_at';"), ['external_updated_at']);
+  });
+  withDatabase(schema, database => {
+    assert.deepEqual(lines(database, "SELECT name FROM pragma_table_info('payments') WHERE name = 'external_updated_at';"), ['external_updated_at']);
+  });
 });
 
 test('initial migration applies to an empty SQLite database with every required table and index', () => {

@@ -1,5 +1,24 @@
 CHANGELOG.md
 
+## 2026-08-04 — Lote 11: Pagamentos e integrações
+
+- Correção pré-merge: a chave idempotente passa a ser reservada no D1 antes do POST. `INSERT OR IGNORE` e a chave primária elegem um único vencedor; concorrentes consultam o resultado persistido e não chamam o Asaas.
+- O `paymentId`, a referência externa, a chave do provedor e o corpo financeiro são determinísticos por usuário, escopo e hash da chave. A chave original nunca é persistida ou registrada.
+- Timeout ambíguo mantém a reserva com resultado técnico recuperável. A repetição adquire a reserva por update condicional e repete somente o mesmo POST semântico, permitindo que a idempotência Asaas complemente — sem substituir — a exclusão mútua garantida pelo D1.
+- Webhooks agora reservam o identificador antes do efeito, conferem `changes`, não emitem evento após update de zero linhas e registram sucesso somente quando o update condicional ocorreu. `external_updated_at` impede eventos antigos de sobrescrever estados recentes.
+- Criada `0002_payment_event_ordering.sql`, sem alterar `0001_initial_schema.sql`, para adicionar o checkpoint temporal externo mínimo a `payments`; snapshot e testes de banco limpo/evolução foram sincronizados.
+- As suítes financeiras passaram a cobrir concorrência com barrier/`Promise.all`, timeout ambíguo, payload determinístico, conflitos, 429/503/rede, limite de retries, webhook duplicado/divergente/fora de ordem, estados terminais, refund, cancelamento repetido, CREDIT_CARD sem dados de cartão e captura segura de logs/eventos.
+
+- Implementados `Payments.js`, `Integrations.js` e o gateway isolado `Asaas.js`, acompanhados pelas duas suítes oficiais do lote e sem adaptadores de outros provedores.
+- O valor da cobrança é obtido do plano vinculado à assinatura e permanece em unidade mínima inteira no D1. Forma de cobrança, vencimento, ownership, paginação e estados canônicos são validados pelo servidor.
+- Criações repetidas usam `idempotency_records`; a chave é armazenada somente como hash, payload divergente é rejeitado e o mesmo hash é enviado ao recurso de idempotência do Asaas para proteger retry após timeout e concorrência externa.
+- Eventos Asaas normalizados são conferidos contra cobrança e valor internos, deduplicados no D1 e impedidos de regredir um pagamento confirmado. O endpoint HTTP e sua autenticação permanecem reservados ao Lote 16B.
+- O gateway recebe URL HTTPS, credencial, timeout, limite de retry e `fetch` por injeção; não lê `process.env`, não registra payload/resposta e expõe somente respostas controladas. Os testes usam doubles e não efetuam rede ou cobrança real.
+- Logs e eventos carregam somente identificadores, transições e correlação. Credenciais, documento, dados de cartão, payload integral, resposta integral e URLs sensíveis não são persistidos nem publicados.
+- `idempotency_records` comporta a reserva e o resultado técnico; a migration `0002` foi necessária somente para ordenar eventos externos por cobrança. A migration inicial permaneceu imutável.
+- Risco residual: a autenticação e o limite técnico do corpo HTTP do webhook serão conectados pela Function fina oficialmente prevista no Lote 16B. Até lá, o módulo aceita somente evento já autenticado e normalizado por contexto interno.
+- Não há acesso financeiro a KV/R2, chamada ao Publisher, evento de cidade ou alteração do catálogo público. O Lote 12 não foi iniciado.
+
 ## 2026-08-04 — Lote 10: Relacionamento
 
 - Implementados `Contacts.js`, `Leads.js`, `Reviews.js` e `Notifications.js` como módulos coesos, persistidos exclusivamente no D1 e acompanhados pela suíte `relationship.test.js`.
