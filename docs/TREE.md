@@ -176,7 +176,7 @@ A árvore possui **104 arquivos após o commit do lote: 40 documentos e 64 não 
 - `tests/security/security.test.js` [P]
 - `tests/site/public-frontend.test.js` [P]
 
-Não estão autorizados `app/modules/AI.js`, `tests/modules/management-intelligence.test.js`, qualquer provider/Queue/prompt storage de IA, `database/migrations/0003_ai_governance.sql` ou `docs/ADR/`. `database/migrations/0003_city_publication_state.sql` é apenas nome candidato para decisão futura: não existe, não está autorizado e não integra a árvore [P].
+Não estão autorizados `app/modules/AI.js`, `tests/modules/management-intelligence.test.js`, qualquer provider/Queue/prompt storage de IA, `database/migrations/0003_ai_governance.sql` ou `docs/ADR/`. A auditoria do Lote 13 autorizou `database/migrations/0003_city_publication_state.sql` somente como caminho futuro [P]; ele ainda não existe. Também ficam autorizadas no Lote 13 apenas atualizações dos caminhos existentes `app/core/publish.js` e `tests/core/render-publish-app.test.js` quando necessárias para artefatos SEO técnicos/genéricos.
 
 ## 5. Inventário por lote
 
@@ -195,7 +195,7 @@ Não estão autorizados `app/modules/AI.js`, `tests/modules/management-intellige
 | 10 | [E] `app/modules/Contacts.js`, `Leads.js`, `Reviews.js`, `Notifications.js`; `tests/modules/relationship.test.js`. |
 | 11 | [E] `app/modules/Payments.js`, `Integrations.js`, `app/gateways/Asaas.js`, `database/migrations/0002_payment_event_ordering.sql`, atualização [E] de `database/schema.sql` e `tests/database/schema-migrations.test.js`; [E] `tests/modules/payments-integrations.test.js`, `tests/gateways/asaas.contract.test.js`. |
 | 12 | [E] `app/modules/Dashboard.js`, `Analytics.js`, `Reports.js`; `tests/modules/management.test.js`. |
-| 13 | [P] `app/modules/Publish.js`, `Seo.js`; `tests/modules/publishing-seo.test.js`. |
+| 13 | [P] `app/modules/Publish.js`, `Seo.js`; `tests/modules/publishing-seo.test.js`; `database/migrations/0003_city_publication_state.sql`; atualização de `database/schema.sql`, `tests/database/schema-migrations.test.js`, `app/core/publish.js` e `tests/core/render-publish-app.test.js`. |
 | 14A/14B | [P] 12 componentes e `tests/components/components.test.js`, compartilhado e atualizado no 14B. |
 | 15 | [P] 3 layouts, 7 templates e `tests/rendering/layouts-templates.test.js`. |
 | 16A | [P] middleware, 6 APIs, `tests/functions/api.test.js` e início de `tests/contract/public-api.test.js`. |
