@@ -1,5 +1,15 @@
 CHANGELOG.md
 
+## 2026-08-04 — Lote 10: Relacionamento
+
+- Implementados `Contacts.js`, `Leads.js`, `Reviews.js` e `Notifications.js` como módulos coesos, persistidos exclusivamente no D1 e acompanhados pela suíte `relationship.test.js`.
+- Contatos validam destinatário/anúncio por fronteira injetada, consentimento, conteúdo, ownership, paginação, status e idempotência persistida. Leads são derivados somente de contatos do mesmo anunciante, com notas privadas e transições explícitas `new → contacted → qualified → won`, além de saídas para `lost`.
+- Avaliações permanecem pendentes até moderação; somente `published` integra a consulta/agregação pública. Aprovação ou retirada de conteúdo anteriormente público emite evento mínimo de cidade afetada, sem chamar Publisher diretamente.
+- Notificações são exclusivamente internas neste lote, respeitam preferência privada persistida, ownership, idempotência, leitura, sucesso, falha e retry lógico. Nenhum provedor externo foi integrado.
+- Eventos e logs usam identificadores e metadados técnicos mínimos; mensagens, contatos, observações, corpos de notificação e demais dados pessoais não são publicados nem registrados em logs.
+- O schema existente já continha as tabelas de relacionamento, `settings` privado e `idempotency_records`; nenhuma migration foi necessária ou autorizada. Contacts, Leads e Notifications não solicitam republicação.
+- Riscos residuais: entrega externa e novos canais permanecem deliberadamente fora do escopo; o estado persistido de notificações segue o contrato canônico existente. O Lote 11 não foi iniciado.
+
 ## 2026-08-04 — Auditoria técnica do Lote 9A
 
 - Corrigida a idempotência de conteúdo do catálogo: `generatedAt` deixa de provocar republicação quando a projeção pública não mudou, enquanto o digest do artefato completo continua garantindo sua integridade.

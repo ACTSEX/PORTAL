@@ -135,6 +135,8 @@ Contagens incluem testes novos do lote e excluem ajustes documentais ocasionais.
 - **Aceite/riscos:** PII minimizada e auditoria; riscos de abuso, duplicação e envio indevido.
 - **DoD/desbloqueio:** DoD comum; desbloqueia Lote 11.
 
+**Estado de implementação (2026-08-04):** os quatro módulos e a suíte oficial foram implementados sobre as tabelas D1 já existentes, sem migration e sem integração externa. Ownership, idempotência persistida, paginação parametrizada, transições, moderação, preferências e eventos mínimos sem PII estão cobertos. Somente a mudança de uma avaliação para dentro ou fora do estado público emite impacto de cidade; Contacts, Leads e Notifications permanecem privados e não publicam catálogo. O Lote 11 permanece intacto e somente será desbloqueado após aprovação e merge desta PR, conforme o DoD comum.
+
 ### LOTE 11 — Pagamentos e integrações
 
 - **Objetivo:** cobrança e integração externa isolada com Asaas.
