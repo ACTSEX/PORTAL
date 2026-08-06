@@ -276,3 +276,7 @@ Para artefatos SEO, o fluxo futuro é `Seo.js decide conteúdo e elegibilidade �
 `Listings.js`, como domínio existente, deve expor a única função canônica especificada em DB; futuras escritas e alterações usam essa função. O executor operacional `scripts/backfill-cities.js` a consome pela interface pública. `Publish.js` apenas valida/resolve cidade já canônica após a contração; `Seo.js` não normaliza nem executa backfill. Nada disso pertence ao Core.
 
 `Publish.js` e `Seo.js` permanecem futuros e bloqueados até expansão, backfill, validação e contração aprovados. Nenhuma projeção pode alternar localização textual e `city_id`, e nenhum dos módulos é considerado pronto enquanto houver pendência ou ambiguidade.
+
+## Gate transitório do Lote 13A (2026-08-06)
+
+O 13A altera somente schema. `Listings.js` não normaliza nem preenche `city_id`; a implementação compartilhada `unicode-17.0.0-v1` pertence ao 13B. `Publish.js` e `Seo.js` permanecem ausentes e bloqueados. Nenhum contrato atual dos módulos mudou.

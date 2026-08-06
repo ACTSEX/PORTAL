@@ -171,11 +171,13 @@ Contagens incluem testes novos do lote e excluem ajustes documentais ocasionais.
 
 ### LOTE 13 — cidade canônica, publicação e SEO (sequência bloqueante)
 
-O Lote 13 continua não implementado e só conclui após **13A → 13B → 13C → 13D**, na mesma ordem. A prova SQLite/D1 impede migration SQL única; os arquivos `[P]` são autorizações futuras, não entregas desta correção.
+O Lote 13 está parcialmente implementado pelo 13A e só conclui após **13A → 13B → 13C → 13D**, na mesma ordem. A prova SQLite/D1 impede migration SQL única; os arquivos `[P]` são autorizações futuras, não entregas desta correção.
 
 #### 13A — expansão do schema
 
-- **Arquivos:** `[P] database/migrations/0003_city_publication_state.sql`; atualização futura de `[E] database/schema.sql` e `[E] tests/database/schema-migrations.test.js`.
+**Estado: implementado em 2026-08-06**, sem concluir o Lote 13; 13B–13D e 14 permanecem bloqueados.
+
+- **Arquivos:** `[E] database/migrations/0003_city_publication_state.sql`; `[E] database/schema.sql` e `[E] tests/database/schema-migrations.test.js` atualizados.
 - **Entrega:** criar `cities`, `city_publication_state`, `listings.city_id` temporariamente anulável e somente constraints/índices seguros, preservando dados e contratos. Sem Unicode/backfill SQL, publicação ou manifest.
 - **Gate:** migration limpa e sobre banco preenchido aprovada; backup e rollback da expansão ensaiados. Desbloqueia apenas 13B.
 

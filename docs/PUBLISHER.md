@@ -243,3 +243,7 @@ Pedido contém `eventId`, `type`, `version`, `cityId`, `citySlug`, `reason`, `co
 ## Correção vigente — gate da publicação do Lote 13 (2026-08-06)
 
 A evolução de cidade segue obrigatoriamente expansão `0003`, backfill JavaScript externo, validação e contração `0004`, conforme DB e OPERATIONS. SQL puro não executa a normalização Unicode canônica. Até concluir e aprovar todas essas fases, `Publish.js`/`Seo.js` não estão prontos, a nova projeção canônica não é ativada, localização textual e `city_id` não são alternados, catálogo parcialmente migrado não é publicado e o artefato/manifest público anterior permanece intacto. Somente 13D pode recompilar e, depois de confirmação integral, trocar manifest.
+
+## Estado após o Lote 13A
+
+A `0003` instala somente estado vazio: nenhuma linha, versão publicada, artifact path, digest, job ou manifest é criada. `canonicalization_version=unicode-17.0.0-v1` versiona transformação, não catálogo. Publisher, Queue, KV, R2 e catálogo permanecem inalterados.

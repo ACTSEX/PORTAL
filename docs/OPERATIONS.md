@@ -204,3 +204,7 @@ O único caminho oficial futuro é `[P] scripts/backfill-cities.js`, responsabil
 - **Expansão:** antes de backfill, restaurar o backup ou aplicar reversão previamente ensaiada que remova somente estruturas novas; nunca editar `0001`. Se já houver cidades/FKs preenchidas, preferir manter a expansão inerte e restaurar backup para desfazer.
 - **Backfill:** falha é retomada pelo checkpoint; correção de ambiguidade entra como input revisado. Antes da contração, pode-se restaurar o backup integral; catálogo/manifest público não mudou.
 - **Contração:** não iniciar sem gate e backup. Depois que `city_id` for adotado, rollback destrutivo sem backup é impossível e proibido; restaurar o backup e o binário/schema anteriores como unidade. Em toda a evolução, preservar catálogo e manifest anteriores até publicação final confirmada.
+
+## Gate operacional após o Lote 13A
+
+A expansão não autoriza backfill. Antes do 13B devem ser aprovadas implementação compartilhada `unicode-17.0.0-v1`, fonte/tabela C+F 17.0.0 após auditorias de licença, tamanho e Workers/Node, e vetores do DB. Staging D1 representativo, backup e restore são obrigatórios; SQLite local prova somente compatibilidade SQLite.
