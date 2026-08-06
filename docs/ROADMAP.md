@@ -183,8 +183,9 @@ O Lote 13 está parcialmente implementado pelo 13A e só conclui após **13A →
 
 #### 13B — backfill operacional
 
-- **Arquivos:** `[P] scripts/backfill-cities.js`, `[P] tests/operations/city-backfill.test.js`; atualização futura de `[E] app/modules/Listings.js` para a função canônica pública.
-- **Entrega:** JavaScript parametrizado, em lotes limitados, idempotente/retomável, checkpoint e métricas sem PII; normaliza pelo contrato único, cria/reutiliza por chave, preenche FKs e para em ambiguidade. Staging representativo precede produção.
+- **Arquivos:** `[P] scripts/backfill-cities.js`, `[P] tests/operations/city-backfill.test.js`; atualizações futuras de `[E] app/modules/Listings.js`, `[E] wrangler.toml`, `[E] package.json` e `[E] package-lock.json`.
+- **Entrega futura:** JavaScript parametrizado via `getPlatformProxy()`/`ACTS_DB`, em lotes limitados, idempotente e retomável por `city_id IS NULL`, sem checkpoint persistido; paginação keyset, varredura final, métricas sem PII e concorrência fail-closed. `Listings.js` evita novas pendências. Somente local e staging; produção é proibida no 13B.
+- **Alterações de raiz autorizadas somente no 13B:** `wrangler.toml` marca exclusivamente o `ACTS_DB` de staging com `remote = true`; `package.json` registra `city:backfill`; lockfile acompanha apenas resolução necessária e eventual dependência Unicode previamente aprovada. Development permanece local, production não é selecionável e nenhuma outra configuração/dependência é autorizada por esta decisão.
 - **Gate:** zero pendências/ambiguidades e segunda execução sem mutação; relatório final e restore aprovados. Desbloqueia apenas 13C.
 
 #### 13C — validação e contração
@@ -200,6 +201,8 @@ O Lote 13 está parcialmente implementado pelo 13A e só conclui após **13A →
 - **Gate/DoD:** catálogo/manifest anterior permanece até nova publicação integralmente confirmada. Testes, staging e merge de todo o Lote 13 desbloqueiam 14A.
 
 **Bloqueio do Lote 14:** 14A e todo o Lote 14 permanecem intactos e proibidos até expansão, backfill, validação, contração, implementação de publicação/SEO, testes e staging do Lote 13 estarem aprovados e o Lote 13 estar mesclado. `Publish.js` e `Seo.js` não são considerados prontos antes disso.
+
+**Decisão documental de desbloqueio (2026-08-06):** a fronteira operacional do 13B foi definida, mas o lote continua não implementado. O executor Node futuro usa exclusivamente `wrangler.toml`, `getPlatformProxy()` e o binding fixo `ACTS_DB`; `development/local` e `staging/remote` são as únicas combinações. A retomada deriva do vínculo persistido no D1, sem tabela de checkpoint. Esta decisão não desbloqueia 13C, 13D ou 14.
 
 ### LOTE 14A — Componentes visuais básicos
 

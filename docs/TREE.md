@@ -200,7 +200,7 @@ Não estão autorizados `app/modules/AI.js`, `tests/modules/management-intellige
 | 11 | [E] `app/modules/Payments.js`, `Integrations.js`, `app/gateways/Asaas.js`, `database/migrations/0002_payment_event_ordering.sql`, atualização [E] de `database/schema.sql` e `tests/database/schema-migrations.test.js`; [E] `tests/modules/payments-integrations.test.js`, `tests/gateways/asaas.contract.test.js`. |
 | 12 | [E] `app/modules/Dashboard.js`, `Analytics.js`, `Reports.js`; `tests/modules/management.test.js`. |
 | 13A | [E] expansão `database/migrations/0003_city_publication_state.sql`; atualiza [E] `database/schema.sql` e `tests/database/schema-migrations.test.js`. |
-| 13B | [P] `scripts/backfill-cities.js`, `tests/operations/city-backfill.test.js`; atualiza [E] `app/modules/Listings.js` com a única função canônica pública. |
+| 13B | [P] `scripts/backfill-cities.js`, `tests/operations/city-backfill.test.js`; atualiza [E] `app/modules/Listings.js`, `wrangler.toml`, `package.json` e `package-lock.json` nos limites documentados. |
 | 13C | [P] contração `database/migrations/0004_city_publication_contract.sql`; atualiza [E] `database/schema.sql` e `tests/database/schema-migrations.test.js`. |
 | 13D | [P] `app/modules/Publish.js`, `Seo.js`, `tests/modules/publishing-seo.test.js`; atualizações condicionais [E] de `app/core/publish.js` e `tests/core/render-publish-app.test.js`. |
 | 14A/14B | [P] 12 componentes e `tests/components/components.test.js`, compartilhado e atualizado no 14B. |
@@ -222,3 +222,11 @@ Não estão autorizados `app/modules/AI.js`, `tests/modules/management-intellige
 ## 7. Correção de autorização do Lote 13 (2026-08-06)
 
 Os caminhos acima distinguem: expansão `0003`; executor operacional e teste; contração `0004`; Publish/Seo e teste. `Listings.js`, `database/schema.sql`, testes de migration e, apenas para primitivas técnicas SEO, Core/teste são atualizações de arquivos [E], não novos auxiliares. Nenhum caminho do Lote 14 foi criado ou antecipado. Os quatro sublotes são sequenciais e `[P]` não significa implementado.
+
+## 8. Fronteira operacional documental do 13B
+
+O executor `[P]` permanece o único adaptador Node operacional: futuramente usa `getPlatformProxy()` do Wrangler, o `wrangler.toml` raiz e o binding fixo `ACTS_DB`. Isso não autoriza arquivo de configuração, endpoint, Function, Worker, cliente REST, tabela de checkpoint ou helper adicional. `Listings.js` continua sendo o único local autorizado para a função canônica pública e para impedir novas escritas sem `city_id` no 13B.
+
+No 13B ficam autorizadas atualizações dos caminhos existentes `wrangler.toml`, somente para `remote = true` no `ACTS_DB` de staging; `package.json`, somente para o comando `city:backfill` e eventual dependência Unicode aprovada; e `package-lock.json`, somente como resolução correspondente. Development não recebe `remote = true`; production não é selecionável pelo executor. Nenhum novo caminho é autorizado.
+
+Esta decisão não altera estados `[E]`/`[P]`: 13B continua não implementado; `0004`, `Publish.js`, `Seo.js` e todos os caminhos do Lote 14 continuam futuros e bloqueados.

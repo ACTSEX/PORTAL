@@ -189,22 +189,94 @@ Progresso usa fatos do cliente ou estados confirmados pelo backend: preparando, 
 
 ## Runbook autorizado — backfill de cidades do Lote 13 (2026-08-06)
 
-O único caminho oficial futuro é `[P] scripts/backfill-cities.js`, responsabilidade JavaScript operacional distinta; seu teste é `[P] tests/operations/city-backfill.test.js`. Não é Core, módulo de publicação, `Seo.js` ou migration. O executor recebe explicitamente ambiente e binding D1, recusa produção sem confirmação operacional, usa apenas statements parametrizados e a função canônica pública de `Listings.js`, e nunca contém credenciais.
+O único caminho oficial futuro é `[P] scripts/backfill-cities.js`, responsabilidade JavaScript operacional distinta; seu teste é `[P] tests/operations/city-backfill.test.js`. Não é Core, módulo de publicação, `Seo.js` ou migration. O executor recebe ambiente em allowlist e o binding D1 pelo Wrangler, rejeita produção no 13B, usa apenas statements parametrizados e a função canônica pública de `Listings.js`, e nunca contém credenciais.
 
 ### Execução e retomada
 
 1. Congelar escritas de localização e publicação; confirmar que catálogo/manifest anterior segue ativo. Fazer backup D1 identificado pelo commit, ambiente e timestamp e provar restore.
-2. Em staging representativo, aplicar a `0003`, executar em modo de análise, resolver ambiguidades por mapeamento revisado e versionado fora de PII, e processar lotes limitados. Cada lote confirma seu checkpoint técnico (último ID/chave, versão do contrato e métricas); retry relê pendentes e reutiliza `canonical_key`, portanto é idempotente e retomável.
+2. Em staging representativo, aplicar a `0003`, executar em modo de análise, resolver ambiguidades por mapeamento revisado e versionado fora de PII, e processar lotes limitados. Cada lote registra métricas técnicas; retry relê pendentes e reutiliza `canonical_key`, portanto é idempotente e retomável sem checkpoint persistido.
 3. Falha ou ambiguidade interrompe antes do item, registra somente contagens, códigos e identificadores técnicos, nunca nomes/endereço/PII, e deixa pendentes bloqueando publicação. A resolução exige decisão humana explícita no mapeamento de entrada; jamais escolha silenciosa.
 4. Reexecutar até uma execução completa sem mutações; gerar relatório assinado com commit, ambiente, versão Unicode/contrato, início/fim, totais lidos/criados/reutilizados/atualizados/pendentes/ambíguos/falhos, checks de integridade e hash do relatório, sem PII.
-5. Repetir em produção na mesma ordem, janela aprovada e backup restaurável. Somente com relatório e checklist aprovados aplicar `0004`; 13D/publicação vem depois.
+5. Produção permanece fora do 13B e exige decisão operacional futura própria. Somente com relatório de staging e checklist aprovados considerar o gate do `0004`; 13D/publicação vem depois.
 
 ### Rollback por fase
 
 - **Expansão:** antes de backfill, restaurar o backup ou aplicar reversão previamente ensaiada que remova somente estruturas novas; nunca editar `0001`. Se já houver cidades/FKs preenchidas, preferir manter a expansão inerte e restaurar backup para desfazer.
-- **Backfill:** falha é retomada pelo checkpoint; correção de ambiguidade entra como input revisado. Antes da contração, pode-se restaurar o backup integral; catálogo/manifest público não mudou.
+- **Backfill:** falha é retomada pelo estado canônico `listings.city_id IS NULL`; correção de ambiguidade entra como input revisado. Antes da contração, pode-se restaurar o backup integral; catálogo/manifest público não mudou.
 - **Contração:** não iniciar sem gate e backup. Depois que `city_id` for adotado, rollback destrutivo sem backup é impossível e proibido; restaurar o backup e o binário/schema anteriores como unidade. Em toda a evolução, preservar catálogo e manifest anteriores até publicação final confirmada.
 
 ## Gate operacional após o Lote 13A
 
 A expansão não autoriza backfill. Antes do 13B devem ser aprovadas implementação compartilhada `unicode-17.0.0-v1`, fonte/tabela C+F 17.0.0 após auditorias de licença, tamanho e Workers/Node, e vetores do DB. Staging D1 representativo, backup e restore são obrigatórios; SQLite local prova somente compatibilidade SQLite.
+
+## Contrato executável do Lote 13B — decisão documental (2026-08-06)
+
+Esta decisão remove exclusivamente o bloqueio documental da fronteira operacional. O 13B continua não implementado; não há script, teste, migration, schema, módulo ou configuração entregue por esta decisão. 13C, 13D e 14 continuam bloqueados.
+
+### Binding D1 pelo Wrangler
+
+O futuro executor é um processo Node e importa `getPlatformProxy` da API oficial do Wrangler fixado pelo projeto. Ele não roda dentro de Worker. O contrato é:
+
+```js
+const platform = await getPlatformProxy({
+  configPath: 'wrangler.toml',
+  environment,
+  remoteBindings: mode === 'remote'
+});
+const db = platform.env.ACTS_DB;
+```
+
+O executor sempre encerra a sessão com `await platform.dispose()`, inclusive após falha. `ACTS_DB` é o único binding D1 autorizado e `wrangler.toml`, na raiz, é o único caminho de configuração. Binding, caminho, database ID, account ID e token não são opções de usuário. O executor não lê `process.env` diretamente: autenticação e configuração seguem o comportamento normal do Wrangler, sem credencial em argumento ou log.
+
+`getPlatformProxy()` não cria endpoint HTTP, Pages Function, Worker novo ou REST API própria. Statements D1 usam `prepare().bind()`. Local e remoto são modos distintos. `remoteBindings: true` habilita o suporte do proxy, mas somente seleciona o D1 real quando o binding `ACTS_DB` do ambiente também possui `remote = true`. A versão instalada deve comprovar suporte real antes de staging e nenhuma alternativa silenciosa por REST, endpoint, Worker, subprocesso com SQL interpolado ou produção é permitida.
+
+O proxy é uma API Node best-effort fora do runtime Worker. `remote = true` provoca operações no recurso Cloudflare real identificado pelo binding, portanto staging deve ser fisicamente distinto de production. Qualquer incompatibilidade entre proxy, versão, autenticação ou configuração interrompe a execução.
+
+### Opções e comandos oficiais futuros
+
+Ambientes em allowlist: `development` somente com `local` e binding sem `remote = true`; `staging` com `remote` e `ACTS_DB` marcado `remote = true`. `production` é sempre rejeitado no 13B. Ausência de modo, opção desconhecida ou combinação fora da allowlist falha antes de abrir o proxy. O executor também falha se development estiver remoto, staging não estiver remoto ou os `database_id` de staging e production forem iguais. Dry-run é o padrão; escrita exige `--execute`; `--dry-run` e `--execute` são mutuamente exclusivos.
+
+```text
+npm run city:backfill -- --environment development --mode local --dry-run
+npm run city:backfill -- --environment development --mode local --execute
+npm run city:backfill -- --environment staging --mode remote --dry-run
+npm run city:backfill -- --environment staging --mode remote --execute
+```
+
+Esses comandos são conceituais até a implementação sincronizar `package.json`; esta decisão não altera configuração. Nenhuma credencial aparece no comando ou relatório.
+
+### Retomada derivada e varreduras
+
+A garantia durável é **`listings.city_id` persistido no D1**, não um cursor separado. Não existe checkpoint persistido. A seleção usa colunas explícitas e paginação keyset:
+
+```sql
+SELECT colunas_explicitas
+FROM listings
+WHERE city_id IS NULL AND id > ?
+ORDER BY id ASC
+LIMIT ?
+```
+
+`OFFSET` é proibido. O cursor existe apenas em memória durante uma passagem, não é garantia durável e o relatório não é checkpoint. Após falha, a próxima execução começa pelo menor ID ainda com `city_id IS NULL`; vinculadas ficam fora da seleção. Não se cria tabela, KV, R2 ou arquivo local, e memória não é persistência de garantia.
+
+Ao fim de cada passagem, uma nova consulta começa do início. A execução só conclui sem elegíveis; um limite máximo de passagens impede atividade infinita. Se novas pendências continuarem surgindo, termina como `incomplete`, nunca como concluída com `city_id NULL`. Isso cobre IDs concorrentes inseridos abaixo do cursor.
+
+### Unidade concorrente e fail-closed
+
+Para cada listing: selecionar pendente; reler por ID; canonicalizar; localizar ou criar cidade; validar identidade, `canonical_key`, slug e versão; garantir o estado inicial em `city_publication_state`; executar `UPDATE listings SET city_id = ? WHERE id = ? AND city_id IS NULL`; verificar `success` e `changes`; e, se zero, reler. Só converge quando o vínculo é a cidade esperada; vínculo diferente é conflito fail-closed.
+
+Criação concorrente de cidade converge pelas constraints `UNIQUE`, seguida obrigatoriamente de releitura e validação integral. Não se presume atomicidade entre múltiplas chamadas. `D1Database.batch()` somente pode ser usado conforme o contrato real e cada resultado deve ter `success` e `meta.changes` conferidos. Retry relê e valida, e execução repetida converge.
+
+### Novas escritas e relatório
+
+No 13B, `Listings.js` passará a resolver e persistir `city_id` em criação e mudança de localização, manterá os textos durante a transição, rejeitará `cityId` do cliente e compartilhará sua única função canônica pública com o executor. Nenhuma publicação será solicitada. Escritas concorrentes anteriores à ativação seguem elegíveis por `city_id IS NULL`.
+
+O relatório é evidência, não checkpoint. Pode conter somente `runId` efêmero, modo, ambiente allowlist, versão canônica, passagens, lotes, analisadas, vinculadas, cidades criadas/reutilizadas, retries, conflitos, rejeições, pendentes finais, status e duração. Não contém localização textual, nome de cidade, conteúdo de listing ou PII.
+
+### Gate de staging
+
+Antes do primeiro `--execute` remoto: confirmar versão instalada do Wrangler e suporte a `getPlatformProxy`, `remoteBindings` e `remote = true`; confirmar que staging aponta para D1 distinto de production; criar backup restaurável e validar restore; executar dry-run e revisar métricas; executar lote mínimo e repeti-lo; provar idempotência e ausência de publicação; executar `PRAGMA foreign_key_check`; e contar `city_id NULL`. SQLite local não substitui D1 staging. Se proxy remoto não funcionar com a versão/configuração reais, interromper. Produção permanece proibida.
+
+### Estado atual e alteração de configuração futura
+
+Na decisão documental, nenhum binding D1 possui `remote = true`; logo `getPlatformProxy({ remoteBindings: true })` ainda não seleciona um D1 remoto. Staging e production já possuem identificadores distintos, sem registrá-los em documentação ou logs. A implementação do 13B deverá alterar `wrangler.toml`: development permanece local, staging recebe `remote = true` exclusivamente em `ACTS_DB`, e production permanece não selecionável pelo executor. Essa alteração futura é parte do 13B, não desta PR documental.

@@ -201,10 +201,18 @@ Nenhum teste executável foi criado nesta decisão. A cobertura da evolução fo
 
 ## Correção vigente da cobertura do Lote 13 (2026-08-06)
 
-A `0003` é testada apenas como expansão segura: banco preenchido preservado, tabelas/coluna anulável/constraints/índices transitórios e nenhuma tentativa SQL de Unicode/backfill/publicação. O futuro `[P]` `tests/operations/city-backfill.test.js` cobre vetores Unicode fixados, NFC público, NFKD/marcas/casefold, espaços, hífens, apóstrofos, rejeições, limites, vazio, país/região/cidade, homônimos, colisões/determinismo de slug, criação/reuso por chave, IDs opacos, statements parametrizados, lote limitado, checkpoint, retry, retomada, idempotência, ambiguidade fail-closed, métricas sem PII e bloqueio de publicação.
+A `0003` é testada apenas como expansão segura: banco preenchido preservado, tabelas/coluna anulável/constraints/índices transitórios e nenhuma tentativa SQL de Unicode/backfill/publicação. O futuro `[P]` `tests/operations/city-backfill.test.js` cobre vetores Unicode fixados, NFC público, NFKD/marcas/casefold, espaços, hífens, apóstrofos, rejeições, limites, vazio, país/região/cidade, homônimos, colisões/determinismo de slug, criação/reuso por chave, IDs opacos, statements parametrizados, lote limitado, retry, retomada derivada sem checkpoint persistido, idempotência, ambiguidade fail-closed, métricas sem PII e bloqueio de publicação.
 
 `tests/database/schema-migrations.test.js` deverá provar separadamente `0001 → 0002 → 0003`, execução/reexecução do executor e `0004`, além de snapshot limpo final equivalente semanticamente: zero nulos/órfãos/ambiguidades, chaves/slugs únicos, FK check, contagens e inventário integral de colunas/defaults/checks/uniques/FKs/ações/índices/triggers. IDs aleatórios podem diferir; chaves, slugs, estrutura e referências devem equivaler. Restore/rollback e staging representativo são evidência obrigatória antes da contração. A antiga expectativa de preenchimento integral dentro da `0003` fica revogada.
 
 ## Evidência do Lote 13A
 
 `tests/database/schema-migrations.test.js` usa SQLite real para snapshot, `0001→0002→0003`, PRAGMAs, `sqlite_master`, inserts/falhas, banco preenchido e equivalência estrutural. Isso não é validação D1 integral: staging e restore seguem pendentes.
+
+## Cobertura operacional futura do 13B — decisão documental
+
+A suíte futura deve distinguir proxy local, proxy remoto e SQLite real. Deve provar allowlists `development/local` e `staging/remote`, rejeição de produção/opções desconhecidas, dry-run padrão, `--execute` explícito, exclusividade dos modos e encerramento por `platform.dispose()`. O binding deve ser exclusivamente `ACTS_DB` do `wrangler.toml` raiz, sem entrada de token, account/database ID, binding ou caminho. Deve falhar quando staging não tiver `remote = true`, development estiver remoto ou staging e production compartilharem `database_id`, sem imprimir esses IDs.
+
+Retomada deve ser testada por `city_id IS NULL`, keyset `id > ?`, ausência de `OFFSET`, reinício no menor pendente, atualização condicional, releitura após zero changes, vínculo divergente fail-closed, varredura final e limite de passagens. Relatório é evidência sem PII, nunca checkpoint. Staging exige validar a versão real do Wrangler, `remoteBindings`, backup/restore, dry-run, lote mínimo repetido, idempotência, ausência de publicação, `PRAGMA foreign_key_check` e contagem final de nulos antes de escrita ampla.
+
+O gate remoto comprova que `remoteBindings: true` e `remote = true` atuam juntos sobre staging fisicamente distinto de production. Como o proxy é best-effort fora do Worker, qualquer incompatibilidade falha sem fallback. SQLite local permanece útil para constraints, mas não substitui essa evidência D1.
