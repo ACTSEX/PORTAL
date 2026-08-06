@@ -192,8 +192,15 @@ Esta seção substitui qualquer descrição anterior incompatível neste documen
 
 ## Cobertura futura obrigatória — Lote 13 e migration 0003
 
-Nenhum teste executável foi criado nesta decisão. A migration deverá testar: aplicação limpa pelo snapshot; `0001 → 0002 → 0003`; FKs; unicidade; homônimos regionais; slugs/colisões/estabilidade; registros preexistentes; backfill/falha atômica; anúncio sem cidade inválida; versão monotônica; duas reservas concorrentes; lease expirado; retry; rollback; equivalência snapshot/migrations; e migration inicial imutável.
+Nenhum teste executável foi criado nesta decisão. A cobertura da evolução foi separada pela correção vigente abaixo: a `0003` não executa backfill; executor JavaScript e `0004` possuem gates próprios. Permanecem exigidos versão monotônica, concorrência, lease, retry, rollback e migration inicial imutável.
 
 `tests/modules/publishing-seo.test.js` deverá cobrir: somente publicados; cidade correta; cidade anterior/nova; categoria usada; anunciante multicidade; reviews de anúncio/perfil; mídia; PII ausente; envelope completo; idempotência; versão/concorrência; falhas antes de catálogo/manifest; manifest anterior; rollback; sitemap; canonical; noindex; remoção; nenhum KV público; nenhum Worker na leitura; estados/limite de retry; lease; erro definitivo; ordenação/digest determinísticos; e coerência SEO–manifest.
 
 `tests/core/render-publish-app.test.js` deverá ser atualizado no Lote 13 somente se `app/core/publish.js` receber contrato técnico genérico para artefatos SEO. A cobertura mínima será escrita, digest, confirmação por `head`, falha antes da ativação, preservação do artefato anterior, cache headers, chave segura, content type allowlist e ausência de regra SEO no Core.
+
+
+## Correção vigente da cobertura do Lote 13 (2026-08-06)
+
+A `0003` é testada apenas como expansão segura: banco preenchido preservado, tabelas/coluna anulável/constraints/índices transitórios e nenhuma tentativa SQL de Unicode/backfill/publicação. O futuro `[P]` `tests/operations/city-backfill.test.js` cobre vetores Unicode fixados, NFC público, NFKD/marcas/casefold, espaços, hífens, apóstrofos, rejeições, limites, vazio, país/região/cidade, homônimos, colisões/determinismo de slug, criação/reuso por chave, IDs opacos, statements parametrizados, lote limitado, checkpoint, retry, retomada, idempotência, ambiguidade fail-closed, métricas sem PII e bloqueio de publicação.
+
+`tests/database/schema-migrations.test.js` deverá provar separadamente `0001 → 0002 → 0003`, execução/reexecução do executor e `0004`, além de snapshot limpo final equivalente semanticamente: zero nulos/órfãos/ambiguidades, chaves/slugs únicos, FK check, contagens e inventário integral de colunas/defaults/checks/uniques/FKs/ações/índices/triggers. IDs aleatórios podem diferir; chaves, slugs, estrutura e referências devem equivaler. Restore/rollback e staging representativo são evidência obrigatória antes da contração. A antiga expectativa de preenchimento integral dentro da `0003` fica revogada.

@@ -169,17 +169,35 @@ Contagens incluem testes novos do lote e excluem ajustes documentais ocasionais.
 
 **Estado de implementação (2026-08-04):** concluído com Dashboard privado por indicadores allowlist, Analytics privado com cinco métricas controladas e Reports síncrono em JSON/CSV. Ownership sempre usa o usuário autenticado; escopos globais exigem `management.dashboard.global`, `management.analytics.global` ou `management.reports.global` no contexto. UTC, períodos de 7/30/90 dias no Dashboard, intervalo máximo de 366 dias, 100 pontos, 20 grupos, 500 linhas, 8 colunas e 512.000 bytes limitam consultas e exportações. Projeções excluem PII e referências externas, e o CSV neutraliza formula injection. A suíte oficial possui 44 casos; nenhuma migration, IA, KV, R2, Publisher, Queue ou publicação foi adicionada. O Lote 13 permanece intacto e não iniciado.
 
-### LOTE 13 — Publicação e SEO
+### LOTE 13 — cidade canônica, publicação e SEO (sequência bloqueante)
 
-- **Objetivo:** `Publish.js` decide domínio/cidades afetadas e converte fatos em pedidos técnicos; `Seo.js` produz sitemap, canonical e metadados da projeção pública. O Core executa a publicação.
-- **Arquivos:** `app/modules/Publish.js`, `app/modules/Seo.js`; `tests/modules/publishing-seo.test.js`; `database/migrations/0003_city_publication_state.sql`; atualização de `database/schema.sql`, `tests/database/schema-migrations.test.js`, `app/core/publish.js` e `tests/core/render-publish-app.test.js`.
-- **Dependência:** Lote 12. **O lote não pode começar antes da decisão estrutural abaixo.**
-- **Lacuna confirmada:** o schema possui apenas `listings.region TEXT` e `listings.city TEXT`; não há cidade canônica. O Publisher exige `cityId`, `citySlug` e `version`, e `publication_jobs` sozinho não fornece identidade nem reserva persistente/concorrente da próxima versão.
-- **Decisão anterior à implementação (satisfeita documentalmente):** a auditoria específica definiu cidade canônica, país, região, nome, slug, unicidade/normalização, vínculo e compatibilidade; versão monotônica e concorrência; digest/projeção e manifest vigentes; estado, retry, lease/recuperação e reconciliação; índices, evolução e rollback. Não foi necessário criar ADR: os documentos oficiais já possuem autoridade e caminho autorizado.
-- **Decisão estrutural concluída (2026-08-04; implementação não iniciada):** a auditoria demonstrou que localização textual e `publication_jobs` são insuficientes para cidade canônica, FK, versão monotônica, lease e manifest vigente. Está autorizado o inventário futuro `[P]`: `app/modules/Publish.js`, `app/modules/Seo.js`, `tests/modules/publishing-seo.test.js`, `database/migrations/0003_city_publication_state.sql`, atualização de `database/schema.sql`, `tests/database/schema-migrations.test.js`, `app/core/publish.js` e `tests/core/render-publish-app.test.js`. Nenhum desses caminhos foi criado ou alterado nesta decisão. A `0003` deverá criar cidades somente sob demanda, vincular/backfillear todo listing sem órfãos e persistir estado operacional por cidade, conforme DB, EVENTS, MODULES, PUBLISHER e TESTING.
-- **Lacuna técnica SEO:** `app/core/publish.js` hoje cobre catálogo e manifest de cidade, não sitemap/artefatos SEO completos. O Lote 13 pode atualizar o Core existente de forma técnica e genérica para escrever, confirmar por `head`, validar digest, headers, chave segura, content type e ativação/substituição de artefatos fornecidos pelos módulos; regras de canonical, title, description, robots, noindex, sitemap e indexação permanecem exclusivamente em `Seo.js`.
-- **Fluxo de review:** `Review pública alterada → evento de domínio → Publish.js resolve cidade canônica → pedido técnico CityPublicationRequested → Queue → Publisher`. O módulo deve produzir `eventId`, `cityId`, `citySlug`, `reason`, `correlationId`, `source` e `occurredAt`; o fato atual de `Reviews.js` não é sozinho esse envelope.
-- **DoD/desbloqueio:** requisitos estruturais decididos, testes de cidade afetada, idempotência e SEO, sem PII; desbloqueia 14A.
+O Lote 13 continua não implementado e só conclui após **13A → 13B → 13C → 13D**, na mesma ordem. A prova SQLite/D1 impede migration SQL única; os arquivos `[P]` são autorizações futuras, não entregas desta correção.
+
+#### 13A — expansão do schema
+
+- **Arquivos:** `[P] database/migrations/0003_city_publication_state.sql`; atualização futura de `[E] database/schema.sql` e `[E] tests/database/schema-migrations.test.js`.
+- **Entrega:** criar `cities`, `city_publication_state`, `listings.city_id` temporariamente anulável e somente constraints/índices seguros, preservando dados e contratos. Sem Unicode/backfill SQL, publicação ou manifest.
+- **Gate:** migration limpa e sobre banco preenchido aprovada; backup e rollback da expansão ensaiados. Desbloqueia apenas 13B.
+
+#### 13B — backfill operacional
+
+- **Arquivos:** `[P] scripts/backfill-cities.js`, `[P] tests/operations/city-backfill.test.js`; atualização futura de `[E] app/modules/Listings.js` para a função canônica pública.
+- **Entrega:** JavaScript parametrizado, em lotes limitados, idempotente/retomável, checkpoint e métricas sem PII; normaliza pelo contrato único, cria/reutiliza por chave, preenche FKs e para em ambiguidade. Staging representativo precede produção.
+- **Gate:** zero pendências/ambiguidades e segunda execução sem mutação; relatório final e restore aprovados. Desbloqueia apenas 13C.
+
+#### 13C — validação e contração
+
+- **Arquivos:** `[P] database/migrations/0004_city_publication_contract.sql`; atualização de `[E] database/schema.sql` para snapshot final e `[E] tests/database/schema-migrations.test.js`.
+- **Entrega:** validar nulos, órfãos, ambiguidades, unicidade, FKs, contagens e inventário integral; reconstruir `listings` com `city_id NOT NULL`, abortando qualquer inválido. Instalação limpa nasce nesse estado final e dispensa backfill.
+- **Gate:** backup/rollback, equivalência semântica snapshot/evolução e staging aprovados. Desbloqueia apenas 13D; `city_id` anulável não é estado final.
+
+#### 13D — publicação e SEO
+
+- **Arquivos:** `[P] app/modules/Publish.js`, `[P] app/modules/Seo.js`, `[P] tests/modules/publishing-seo.test.js`; atualizações condicionais de `[E] app/core/publish.js` e `[E] tests/core/render-publish-app.test.js`.
+- **Entrega:** projeção canônica, publicação/manifest, SEO e testes somente sobre cidade contraída. `Publish.js` valida pela função pública de `Listings.js`; `Seo.js` não normaliza/backfilleia; Core continua genérico.
+- **Gate/DoD:** catálogo/manifest anterior permanece até nova publicação integralmente confirmada. Testes, staging e merge de todo o Lote 13 desbloqueiam 14A.
+
+**Bloqueio do Lote 14:** 14A e todo o Lote 14 permanecem intactos e proibidos até expansão, backfill, validação, contração, implementação de publicação/SEO, testes e staging do Lote 13 estarem aprovados e o Lote 13 estar mesclado. `Publish.js` e `Seo.js` não são considerados prontos antes disso.
 
 ### LOTE 14A — Componentes visuais básicos
 

@@ -358,10 +358,32 @@ Esta seção substitui qualquer descrição anterior incompatível neste documen
 
 A auditoria de `schema.sql`, `0001` e `0002` confirma localização livre e ausência de estado canônico por cidade. Isso é insuficiente para identidade, FK, versão concorrente, lease e manifest vigente. Fica autorizada, mas não criada, a `[P]` `0003_city_publication_state.sql`, com `cities`, `listings.city_id`, `city_publication_state` e complementos estritamente necessários em `publication_jobs`. `0001` permanece imutável; snapshot só muda na implementação.
 
-`listings.city_id` terá FK `cities(id) ON DELETE RESTRICT`, índice `city_id, status` e, ao final, `NOT NULL`. Os textos atuais permanecem durante a transição; leitura pública usa o join canônico e retirada futura exige migration própria. Aplicação limpa pelo snapshot e evolução `0001 → 0002 → 0003` devem ser equivalentes e suportar dados reais.
+`listings.city_id` terá FK `cities(id) ON DELETE RESTRICT`, índice `city_id, status` e, ao final, `NOT NULL`. Os textos atuais permanecem durante a transição; leitura pública usa o join canônico e retirada futura exige migration própria. A equivalência final é regida pela correção abaixo e só existe depois de backfill e contração; a `0003` isolada é deliberadamente transitória.
 
-O backfill não adivinha abreviações/homônimos e só poderá ser implementado depois de comprovar, antes de criar a `0003`, o contrato executável no SQLite/D1 disponível: funções usadas para país/caixa, trim/colapso de espaços, tratamento de acentos e Unicode, geração de slug, detecção de colisões, diferenciação de homônimos, geração de IDs, execução em banco preenchido e rollback transacional quando houver ambiguidade. É proibido depender de extensão SQLite não suportada pelo D1, função JavaScript dentro de migration SQL, operação manual, banco vazio, slug improvisado ou normalização diferente entre migration e `Listings.js`.
-
-A implementação deverá definir uma única função/contrato canônico de normalização, usado por futuras escritas e pela validação do backfill. Staging/mapeamento determinístico parte das triplas distintas após validação; equivalentes inequívocos convergem; colisão ou valor inseguro aborta com diagnóstico agregado, sem órfão permanente nem edição linha a linha. Se a normalização segura não puder ser executada atomicamente em uma única migration SQL, a implementação deve interromper antes de criar `0003`, apresentar evolução em fases, autorizar documentalmente migrations sequenciais adicionais, manter `city_id` temporariamente anulável só durante a transição, validar backfill integral e somente depois impor `NOT NULL`; não fica autorizado `city_id` anulável permanente nem migration `0004` inventada agora.
+A prova posterior revogou a hipótese de executar o contrato canônico no SQLite/D1 ou de concluir a evolução numa migration única. O backfill não adivinha abreviações/homônimos e segue exclusivamente a decisão faseada mais recente abaixo.
 
 Rollback antes da troca é transacional. Depois de aplicada/publicada, não se apaga estado: backup/restore ou migration corretiva forward-only. Durante compatibilidade, escrita nova resolve/cria cidade validada e FK na mesma transação. Identidade, estados, versão e lease estão em PUBLISHER.
+
+
+## Correção vigente do Lote 13 — expand/backfill/contract (2026-08-06)
+
+Esta decisão mais recente substitui a exigência incompatível de backfill numa migration SQL única. A prova técnica confirmou que o SQLite/D1 disponível não oferece `normalize()`, NFC/NFKD, remoção Unicode geral de marcas, casefold equivalente ao JavaScript nem `sha256()` nativo; `lower()` é essencialmente ASCII, NFC e NFD continuam distintos, SQL não executa JavaScript e uma lista parcial de `replace()` não satisfaz Unicode geral.
+
+1. **Expansão:** a futura `[P]` `database/migrations/0003_city_publication_state.sql` cria `cities` e `city_publication_state`, acrescenta `listings.city_id` temporariamente anulável e somente FKs, constraints e índices seguros. Preserva dados e contratos, não normaliza Unicode, não faz o backfill canônico, não publica e não altera manifests.
+2. **Backfill:** o futuro `[P]` `scripts/backfill-cities.js` usa JavaScript e a única função canônica pública de `Listings.js`, cria/reutiliza por `canonical_key` e preenche a FK em lotes parametrizados. Ambiguidade interrompe sem escolha silenciosa.
+3. **Validação:** exige zero nulos, órfãos e ambiguidades; unicidade de chaves/slugs; FKs válidas; contagens compatíveis; inventário sem perda de coluna, default, check, unique, FK/ação, índice ou trigger; segunda execução idempotente; relatório sem PII; backup/rollback; e staging com banco representativo aprovado.
+4. **Contração:** somente então a futura `[P]` `database/migrations/0004_city_publication_contract.sql` reconstrói `listings` com `city_id NOT NULL`, preserva integralmente o inventário e aborta diante de qualquer inválido. Anulabilidade nunca é estado final.
+
+### Contrato canônico único
+
+A futura função pública de domínio em `app/modules/Listings.js` será a única implementação consumida por futuras escritas/alterações, pelo executor, por `Publish.js` na validação e pelos testes. Não pertence ao Core, a `Seo.js` ou a SQL.
+
+- Exibição: `trim`, colapso de toda sequência Unicode `White_Space` para U+0020 e preservação em NFC; nome público entre 1 e 120 code points.
+- Chaves: NFKD; remoção de todas as combining marks Unicode `M` (`Mn`, `Mc`, `Me`); Unicode Default Case Folding completo C+F na versão Unicode fixada pelos testes, sem mappings Turkic T; hífens/dashes e apóstrofos Unicode viram separadores; demais whitespace/pontuação viram espaço; separadores são colapsados e aparados.
+- Rejeições: NUL, controles, surrogates isolados, não atribuídos e controles bidi; após transformação, chave fora de letras/números ASCII, vazia ou excedente é erro, sem fallback.
+- `country_code`: ISO 3166-1 alfa-2 ASCII maiúsculo. `region_key` e `city_key`: 1–80 caracteres ASCII normalizados. `canonical_key`: composição delimitada `country_code + region_key + city_key`, única, até 170 caracteres.
+- `slug`: determinístico, `[a-z0-9-]`, separadores como hífen, hífens colapsados/aparados, máximo 100. Colisão global acrescenta região e país; persistindo, digest determinístico da `canonical_key` calculado em JavaScript, nunca ID ou ordem de inserção. Homônimos por país/região permanecem distintos. Resultado vazio é erro.
+
+`cities.id` é opaco, aleatório e estável no banco, nunca derivado de nome, slug ou chave. Retry reutiliza a cidade encontrada por `canonical_key`; IDs não precisam coincidir entre bancos independentes. Clean install e evolução são estrutural e semanticamente equivalentes: chaves/slugs determinísticos e referências internas consistentes, sem igualdade literal de IDs aleatórios.
+
+Depois da contração, `database/schema.sql` representa diretamente o estado final com `city_id NOT NULL`. Instalação limpa não roda backfill desnecessário: nasce no schema final e toda nova escrita usa o contrato canônico, enquanto a evolução chega ao mesmo estado por `0001 → 0002 → 0003 → backfill → 0004`.

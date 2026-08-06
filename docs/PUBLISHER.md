@@ -238,3 +238,8 @@ Auditoria de `app/core/publish.js` confirma que o contrato atual cobre catálogo
 Fluxo autorizado: `Seo.js decide conteúdo e elegibilidade → Publish.js coordena o domínio → Core Publisher grava, confirma e ativa tecnicamente → R2/Edge entrega`. `Seo.js` permanece dono das decisões SEO e o Core apenas executa escrita, confirmação por `head`, digest, headers/cache e ativação técnica preservando artefato anterior em falha.
 
 Pedido contém `eventId`, `type`, `version`, `cityId`, `citySlug`, `reason`, `correlationId`, `source`, `occurredAt`, sem PII/snapshot. `eventId + cityId + type/version` dá idempotência persistente. Agrupamento dentro do batch já é Core; cidades afetadas são Lote 13; janela entre batches é 16B; reconciliação é 16B/18. D1 não vira fila paralela.
+
+
+## Correção vigente — gate da publicação do Lote 13 (2026-08-06)
+
+A evolução de cidade segue obrigatoriamente expansão `0003`, backfill JavaScript externo, validação e contração `0004`, conforme DB e OPERATIONS. SQL puro não executa a normalização Unicode canônica. Até concluir e aprovar todas essas fases, `Publish.js`/`Seo.js` não estão prontos, a nova projeção canônica não é ativada, localização textual e `city_id` não são alternados, catálogo parcialmente migrado não é publicado e o artefato/manifest público anterior permanece intacto. Somente 13D pode recompilar e, depois de confirmação integral, trocar manifest.

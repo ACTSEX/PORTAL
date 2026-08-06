@@ -172,11 +172,15 @@ A árvore possui **104 arquivos após o commit do lote: 40 documentos e 64 não 
 - `tests/functions/webhooks-scheduled.test.js` [P]
 - `tests/integration/publication-flow.test.js` [P]
 - `tests/modules/publishing-seo.test.js` [P]
+- `tests/operations/city-backfill.test.js` [P]
+- `scripts/backfill-cities.js` [P]
+- `database/migrations/0003_city_publication_state.sql` [P]
+- `database/migrations/0004_city_publication_contract.sql` [P]
 - `tests/rendering/layouts-templates.test.js` [P]
 - `tests/security/security.test.js` [P]
 - `tests/site/public-frontend.test.js` [P]
 
-Não estão autorizados `app/modules/AI.js`, `tests/modules/management-intelligence.test.js`, qualquer provider/Queue/prompt storage de IA, `database/migrations/0003_ai_governance.sql` ou `docs/ADR/`. A auditoria do Lote 13 autorizou `database/migrations/0003_city_publication_state.sql` somente como caminho futuro [P]; ele ainda não existe. Também ficam autorizadas no Lote 13 apenas atualizações dos caminhos existentes `app/core/publish.js` e `tests/core/render-publish-app.test.js` quando necessárias para artefatos SEO técnicos/genéricos.
+Não estão autorizados `app/modules/AI.js`, `tests/modules/management-intelligence.test.js`, qualquer provider/Queue/prompt storage de IA, `database/migrations/0003_ai_governance.sql` ou `docs/ADR/`. A correção do Lote 13 autorizou `database/migrations/0003_city_publication_state.sql` para expansão, `scripts/backfill-cities.js` e seu teste para backfill e `database/migrations/0004_city_publication_contract.sql` para contração, todos somente como caminhos futuros [P]; nenhum existe. Também ficam autorizadas no Lote 13 apenas atualizações dos caminhos existentes `app/core/publish.js` e `tests/core/render-publish-app.test.js` quando necessárias para artefatos SEO técnicos/genéricos.
 
 ## 5. Inventário por lote
 
@@ -195,7 +199,10 @@ Não estão autorizados `app/modules/AI.js`, `tests/modules/management-intellige
 | 10 | [E] `app/modules/Contacts.js`, `Leads.js`, `Reviews.js`, `Notifications.js`; `tests/modules/relationship.test.js`. |
 | 11 | [E] `app/modules/Payments.js`, `Integrations.js`, `app/gateways/Asaas.js`, `database/migrations/0002_payment_event_ordering.sql`, atualização [E] de `database/schema.sql` e `tests/database/schema-migrations.test.js`; [E] `tests/modules/payments-integrations.test.js`, `tests/gateways/asaas.contract.test.js`. |
 | 12 | [E] `app/modules/Dashboard.js`, `Analytics.js`, `Reports.js`; `tests/modules/management.test.js`. |
-| 13 | [P] `app/modules/Publish.js`, `Seo.js`; `tests/modules/publishing-seo.test.js`; `database/migrations/0003_city_publication_state.sql`; atualização de `database/schema.sql`, `tests/database/schema-migrations.test.js`, `app/core/publish.js` e `tests/core/render-publish-app.test.js`. |
+| 13A | [P] expansão `database/migrations/0003_city_publication_state.sql`; atualiza [E] `database/schema.sql` e `tests/database/schema-migrations.test.js`. |
+| 13B | [P] `scripts/backfill-cities.js`, `tests/operations/city-backfill.test.js`; atualiza [E] `app/modules/Listings.js` com a única função canônica pública. |
+| 13C | [P] contração `database/migrations/0004_city_publication_contract.sql`; atualiza [E] `database/schema.sql` e `tests/database/schema-migrations.test.js`. |
+| 13D | [P] `app/modules/Publish.js`, `Seo.js`, `tests/modules/publishing-seo.test.js`; atualizações condicionais [E] de `app/core/publish.js` e `tests/core/render-publish-app.test.js`. |
 | 14A/14B | [P] 12 componentes e `tests/components/components.test.js`, compartilhado e atualizado no 14B. |
 | 15 | [P] 3 layouts, 7 templates e `tests/rendering/layouts-templates.test.js`. |
 | 16A | [P] middleware, 6 APIs, `tests/functions/api.test.js` e início de `tests/contract/public-api.test.js`. |
@@ -210,3 +217,8 @@ Não estão autorizados `app/modules/AI.js`, `tests/modules/management-intellige
 - R2 origina catálogo e manifest públicos; Edge Cache entrega; KV é técnico e privado. Navegação pública normal não acessa D1, KV, Worker nem Pages Function.
 - Componentes, layouts e templates recebem dados prontos e não acessam D1. Functions são adaptadores finos. O frontend do Lote 17 consome somente artefatos R2/Edge.
 - Migration aplicada é imutável. Nova migration exige modelo completo, necessidade concreta e autorização documental anterior.
+
+
+## 7. Correção de autorização do Lote 13 (2026-08-06)
+
+Os caminhos acima distinguem: expansão `0003`; executor operacional e teste; contração `0004`; Publish/Seo e teste. `Listings.js`, `database/schema.sql`, testes de migration e, apenas para primitivas técnicas SEO, Core/teste são atualizações de arquivos [E], não novos auxiliares. Nenhum caminho do Lote 14 foi criado ou antecipado. Os quatro sublotes são sequenciais e `[P]` não significa implementado.

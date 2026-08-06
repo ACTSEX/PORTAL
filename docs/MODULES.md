@@ -269,3 +269,10 @@ Progresso usa fatos do cliente ou estados confirmados pelo backend: preparando, 
 Seo entrega especificação determinística de metatags, canonical, robots e entradas/remoções do sitemap. O Core renderiza, grava e confirma artefatos estáticos/versionados; Seo nunca escreve manifest do catálogo. Sitemap/páginas não anunciam versão diferente do manifest vigente e Seo não consulta tabelas privadas.
 
 Para artefatos SEO, o fluxo futuro é `Seo.js decide conteúdo e elegibilidade → Publish.js coordena o domínio → Core Publisher grava, confirma e ativa tecnicamente → R2/Edge entrega`. O Core poderá receber chave validada, conteúdo serializado, content type allowlist, cache control, digest, metadados e estratégia técnica de confirmação/ativação; não poderá conter regra de canonical, title, description, robots, noindex, elegibilidade de sitemap ou indexação.
+
+
+## Correção vigente — fronteiras da cidade canônica (2026-08-06)
+
+`Listings.js`, como domínio existente, deve expor a única função canônica especificada em DB; futuras escritas e alterações usam essa função. O executor operacional `scripts/backfill-cities.js` a consome pela interface pública. `Publish.js` apenas valida/resolve cidade já canônica após a contração; `Seo.js` não normaliza nem executa backfill. Nada disso pertence ao Core.
+
+`Publish.js` e `Seo.js` permanecem futuros e bloqueados até expansão, backfill, validação e contração aprovados. Nenhuma projeção pode alternar localização textual e `city_id`, e nenhum dos módulos é considerado pronto enquanto houver pendência ou ambiguidade.

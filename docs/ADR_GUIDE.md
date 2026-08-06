@@ -22,3 +22,7 @@ A futura decisão sobre cidade canônica e estado/versionamento da publicação 
 ## Aprovação
 
 Status possíveis são proposto, aprovado, substituído e obsoleto. Uma proposta só se torna regra depois da revisão exigida pela governança e das atualizações coerentes em Constituição, arquitetura, TREE, ROADMAP e documentos especializados aplicáveis.
+
+## Avaliação da correção faseada do Lote 13 (2026-08-06)
+
+Não há ADR correspondente existente a atualizar. A decisão não muda os princípios constitucionais: apenas corrige a executabilidade da evolução já aprovada, agora registrada de modo explícito e mais recente em DB, OPERATIONS, ROADMAP e TREE. Portanto não se autoriza nem cria ADR separado; se a implementação mudar identidade, fronteiras ou fluxo constitucional, deverá primeiro reservar caminho e aprovar ADR.

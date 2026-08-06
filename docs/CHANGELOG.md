@@ -1,10 +1,17 @@
+## 2026-08-06 — correção documental da preparação do Lote 13
+
+- A prova técnica no SQLite/D1 confirmou ausência de `normalize()`, NFC/NFKD, remoção Unicode geral de marcas, casefold equivalente ao JavaScript e `sha256()` nativo; `lower()` é essencialmente ASCII, NFC e NFD não convergem, SQL não executa JavaScript e `replace()` parcial não cumpre o contrato Unicode.
+- A evolução passa a `13A expansão → 13B backfill operacional JavaScript → 13C validação/contração → 13D publicação/SEO`. A `0003` é só expansão e a futura `0004` instala `city_id NOT NULL` após os gates.
+- Autorizados, sem criação, `scripts/backfill-cities.js`, seu teste e a migration de contração. IDs são opacos por banco; equivalência é semântica, não igualdade literal.
+- Catálogo e manifest anteriores permanecem ativos. Nenhum código, migration, schema ou teste executável foi criado; Lote 13 não está concluído e Lote 14 permanece bloqueado.
+
 CHANGELOG.md
 
 ## 2026-08-04 — complemento técnico da preparação do Lote 13
 
 - Auditado o contrato atual do Core Publisher: ele cobre catálogo e manifest de cidade, mas não contrato completo para sitemap e demais artefatos SEO.
 - ROADMAP e TREE passam a autorizar, no Lote 13 e somente se necessário, atualização técnica/genérica de `app/core/publish.js` e `tests/core/render-publish-app.test.js`, preservando decisões SEO em `Seo.js`.
-- Backfill da cidade canônica passa a exigir prova de executabilidade no SQLite/D1 antes da `0003`; se uma migration única não for segura, será necessária evolução faseada e autorização documental própria.
+- A preparação então exigiu prova de executabilidade antes da `0003`; a prova posterior de 2026-08-06 rejeitou a migration única e autorizou a evolução faseada registrada acima.
 
 ## 2026-08-04 — decisão documental para cidade e publicação do Lote 13
 
