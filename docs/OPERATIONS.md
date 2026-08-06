@@ -185,3 +185,22 @@ O painel mantém alterações pendentes preferencialmente em IndexedDB. O rascun
 Decisão inicial: **até cinco envios de alterações por usuário por dia**, configurável e contado por ciclo explícito, não por item. Falha técnica após persistência confirmada não consome novo envio. A implementação definirá timezone, administradores, exceções, reset, auditoria e proteção contra repetição. Cada pacote preserva autenticação, autorização, propriedade, plano, domínio, concorrência/versão, transações e idempotência.
 
 Progresso usa fatos do cliente ou estados confirmados pelo backend: preparando, validando, enviando, persistindo, alterações salvas, aguardando agregação, compilando, publicando, concluído, falha recuperável ou falha definitiva. Sem progresso numérico real, exibem-se etapas, nunca percentuais inventados.
+
+
+## Runbook autorizado — backfill de cidades do Lote 13 (2026-08-06)
+
+O único caminho oficial futuro é `[P] scripts/backfill-cities.js`, responsabilidade JavaScript operacional distinta; seu teste é `[P] tests/operations/city-backfill.test.js`. Não é Core, módulo de publicação, `Seo.js` ou migration. O executor recebe explicitamente ambiente e binding D1, recusa produção sem confirmação operacional, usa apenas statements parametrizados e a função canônica pública de `Listings.js`, e nunca contém credenciais.
+
+### Execução e retomada
+
+1. Congelar escritas de localização e publicação; confirmar que catálogo/manifest anterior segue ativo. Fazer backup D1 identificado pelo commit, ambiente e timestamp e provar restore.
+2. Em staging representativo, aplicar a `0003`, executar em modo de análise, resolver ambiguidades por mapeamento revisado e versionado fora de PII, e processar lotes limitados. Cada lote confirma seu checkpoint técnico (último ID/chave, versão do contrato e métricas); retry relê pendentes e reutiliza `canonical_key`, portanto é idempotente e retomável.
+3. Falha ou ambiguidade interrompe antes do item, registra somente contagens, códigos e identificadores técnicos, nunca nomes/endereço/PII, e deixa pendentes bloqueando publicação. A resolução exige decisão humana explícita no mapeamento de entrada; jamais escolha silenciosa.
+4. Reexecutar até uma execução completa sem mutações; gerar relatório assinado com commit, ambiente, versão Unicode/contrato, início/fim, totais lidos/criados/reutilizados/atualizados/pendentes/ambíguos/falhos, checks de integridade e hash do relatório, sem PII.
+5. Repetir em produção na mesma ordem, janela aprovada e backup restaurável. Somente com relatório e checklist aprovados aplicar `0004`; 13D/publicação vem depois.
+
+### Rollback por fase
+
+- **Expansão:** antes de backfill, restaurar o backup ou aplicar reversão previamente ensaiada que remova somente estruturas novas; nunca editar `0001`. Se já houver cidades/FKs preenchidas, preferir manter a expansão inerte e restaurar backup para desfazer.
+- **Backfill:** falha é retomada pelo checkpoint; correção de ambiguidade entra como input revisado. Antes da contração, pode-se restaurar o backup integral; catálogo/manifest público não mudou.
+- **Contração:** não iniciar sem gate e backup. Depois que `city_id` for adotado, rollback destrutivo sem backup é impossível e proibido; restaurar o backup e o binário/schema anteriores como unidade. Em toda a evolução, preservar catálogo e manifest anteriores até publicação final confirmada.
