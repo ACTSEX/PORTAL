@@ -392,7 +392,7 @@ Depois da contração, `database/schema.sql` representa diretamente o estado fin
 
 ### Normalização `unicode-17.0.0-v1`
 
-`canonicalization_version` tem formato `unicode-<major>.<minor>.<patch>-v<contrato>` e valor inicial obrigatório **`unicode-17.0.0-v1`**. Cada `cities` persiste a versão que produziu suas chaves e slug; um backfill inteiro fixa uma única versão antes de começar, checkpoints e retries a repetem, e misturar versões aborta a execução. `Listings.js` e o executor 13B deverão chamar a mesma implementação pública. Troca de versão exige decisão e migration próprias; função e tabela de transliteração nunca são armazenadas no D1.
+`canonicalization_version` tem formato `unicode-<major>.<minor>.<patch>-v<contrato>` e valor inicial obrigatório **`unicode-17.0.0-v1`**. Cada `cities` persiste a versão que produziu suas chaves e slug; um backfill inteiro fixa uma única versão antes de começar, passagens e retries a repetem, e misturar versões aborta a execução. `Listings.js` e o executor 13B deverão chamar a mesma implementação pública. Troca de versão exige decisão e migration próprias; função e tabela de transliteração nunca são armazenadas no D1.
 
 “Casefold C+F” significa os mappings **C (Common) e F (Full)** do arquivo oficial versionado Unicode 17.0.0 `CaseFolding.txt`, sem S (Simple) nem T (Turkic), obtido de `https://www.unicode.org/Public/17.0.0/ucd/CaseFolding.txt`. É Default Case Folding completo, independente de locale, inclusive expansões de um code point para vários (`ß` → `ss`). `toLowerCase()` não implementa esse contrato.
 
@@ -411,3 +411,9 @@ Vetores obrigatórios: `BR|parana|primavera` e `BR|sao paulo|primavera` produzem
 `cities` contém ID opaco sem default derivado, país, chaves, chave canônica e slug únicos, nome público, versão, atividade e timestamps; `(country_code, region_key, city_key)` é único. `listings.city_id` foi acrescentado sem reconstrução, aceita `NULL` somente no 13A, referencia `cities(id) ON DELETE RESTRICT` e possui índice `(city_id,status)`; todo contrato anterior permanece. Nenhuma linha é preenchida.
 
 `city_publication_state`, separado de `publication_jobs`, tem PK/FK por cidade `ON DELETE CASCADE`, versões iniciais `0/1`, artifact path/digest pareados, estado allowlist, lease/expiração pareados, tentativas, código de erro normalizado, revisão, última publicação e timestamps. A migration não cria linha, job, artefato ou manifest. O 13A não usa Queue, KV, R2 ou Publisher. Staging D1 representativo, backup/restore e compatibilidade D1 continuam gates; SQLite local não os substitui.
+
+### Retomada do 13B sem checkpoint persistido
+
+O 13B não adicionará tabela de checkpoint. Sua garantia durável será exclusivamente `listings.city_id` confirmado no D1. Pendências são selecionadas por `city_id IS NULL` em paginação keyset por `id`, nunca por `OFFSET`; reinício volta ao menor ID pendente. O cursor de uma passagem e o relatório são efêmeros. Uma varredura final desde o início, limitada em número de passagens, impede conclusão quando inserções concorrentes ainda produzirem nulos.
+
+A atualização condiciona `id = ? AND city_id IS NULL`; zero alterações exige releitura e somente o vínculo esperado é aceito. Cidades concorrentes convergem por unicidade, com releitura e validação. `city_publication_state` mantém exclusivamente sua semântica de publicação e não armazena cursor ou checkpoint do backfill.

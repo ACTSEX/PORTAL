@@ -371,3 +371,18 @@ Nenhuma.
 - Snapshot e testes SQLite cobrem instalação limpa, evolução e preservação de banco preenchido e do contrato anterior de `listings`.
 - Fixados CaseFolding 17.0.0 C+F, `unicode-17.0.0-v1` e `city-slug-v1`; implementação/auditoria permanecem no 13B.
 - 13B, 13C, 13D e 14 não foram iniciados; validação D1/restore em staging continua obrigatória.
+
+## 2026-08-06 — fronteira operacional documental do Lote 13B
+
+- Definido `getPlatformProxy()` da API Node do Wrangler como mecanismo futuro para obter o binding fixo `ACTS_DB` do `wrangler.toml` raiz, com descarte obrigatório da plataforma.
+- Fixadas as combinações `development/local` e `staging/remote`, dry-run padrão, escrita somente por `--execute` e proibição de produção, credenciais e configuração livre.
+- Substituída a exigência contraditória de checkpoint persistido por retomada derivada de `listings.city_id IS NULL`, paginação keyset, varredura final e limite de passagens; o relatório é apenas evidência sem PII.
+- Documentadas convergência por unicidade, atualização condicional, releitura após zero changes e conflito fail-closed, sem presumir atomicidade não fornecida pelo D1.
+- Esta alteração é exclusivamente documental: 13B continua não implementado e 13C, 13D e 14 permanecem bloqueados; nenhum código, teste, migration, schema, módulo ou configuração foi criado ou alterado.
+
+## 2026-08-06 — complemento do binding remoto do Lote 13B
+
+- Esclarecido que `remoteBindings: true` apenas habilita suporte e que o `ACTS_DB` de staging também deverá possuir `remote = true`; a configuração atual ainda é local em todos os ambientes.
+- Exigidas distinção física staging/production, validações fail-closed da combinação e backup/restore antes de escrita; proxy incompatível não admite fallback.
+- Autorizadas futuramente no 13B apenas as atualizações de `wrangler.toml` para staging remoto, `package.json` para `city:backfill`/dependência Unicode aprovada e `package-lock.json` correspondente.
+- Esta correção permanece exclusivamente documental; nenhuma configuração foi alterada e os lotes seguintes continuam bloqueados.

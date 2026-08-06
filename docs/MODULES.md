@@ -280,3 +280,9 @@ Para artefatos SEO, o fluxo futuro é `Seo.js decide conteúdo e elegibilidade �
 ## Gate transitório do Lote 13A (2026-08-06)
 
 O 13A altera somente schema. `Listings.js` não normaliza nem preenche `city_id`; a implementação compartilhada `unicode-17.0.0-v1` pertence ao 13B. `Publish.js` e `Seo.js` permanecem ausentes e bloqueados. Nenhum contrato atual dos módulos mudou.
+
+## Contrato futuro de novas escritas no 13B
+
+Quando o 13B for implementado, `Listings.js` resolverá e persistirá `city_id` tanto na criação quanto em mudanças de localização, mantendo os campos textuais durante a transição. `cityId` vindo do cliente será campo desconhecido e rejeitado. A única função canônica pública do módulo será consumida pelo executor, sem duplicação ou importação do script pelo domínio.
+
+Essa resolução não solicita publicação. Listings inseridas antes da ativação, ou concorrentes ainda sem vínculo, permanecem no conjunto operacional derivado por `city_id IS NULL`. Esta decisão é somente documental e não altera o módulo atual.

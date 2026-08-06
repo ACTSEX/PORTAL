@@ -210,3 +210,11 @@ Esta seção substitui qualquer descrição anterior incompatível neste documen
 - Falha de publicação não reverte o negócio confirmado: D1 permanece verdadeiro. Publicação é repetível/idempotente, suporta republicação e retenção temporária de versões para rollback; falha em R2 não aponta manifest a arquivo parcial.
 - O navegador prioriza cache HTTP, memória, Cache Storage quando necessário, IndexedDB para persistência estruturada e `localStorage` somente para pequenos metadados/preferências. A JSON completa não tem `localStorage` como armazenamento principal.
 - Catálogos contêm somente projeções públicas aprovadas: sem e-mail privado, dados administrativos, tokens, pagamentos, endereço privado não autorizado ou coordenada precisa proibida.
+
+## Acesso operacional planejado do backfill 13B
+
+O executor Node futuro usará a API oficial `getPlatformProxy()` do Wrangler instalado pelo projeto. Com `configPath` fixo em `wrangler.toml`, obterá exclusivamente `platform.env.ACTS_DB` e encerrará com `platform.dispose()`. Isso não roda em Worker, não cria endpoint HTTP, Pages Function, Worker ou REST API própria e não recebe credenciais, binding, IDs ou caminho de configuração do usuário.
+
+Os modos são separados: `development/local` usa binding sem `remote = true`; `staging/remote` exige simultaneamente `remoteBindings: true` no proxy e `remote = true` no `ACTS_DB` de staging. Produção é proibida no 13B. Autenticação remota segue o mecanismo normal do Wrangler, sem leitura direta de `process.env` pelo executor. Suporte da versão instalada e funcionamento real em staging são gates anteriores a qualquer `--execute` remoto.
+
+`remote = true` direciona operações ao recurso Cloudflare real configurado. Por isso, staging deve ser fisicamente distinto de production e o executor futuro deve comparar os IDs internamente sem imprimi-los. A configuração atual ainda não marca nenhum D1 como remoto; a implementação 13B deverá marcar somente staging. `getPlatformProxy()` é best-effort fora do runtime Worker: incompatibilidade interrompe, sem fallback automático para REST, endpoint, Worker, subprocesso SQL ou produção. Backup/restore validado precede escrita remota e SQLite local não substitui D1 staging.
