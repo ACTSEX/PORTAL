@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { webcrypto } from 'node:crypto';
 import { createCategories, CategoriesError } from '../../app/modules/Categories.js';
-import { createListings, ListingsError } from '../../app/modules/Listings.js';
+import { createCitySlug, createListings, ListingsError } from '../../app/modules/Listings.js';
 import { createMedia, MediaError } from '../../app/modules/Media.js';
 import { createUpload, UploadError } from '../../app/modules/Upload.js';
 
@@ -13,7 +13,8 @@ const ids = () => { let current = 0; return () => String(++current).padStart(32,
 const eventBus = () => { const published = []; return { published, async publish(event) { published.push(event); return { event }; } }; };
 function database(rows = []) { const calls = []; return { calls, async first(sql, parameters) { calls.push({ sql, parameters }); return rows.shift() ?? null; }, async write(sql, parameters) { calls.push({ sql, parameters }); return { success: true, meta: { changes: 1 } }; }, async all(sql, parameters) { calls.push({ sql, parameters }); return { results: rows.shift() ?? [] }; } }; }
 const cat = (overrides = {}) => ({ id: 'cat_1', parent_id: null, slug: 'casas', name: 'Casas', description: null, active: 1, created_at: now, updated_at: now, ...overrides });
-const listing = (overrides = {}) => ({ id: 'lst_1', owner_id: 'usr_1', category_id: 'cat_1', slug: 'casa-central', title: 'Casa central', description: 'Descrição suficientemente longa.', listing_type: 'sale', status: 'draft', price_minor: 25000000, currency: 'BRL', country_code: 'BR', region: 'SP', city: 'Santos', district: null, address_line: null, postal_code: null, latitude: null, longitude: null, attributes_json: '{"bedrooms":3}', published_at: null, created_at: now, updated_at: now, ...overrides });
+const listing = (overrides = {}) => ({ id: 'lst_1', owner_id: 'usr_1', category_id: 'cat_1', city_id: 'city_00000000000000000000000000000000', slug: 'casa-central', title: 'Casa central', description: 'Descrição suficientemente longa.', listing_type: 'sale', status: 'draft', price_minor: 25000000, currency: 'BRL', country_code: 'BR', region: 'SP', city: 'Santos', district: null, address_line: null, postal_code: null, latitude: null, longitude: null, attributes_json: '{"bedrooms":3}', published_at: null, created_at: now, updated_at: now, ...overrides });
+const city = () => ({ id: 'city_00000000000000000000000000000000', country_code: 'BR', region_key: 'sp', city_key: 'santos', canonical_key: 'BR|sp|santos', public_name: 'Santos', slug: 'br-sp-santos-159c40e83898', canonicalization_version: 'unicode-17.0.0-v1' });
 const mediaRow = (overrides = {}) => ({ id: 'med_1', owner_id: 'usr_1', listing_id: null, r2_key: 'uploads/image/a.jpg', media_type: 'image', mime_type: 'image/jpeg', byte_size: 3, checksum_sha256: 'a'.repeat(64), width: 800, height: 600, alt_text: 'Fachada', sort_order: 0, created_at: now, ...overrides });
 const listingInput = { categoryId: 'cat_1', slug: 'casa-central', title: 'Casa central', description: 'Descrição suficientemente longa.', listingType: 'sale', priceMinor: 25000000, currency: 'BRL', location: { countryCode: 'BR', region: 'SP', city: 'Santos' }, attributes: { bedrooms: 3 } };
 
@@ -37,7 +38,7 @@ test('Categories updates, activates, deactivates and lists active values in dete
 });
 
 test('Listings creates a schema-compatible draft with safe integer money and ownership', async () => {
-  const db = database([null, listing()]); const bus = eventBus(); const service = createListings({ db, events: bus, logger, id: ids(), clock, validateCategory: async () => true, listMedia: async () => [] });
+  const db = database([null, null, city(), listing()]); const bus = eventBus(); const service = createListings({ db, events: bus, logger, id: ids(), clock, validateCategory: async () => true, listMedia: async () => [] });
   const result = await service.create(listingInput, { userId: 'usr_1' }); assert.equal(result.status, 'draft'); assert.equal(result.priceMinor, 25000000); assert.equal(result.ownerId, 'usr_1'); assert.equal(bus.published[0].name, 'ListingCreated');
   await assert.rejects(service.create({ ...listingInput, priceMinor: 1.5 }, { userId: 'usr_1' }), ListingsError);
 });
@@ -46,6 +47,26 @@ test('Listings validates category, protected fields, owner and parameterized upd
   const invalidCategory = createListings({ db: database(), events: eventBus(), logger, id: ids(), clock, validateCategory: async () => false, listMedia: async () => [] }); await assert.rejects(invalidCategory.create(listingInput, { userId: 'usr_1' }), (error) => error.code === 'INVALID_CATEGORY');
   const forbidden = createListings({ db: database([listing()]), events: eventBus(), logger, id: ids(), clock, validateCategory: async () => true, listMedia: async () => [] }); await assert.rejects(forbidden.update('lst_1', { title: 'Outra casa' }, { userId: 'usr_2' }), (error) => error.code === 'FORBIDDEN');
   const protectedService = createListings({ db: database([listing()]), events: eventBus(), logger, id: ids(), clock, validateCategory: async () => true, listMedia: async () => [] }); await assert.rejects(protectedService.update('lst_1', { status: 'draft' }, { userId: 'usr_1' }), (error) => error.code === 'PROTECTED_FIELD');
+});
+
+test('Listings rejects client cityId and does not resolve a city for unrelated updates', async () => {
+  const service = createListings({ db: database(), events: eventBus(), logger, id: ids(), clock, validateCategory: async () => true, listMedia: async () => [] });
+  await assert.rejects(service.create({ ...listingInput, cityId: 'city_client' }, { userId: 'usr_1' }), (error) => error.code === 'INVALID_LISTING');
+  const db = database([listing(), null, listing({ title: 'Casa renovada' })]); const updateService = createListings({ db, events: eventBus(), logger, id: ids(), clock, validateCategory: async () => true, listMedia: async () => [] });
+  await updateService.update('lst_1', { title: 'Casa renovada' }, { userId: 'usr_1' }); assert.equal(db.calls.some((call) => /FROM cities/.test(call.sql)), false); assert.equal(db.calls.find((call) => call.sql.startsWith('UPDATE listings')).parameters[1], listing().city_id);
+});
+
+test('Listings resolves location changes atomically in the listing update and fails closed on city version', async () => {
+  const canonical = { id: 'city_00000000000000000000000000000002', country_code: 'BR', region_key: 'sp', city_key: 'campinas', canonical_key: 'BR|sp|campinas', public_name: 'Campinas', slug: await createCitySlug('BR|sp|campinas'), canonicalization_version: 'unicode-17.0.0-v1' };
+  const changed = listing({ city_id: canonical.id, city: 'Campinas' }); const db = database([listing(), null, null, canonical, changed]); const bus = eventBus(); const service = createListings({ db, events: bus, logger, id: ids(), clock, validateCategory: async () => true, listMedia: async () => [] });
+  const result = await service.update('lst_1', { location: { city: 'Campinas' } }, { userId: 'usr_1' }); const update = db.calls.find((call) => call.sql.startsWith('UPDATE listings')); assert.equal(result.cityId, canonical.id); assert.equal(result.location.city, 'Campinas'); assert.equal(update.parameters[1], canonical.id); assert.equal(update.parameters[10], 'Campinas'); assert.deepEqual(bus.published.map((event) => event.name), ['ListingUpdated']); assert.equal(db.calls.some((call) => /publish|artifact|manifest/i.test(call.sql)), false);
+  const conflict = database([null, { ...canonical, canonical_key: 'BR|sp|santos', city_key: 'santos', canonicalization_version: 'unicode-16.0.0-v1' }]); const conflictingService = createListings({ db: conflict, events: eventBus(), logger, id: ids(), clock, validateCategory: async () => true, listMedia: async () => [] }); await assert.rejects(conflictingService.create(listingInput, { userId: 'usr_1' }), (error) => error.code === 'CITY_CONFLICT');
+});
+
+test('Listings recovers idempotently when listing creation fails after city initialization', async () => {
+  const cities = new Map(); const states = new Set(); let failListing = true; const calls = [];
+  const db = { calls, async all() { return { results: [] }; }, async first(sql, parameters) { calls.push({ sql, parameters }); if (/FROM cities/.test(sql)) return cities.get(parameters[0]) ?? null; if (/FROM city_publication_state/.test(sql)) return states.has(parameters[0]) ? { city_id: parameters[0] } : null; if (/FROM listings WHERE slug/.test(sql)) return null; if (/FROM listings WHERE id/.test(sql)) return listing({ city_id: [...cities.values()][0]?.id }); return null; }, async write(sql, parameters) { calls.push({ sql, parameters }); if (sql.startsWith('INSERT INTO cities')) { const row = { id: parameters[0], country_code: parameters[1], region_key: parameters[2], city_key: parameters[3], canonical_key: parameters[4], public_name: parameters[5], slug: parameters[6], canonicalization_version: parameters[7] }; if (cities.has(row.canonical_key)) throw new Error('unique'); cities.set(row.canonical_key, row); return { success: true }; } if (sql.startsWith('INSERT INTO city_publication_state')) { if (states.has(parameters[0])) throw new Error('unique'); states.add(parameters[0]); return { success: true }; } if (sql.startsWith('INSERT INTO listings') && failListing) { failListing = false; throw new Error('listing failed'); } return { success: true }; } };
+  const service = createListings({ db, events: eventBus(), logger, id: ids(), clock, validateCategory: async () => true, listMedia: async () => [] }); await assert.rejects(service.create(listingInput, { userId: 'usr_1' }), /listing failed/); assert.equal(cities.size, 1); assert.equal(states.size, 1); await service.create(listingInput, { userId: 'usr_1' }); assert.equal(cities.size, 1); assert.equal(states.size, 1); assert.equal(calls.filter((call) => call.sql.startsWith('INSERT INTO listings')).length, 2);
 });
 
 test('Listings enforces draft, pending, published, archived and deleted transitions only', async () => {

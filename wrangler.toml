@@ -8,6 +8,7 @@ compatibility_date = "2026-07-31"
 binding = "ACTS_DB"
 database_name = "acts-portal-development"
 database_id = "00000000-0000-0000-0000-000000000001"
+migrations_dir = "database/migrations"
 
 [[kv_namespaces]]
 binding = "ACTS_KV"
@@ -28,6 +29,7 @@ name = "acts-portal-development"
 binding = "ACTS_DB"
 database_name = "acts-portal-development"
 database_id = "00000000-0000-0000-0000-000000000001"
+migrations_dir = "database/migrations"
 
 [[env.development.kv_namespaces]]
 binding = "ACTS_KV"
@@ -48,6 +50,8 @@ name = "acts-portal-staging"
 binding = "ACTS_DB"
 database_name = "acts-portal-staging"
 database_id = "00000000-0000-0000-0000-000000000002"
+migrations_dir = "database/migrations"
+remote = true
 
 [[env.staging.kv_namespaces]]
 binding = "ACTS_KV"
@@ -68,6 +72,7 @@ name = "acts-portal-production"
 binding = "ACTS_DB"
 database_name = "acts-portal-production"
 database_id = "00000000-0000-0000-0000-000000000003"
+migrations_dir = "database/migrations"
 
 [[env.production.kv_namespaces]]
 binding = "ACTS_KV"

@@ -1,9 +1,38 @@
+import { caseFold } from 'unicode-case-folding';
+
 const STATES = Object.freeze(['draft', 'pending', 'published', 'archived', 'deleted']);
 const TYPES = new Set(['sale', 'rent']); const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/; const CURRENCY = /^[A-Z]{3}$/; const COUNTRY = /^[A-Z]{2}$/;
 export class ListingsError extends Error { constructor(code, message = 'Listing operation failed') { super(message); this.name = 'ListingsError'; this.code = code; } }
 const text = (value) => typeof value === 'string' ? value.trim() : '';
 const parse = (value) => { try { const result = JSON.parse(value ?? '{}'); return result && typeof result === 'object' && !Array.isArray(result) ? result : {}; } catch { return {}; } };
-function view(row) { return row && Object.freeze({ id: row.id, ownerId: row.owner_id, categoryId: row.category_id, slug: row.slug, title: row.title,
+export const CITY_CANONICALIZATION_VERSION = 'unicode-17.0.0-v1';
+const CITY_COMPONENT = /^[a-z0-9]+(?: [a-z0-9]+)*$/;
+export function canonicalizeCityLocation(input, version = CITY_CANONICALIZATION_VERSION) {
+  if (version !== CITY_CANONICALIZATION_VERSION) throw new ListingsError('UNKNOWN_CANONICALIZATION_VERSION');
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new ListingsError('INVALID_CITY');
+  const countryCode = input.countryCode;
+  if (typeof countryCode !== 'string' || !COUNTRY.test(countryCode)) throw new ListingsError('INVALID_CITY');
+  const canonicalize = (value, publicLimit) => {
+    if (typeof value !== 'string' || value.length < 1 || value.length > publicLimit || /\p{Cc}/u.test(value)) throw new ListingsError('INVALID_CITY');
+    const publicName = value.normalize('NFC').replace(/\s+/gu, ' ').trim();
+    let key = caseFold(publicName.normalize('NFKD').replace(/\p{M}/gu, ''));
+    key = key.replace(/[‐‑‒–—―−]/gu, '-').replace(/[’‘‛′`´]/gu, "'");
+    key = key.replace(/[\p{P}\p{Z}\s]+/gu, ' ').replace(/[^a-z0-9 ]+/g, ' ').replace(/ +/g, ' ').trim();
+    if (!publicName || publicName.length > publicLimit || !key || key.length > 80 || !CITY_COMPONENT.test(key)) throw new ListingsError('INVALID_CITY');
+    return { publicName, key };
+  };
+  const region = canonicalize(input.region, 120); const city = canonicalize(input.city, 120);
+  return Object.freeze({ countryCode, regionKey: region.key, cityKey: city.key, publicName: city.publicName,
+    canonicalKey: `${countryCode}|${region.key}|${city.key}`, canonicalizationVersion: version });
+}
+export async function createCitySlug(canonicalKey) {
+  if (typeof canonicalKey !== 'string' || canonicalKey.length < 5 || canonicalKey.length > 170) throw new ListingsError('INVALID_CITY');
+  const parts = canonicalKey.split('|'); if (parts.length !== 3 || !COUNTRY.test(parts[0]) || !CITY_COMPONENT.test(parts[1]) || !CITY_COMPONENT.test(parts[2])) throw new ListingsError('INVALID_CITY');
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalKey));
+  const suffix = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('').slice(0, 12);
+  const stem = parts.join('-').toLowerCase().replace(/ +/g, '-'); return `${stem.slice(0, 87 - suffix.length).replace(/-+$/g, '')}-${suffix}`;
+}
+function view(row) { return row && Object.freeze({ id: row.id, ownerId: row.owner_id, categoryId: row.category_id, cityId: row.city_id, slug: row.slug, title: row.title,
   description: row.description, listingType: row.listing_type, status: row.status, priceMinor: row.price_minor, currency: row.currency,
   location: Object.freeze({ countryCode: row.country_code, region: row.region, city: row.city, district: row.district, addressLine: row.address_line, postalCode: row.postal_code, latitude: row.latitude, longitude: row.longitude }),
   attributes: Object.freeze(parse(row.attributes_json)), publishedAt: row.published_at, createdAt: row.created_at, updatedAt: row.updated_at }); }
@@ -32,9 +61,22 @@ export function createListings(options) {
   const getById = async (listingId) => view(await db.first('SELECT * FROM listings WHERE id = ?', [listingId]));
   const owner = (item, context) => { if (!item) throw new ListingsError('NOT_FOUND'); if (!context?.userId || item.ownerId !== context.userId) throw new ListingsError('FORBIDDEN'); };
   async function validateData(input, exceptId = '') { const data = normalized(input); if (!await validateCategory(data.categoryId)) throw new ListingsError('INVALID_CATEGORY'); if (await db.first('SELECT id FROM listings WHERE slug = ? AND id <> ?', [data.slug, exceptId])) throw new ListingsError('SLUG_EXISTS'); return data; }
+  async function resolveCity(data) {
+    const canonical = canonicalizeCityLocation(data); const slug = await createCitySlug(canonical.canonicalKey);
+    let city = await db.first('SELECT * FROM cities WHERE canonical_key = ?', [canonical.canonicalKey]);
+    if (!city) {
+      const cityId = `city_${id()}`; const now = clock().toISOString();
+      try { await db.write('INSERT INTO cities (id, country_code, region_key, city_key, canonical_key, public_name, slug, canonicalization_version, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [cityId, canonical.countryCode, canonical.regionKey, canonical.cityKey, canonical.canonicalKey, canonical.publicName, slug, canonical.canonicalizationVersion, now, now]); }
+      catch { city = await db.first('SELECT * FROM cities WHERE canonical_key = ?', [canonical.canonicalKey]); if (!city) throw new ListingsError('CITY_CONFLICT'); }
+      city ??= await db.first('SELECT * FROM cities WHERE canonical_key = ?', [canonical.canonicalKey]);
+    }
+    if (!city || city.slug !== slug || city.canonicalization_version !== canonical.canonicalizationVersion || city.country_code !== canonical.countryCode || city.region_key !== canonical.regionKey || city.city_key !== canonical.cityKey) throw new ListingsError('CITY_CONFLICT');
+    try { await db.write("INSERT INTO city_publication_state (city_id, status) VALUES (?, 'idle')", [city.id]); } catch { if (!await db.first('SELECT city_id FROM city_publication_state WHERE city_id = ?', [city.id])) throw new ListingsError('CITY_CONFLICT'); }
+    return city.id;
+  }
   async function create(input, context = {}) {
-    if (!context.userId) throw new ListingsError('OWNER_REQUIRED'); validateShape(input); const data = await validateData(input); const listingId = `lst_${id()}`; const now = clock().toISOString();
-    await db.write('INSERT INTO listings (id, owner_id, category_id, slug, title, description, listing_type, status, price_minor, currency, country_code, region, city, district, address_line, postal_code, latitude, longitude, attributes_json, published_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [listingId, context.userId, data.categoryId, data.slug, data.title, data.description, data.listingType, 'draft', data.priceMinor, data.currency, data.countryCode, data.region, data.city, data.district, data.addressLine, data.postalCode, data.latitude, data.longitude, JSON.stringify(data.attributes), null, now, now]);
+    if (!context.userId) throw new ListingsError('OWNER_REQUIRED'); validateShape(input); const data = await validateData(input); const cityId = await resolveCity(data); const listingId = `lst_${id()}`; const now = clock().toISOString();
+    await db.write('INSERT INTO listings (id, owner_id, category_id, city_id, slug, title, description, listing_type, status, price_minor, currency, country_code, region, city, district, address_line, postal_code, latitude, longitude, attributes_json, published_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [listingId, context.userId, data.categoryId, cityId, data.slug, data.title, data.description, data.listingType, 'draft', data.priceMinor, data.currency, data.countryCode, data.region, data.city, data.district, data.addressLine, data.postalCode, data.latitude, data.longitude, JSON.stringify(data.attributes), null, now, now]);
     logger.info('Listing created', { operation: 'listings.create', status: 'completed', listingId }); await emit('ListingCreated', listingId, context); return getById(listingId);
   }
   async function update(listingId, input, context = {}) {
@@ -42,7 +84,9 @@ export function createListings(options) {
     const protectedFields = ['id', 'ownerId', 'status', 'publishedAt', 'createdAt', 'updatedAt']; if (protectedFields.some((key) => key in input)) throw new ListingsError('PROTECTED_FIELD');
     validateShape(input, true);
     const merged = { ...current, ...input, location: { ...current.location, ...(input.location ?? {}) }, attributes: input.attributes ?? current.attributes }; const data = await validateData(merged, listingId); const now = clock().toISOString();
-    await db.write('UPDATE listings SET category_id = ?, slug = ?, title = ?, description = ?, listing_type = ?, price_minor = ?, currency = ?, country_code = ?, region = ?, city = ?, district = ?, address_line = ?, postal_code = ?, latitude = ?, longitude = ?, attributes_json = ?, updated_at = ? WHERE id = ?', [data.categoryId, data.slug, data.title, data.description, data.listingType, data.priceMinor, data.currency, data.countryCode, data.region, data.city, data.district, data.addressLine, data.postalCode, data.latitude, data.longitude, JSON.stringify(data.attributes), now, listingId]);
+    const locationChanged = input.location !== undefined && (data.countryCode !== current.location.countryCode || data.region !== current.location.region || data.city !== current.location.city);
+    const cityId = locationChanged || !current.cityId ? await resolveCity(data) : current.cityId;
+    await db.write('UPDATE listings SET category_id = ?, city_id = ?, slug = ?, title = ?, description = ?, listing_type = ?, price_minor = ?, currency = ?, country_code = ?, region = ?, city = ?, district = ?, address_line = ?, postal_code = ?, latitude = ?, longitude = ?, attributes_json = ?, updated_at = ? WHERE id = ?', [data.categoryId, cityId, data.slug, data.title, data.description, data.listingType, data.priceMinor, data.currency, data.countryCode, data.region, data.city, data.district, data.addressLine, data.postalCode, data.latitude, data.longitude, JSON.stringify(data.attributes), now, listingId]);
     await emit('ListingUpdated', listingId, context); return getById(listingId);
   }
   async function transition(listingId, expected, target, eventName, context = {}) {

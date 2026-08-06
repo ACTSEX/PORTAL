@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { test } from 'node:test';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -193,10 +193,28 @@ test('snapshot and evolved database are structurally equivalent by SQLite pragma
   withDatabase(evolvedSchema, database => { assert.deepEqual(inventory(database), snapshotInventory); });
 });
 
-test('future files from lots 13B through 14 remain absent', () => {
-  for (const path of ['scripts/backfill-cities.js','tests/operations/city-backfill.test.js','database/migrations/0004_city_publication_contract.sql','app/modules/Publish.js','app/modules/Seo.js','app/components/Alert.js']) {
+test('13B operational files exist while future files from lots 13C through 14 remain absent', () => {
+  for (const path of ['scripts/backfill-cities.js','tests/operations/city-backfill.test.js']) assert.equal(spawnSync('test', ['-f', path]).status, 0, path);
+  for (const path of ['database/migrations/0004_city_publication_contract.sql','app/modules/Publish.js','app/modules/Seo.js','app/components/Alert.js']) {
     assert.notEqual(spawnSync('test', ['-e', path]).status, 0, path);
   }
+});
+
+test('Wrangler uses the official migration directory and applies it idempotently', { skip: Number(process.versions.node.split('.')[0]) < 22 }, () => {
+  const config = readFileSync('wrangler.toml', 'utf8');
+  assert.equal((config.match(/^migrations_dir = "database\/migrations"$/gm) ?? []).length, 4);
+  assert.deepEqual(execFileSync('find', ['database/migrations', '-maxdepth', '1', '-type', 'f', '-printf', '%f\n'], { encoding: 'utf8' }).trim().split('\n').sort(), [
+    '0001_initial_schema.sql', '0002_payment_event_ordering.sql', '0003_city_publication_state.sql'
+  ]);
+  const persistence = mkdtempSync(join(tmpdir(), 'acts-wrangler-migrations-'));
+  try {
+    const command = ['run', 'db:migrate:local', '--', '--persist-to', persistence];
+    const first = execFileSync('npm', command, { encoding: 'utf8' });
+    assert.match(first, /0001_initial_schema\.sql/); assert.match(first, /0002_payment_event_ordering\.sql/); assert.match(first, /0003_city_publication_state\.sql/); assert.doesNotMatch(first, /0004_/);
+    const retry = execFileSync('npm', command, { encoding: 'utf8' }); assert.match(retry, /No migrations to apply/);
+    const status = execFileSync('wrangler', ['d1', 'migrations', 'list', 'ACTS_DB', '--local', '--env', 'development', '--persist-to', persistence], { encoding: 'utf8' });
+    assert.match(status, /No migrations to apply/); assert.doesNotMatch(status, /ignored|0004_/i);
+  } finally { rmSync(persistence, { recursive: true, force: true }); }
 });
 
 test('payment ordering migration evolves an existing database to the canonical snapshot', () => {
