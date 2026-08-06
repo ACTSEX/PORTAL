@@ -387,3 +387,27 @@ A futura função pública de domínio em `app/modules/Listings.js` será a úni
 `cities.id` é opaco, aleatório e estável no banco, nunca derivado de nome, slug ou chave. Retry reutiliza a cidade encontrada por `canonical_key`; IDs não precisam coincidir entre bancos independentes. Clean install e evolução são estrutural e semanticamente equivalentes: chaves/slugs determinísticos e referências internas consistentes, sem igualdade literal de IDs aleatórios.
 
 Depois da contração, `database/schema.sql` representa diretamente o estado final com `city_id NOT NULL`. Instalação limpa não roda backfill desnecessário: nasce no schema final e toda nova escrita usa o contrato canônico, enquanto a evolução chega ao mesmo estado por `0001 → 0002 → 0003 → backfill → 0004`.
+
+## Lote 13A implementado — contrato canônico executável e expansão transitória (2026-08-06)
+
+### Normalização `unicode-17.0.0-v1`
+
+`canonicalization_version` tem formato `unicode-<major>.<minor>.<patch>-v<contrato>` e valor inicial obrigatório **`unicode-17.0.0-v1`**. Cada `cities` persiste a versão que produziu suas chaves e slug; um backfill inteiro fixa uma única versão antes de começar, checkpoints e retries a repetem, e misturar versões aborta a execução. `Listings.js` e o executor 13B deverão chamar a mesma implementação pública. Troca de versão exige decisão e migration próprias; função e tabela de transliteração nunca são armazenadas no D1.
+
+“Casefold C+F” significa os mappings **C (Common) e F (Full)** do arquivo oficial versionado Unicode 17.0.0 `CaseFolding.txt`, sem S (Simple) nem T (Turkic), obtido de `https://www.unicode.org/Public/17.0.0/ucd/CaseFolding.txt`. É Default Case Folding completo, independente de locale, inclusive expansões de um code point para vários (`ß` → `ss`). `toLowerCase()` não implementa esse contrato.
+
+A implementação JavaScript do 13B deverá percorrer code points e aplicar tabela/pacote imutável derivado daquela fonte. A escolha fica bloqueada até auditoria de licença Unicode, tamanho, integridade e compatibilidade Workers/Node; nenhuma dependência entra no 13A e o backfill não pode iniciar sem a decisão. Ordem exata: (1) validar e limitar a entrada a 120 code points; (2) NFKD; (3) remover categorias `M` (`Mn`, `Mc`, `Me`); (4) aplicar C+F 17.0.0; (5) converter Unicode `White_Space`, dash punctuation e apóstrofos em U+0020; (6) converter pontuação restante em U+0020; (7) rejeitar resultado fora de ASCII `a-z`, `0-9` e espaço; (8) colapsar/aparar espaços; (9) exigir 1–80 bytes ASCII. `public_name` colapsa `White_Space`, aplica NFC e exige 1–120 code points. NUL, controles, bidi controls, surrogate isolado e não atribuído são rejeitados. `CC|region_key|city_key` exige 5–170 bytes.
+
+Vetores obrigatórios do 13B: `Straße` → `strasse`; `İ` → `i`; `Σ`, `σ` e `ς` → `σ` antes da rejeição ASCII; `ﬀ` → `ff`; `CAFÉ` e `Cafe\u0301` → `cafe`; whitespace, hífens e apóstrofos Unicode são separados; controles, não atribuído, vazio, entrada >120 code points e saída >80 bytes são rejeitados. O vetor grego prova que casefold precede a allowlist ASCII, sem fallback.
+
+### Slug determinístico v1
+
+`city-slug-v1` recebe somente a `canonical_key`, separa `CC|region_key|city_key`, troca espaços por hífens e monta `lower(CC)-region-city`. Reserva 13 caracteres, trunca a base a no máximo 87 bytes ASCII, apara hífens e sempre acrescenta `-` mais os primeiros 12 hexadecimais minúsculos do SHA-256 dos bytes UTF-8 exatos da `canonical_key`. A saída satisfaz `[a-z0-9-]{1,100}`. O sufixo sempre presente torna clean install, evolução, retry e ordem invertida idênticos, sem ID, `randomblob` ou ordem. Colisão do digest truncado é rejeitada pela UNIQUE. Após persistência/publicação o slug é imutável; colisão posterior não renomeia cidade existente.
+
+Vetores obrigatórios: `BR|parana|primavera` e `BR|sao paulo|primavera` produzem bases distintas; chaves distintas com transliteração visual igual recebem hashes distintos; NFC/NFD equivalentes produzem a mesma chave/slug; retry e ordem invertida repetem bytes; nova colisão após publicação preserva o slug anterior. Entradas que virem a mesma `canonical_key` são a mesma identidade, reutilizadas ou marcadas ambíguas.
+
+### Estado instalado pela `0003`
+
+`cities` contém ID opaco sem default derivado, país, chaves, chave canônica e slug únicos, nome público, versão, atividade e timestamps; `(country_code, region_key, city_key)` é único. `listings.city_id` foi acrescentado sem reconstrução, aceita `NULL` somente no 13A, referencia `cities(id) ON DELETE RESTRICT` e possui índice `(city_id,status)`; todo contrato anterior permanece. Nenhuma linha é preenchida.
+
+`city_publication_state`, separado de `publication_jobs`, tem PK/FK por cidade `ON DELETE CASCADE`, versões iniciais `0/1`, artifact path/digest pareados, estado allowlist, lease/expiração pareados, tentativas, código de erro normalizado, revisão, última publicação e timestamps. A migration não cria linha, job, artefato ou manifest. O 13A não usa Queue, KV, R2 ou Publisher. Staging D1 representativo, backup/restore e compatibilidade D1 continuam gates; SQLite local não os substitui.

@@ -10,7 +10,7 @@
 
 ## 2. Contagem real
 
-A árvore possui **104 arquivos após o commit do lote: 40 documentos e 64 não documentais**. Existem 2 migrations e 13 suítes de teste. A contagem inclui os quatro caminhos novos deste lote e não inclui `.git` nem caminhos planejados.
+A árvore possui **105 arquivos após o commit do lote: 40 documentos e 64 não documentais**. Existem 3 migrations e 13 suítes de teste. A contagem inclui os quatro caminhos novos deste lote e não inclui `.git` nem caminhos planejados.
 
 ## 3. Caminhos existentes
 
@@ -174,13 +174,13 @@ A árvore possui **104 arquivos após o commit do lote: 40 documentos e 64 não 
 - `tests/modules/publishing-seo.test.js` [P]
 - `tests/operations/city-backfill.test.js` [P]
 - `scripts/backfill-cities.js` [P]
-- `database/migrations/0003_city_publication_state.sql` [P]
+- `database/migrations/0003_city_publication_state.sql` [E]
 - `database/migrations/0004_city_publication_contract.sql` [P]
 - `tests/rendering/layouts-templates.test.js` [P]
 - `tests/security/security.test.js` [P]
 - `tests/site/public-frontend.test.js` [P]
 
-Não estão autorizados `app/modules/AI.js`, `tests/modules/management-intelligence.test.js`, qualquer provider/Queue/prompt storage de IA, `database/migrations/0003_ai_governance.sql` ou `docs/ADR/`. A correção do Lote 13 autorizou `database/migrations/0003_city_publication_state.sql` para expansão, `scripts/backfill-cities.js` e seu teste para backfill e `database/migrations/0004_city_publication_contract.sql` para contração, todos somente como caminhos futuros [P]; nenhum existe. Também ficam autorizadas no Lote 13 apenas atualizações dos caminhos existentes `app/core/publish.js` e `tests/core/render-publish-app.test.js` quando necessárias para artefatos SEO técnicos/genéricos.
+Não estão autorizados `app/modules/AI.js`, `tests/modules/management-intelligence.test.js`, qualquer provider/Queue/prompt storage de IA, `database/migrations/0003_ai_governance.sql` ou `docs/ADR/`. A correção do Lote 13 autorizou `database/migrations/0003_city_publication_state.sql` para expansão, `scripts/backfill-cities.js` e seu teste para backfill e `database/migrations/0004_city_publication_contract.sql` para contração, separados por fase; somente a expansão `0003` agora existe [E], enquanto os demais continuam futuros [P]. Também ficam autorizadas no Lote 13 apenas atualizações dos caminhos existentes `app/core/publish.js` e `tests/core/render-publish-app.test.js` quando necessárias para artefatos SEO técnicos/genéricos.
 
 ## 5. Inventário por lote
 
@@ -199,7 +199,7 @@ Não estão autorizados `app/modules/AI.js`, `tests/modules/management-intellige
 | 10 | [E] `app/modules/Contacts.js`, `Leads.js`, `Reviews.js`, `Notifications.js`; `tests/modules/relationship.test.js`. |
 | 11 | [E] `app/modules/Payments.js`, `Integrations.js`, `app/gateways/Asaas.js`, `database/migrations/0002_payment_event_ordering.sql`, atualização [E] de `database/schema.sql` e `tests/database/schema-migrations.test.js`; [E] `tests/modules/payments-integrations.test.js`, `tests/gateways/asaas.contract.test.js`. |
 | 12 | [E] `app/modules/Dashboard.js`, `Analytics.js`, `Reports.js`; `tests/modules/management.test.js`. |
-| 13A | [P] expansão `database/migrations/0003_city_publication_state.sql`; atualiza [E] `database/schema.sql` e `tests/database/schema-migrations.test.js`. |
+| 13A | [E] expansão `database/migrations/0003_city_publication_state.sql`; atualiza [E] `database/schema.sql` e `tests/database/schema-migrations.test.js`. |
 | 13B | [P] `scripts/backfill-cities.js`, `tests/operations/city-backfill.test.js`; atualiza [E] `app/modules/Listings.js` com a única função canônica pública. |
 | 13C | [P] contração `database/migrations/0004_city_publication_contract.sql`; atualiza [E] `database/schema.sql` e `tests/database/schema-migrations.test.js`. |
 | 13D | [P] `app/modules/Publish.js`, `Seo.js`, `tests/modules/publishing-seo.test.js`; atualizações condicionais [E] de `app/core/publish.js` e `tests/core/render-publish-app.test.js`. |

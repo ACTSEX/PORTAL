@@ -70,9 +70,9 @@ test("Arquitetura: módulos são isolados, injetados e não usam recursos proibi
     assert.match(source, /export function create/);
   }
 });
-test("Arquitetura: nenhuma migration, AI.js ou recurso do Lote 13 foi criado", async () => {
+test("Arquitetura: somente a expansão 13A existe e recursos futuros permanecem ausentes", async () => {
   const migrations = await readdir(new URL("../../database/migrations/", import.meta.url));
   const modules = await readdir(new URL("../../app/modules/", import.meta.url));
-  assert.deepEqual(migrations.sort(), ["0001_initial_schema.sql", "0002_payment_event_ordering.sql"]);
+  assert.deepEqual(migrations.sort(), ["0001_initial_schema.sql", "0002_payment_event_ordering.sql", "0003_city_publication_state.sql"]);
   assert.equal(modules.includes("AI.js"), false); assert.equal(modules.includes("Publish.js"), false); assert.equal(modules.includes("Seo.js"), false);
 });

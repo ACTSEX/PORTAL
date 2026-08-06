@@ -364,3 +364,10 @@ Nenhuma.
 - Foi preparada a fronteira backend de pacote explícito: quantidade/tamanho, autorização injetada, idempotência/cota persistidas, limite inicial de cinco ciclos por usuário/dia e erro público seguro. A adaptação HTTP e a interface do painel continuam nos lotes futuros.
 - Testes existentes dos Lotes 2, 3 e 5 cobrem Queue, agregação, catálogo sem PII, R2/manifest, falhas, idempotência, rollback e cota. Não foi criada migration: `publication_jobs` e `idempotency_records` já oferecem a persistência necessária aos módulos consumidores.
 - Riscos residuais operacionais — domínio R2, Cache Rules, consumer implantado, retries finais e staging — permanecem para validação operacional do Lote 18. O Lote 10 não foi iniciado e continua bloqueado até merge/aprovação deste lote.
+
+## 2026-08-06 — Lote 13A: expansão segura de cidade
+
+- Criada `0003_city_publication_state.sql` com `cities`, `listings.city_id` anulável e `city_publication_state`, sem backfill, contração ou publicação.
+- Snapshot e testes SQLite cobrem instalação limpa, evolução e preservação de banco preenchido e do contrato anterior de `listings`.
+- Fixados CaseFolding 17.0.0 C+F, `unicode-17.0.0-v1` e `city-slug-v1`; implementação/auditoria permanecem no 13B.
+- 13B, 13C, 13D e 14 não foram iniciados; validação D1/restore em staging continua obrigatória.
