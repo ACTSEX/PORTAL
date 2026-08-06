@@ -189,7 +189,7 @@ Progresso usa fatos do cliente ou estados confirmados pelo backend: preparando, 
 
 ## Runbook autorizado — backfill de cidades do Lote 13 (2026-08-06)
 
-O único caminho oficial futuro é `[P] scripts/backfill-cities.js`, responsabilidade JavaScript operacional distinta; seu teste é `[P] tests/operations/city-backfill.test.js`. Não é Core, módulo de publicação, `Seo.js` ou migration. O executor recebe ambiente em allowlist e o binding D1 pelo Wrangler, rejeita produção no 13B, usa apenas statements parametrizados e a função canônica pública de `Listings.js`, e nunca contém credenciais.
+O caminho oficial implementado é `[E] scripts/backfill-cities.js`, responsabilidade JavaScript operacional distinta; seu teste é `[E] tests/operations/city-backfill.test.js`. Não é Core, módulo de publicação, `Seo.js` ou migration. O executor recebe ambiente em allowlist e o binding D1 pelo Wrangler, rejeita produção no 13B, usa apenas statements parametrizados e a função canônica pública de `Listings.js`, e nunca contém credenciais.
 
 ### Execução e retomada
 
@@ -211,7 +211,7 @@ A expansão não autoriza backfill. Antes do 13B devem ser aprovadas implementa�
 
 ## Contrato executável do Lote 13B — decisão documental (2026-08-06)
 
-Esta decisão remove exclusivamente o bloqueio documental da fronteira operacional. O 13B continua não implementado; não há script, teste, migration, schema, módulo ou configuração entregue por esta decisão. 13C, 13D e 14 continuam bloqueados.
+O contrato foi implementado no 13B. A evidência local não substitui staging: dry-run remoto, backup/restore e execução real controlada continuam pendentes. 13C, 13D e 14 continuam bloqueados.
 
 ### Binding D1 pelo Wrangler
 
@@ -269,7 +269,7 @@ Criação concorrente de cidade converge pelas constraints `UNIQUE`, seguida obr
 
 ### Novas escritas e relatório
 
-No 13B, `Listings.js` passará a resolver e persistir `city_id` em criação e mudança de localização, manterá os textos durante a transição, rejeitará `cityId` do cliente e compartilhará sua única função canônica pública com o executor. Nenhuma publicação será solicitada. Escritas concorrentes anteriores à ativação seguem elegíveis por `city_id IS NULL`.
+No 13B, `Listings.js` resolve e persiste `city_id` em criação e mudança de localização, mantém os textos durante a transição, rejeita `cityId` do cliente e compartilha sua única função canônica pública com o executor. Nenhuma publicação é solicitada. Escritas concorrentes anteriores à ativação seguem elegíveis por `city_id IS NULL`.
 
 O relatório é evidência, não checkpoint. Pode conter somente `runId` efêmero, modo, ambiente allowlist, versão canônica, passagens, lotes, analisadas, vinculadas, cidades criadas/reutilizadas, retries, conflitos, rejeições, pendentes finais, status e duração. Não contém localização textual, nome de cidade, conteúdo de listing ou PII.
 
@@ -279,4 +279,6 @@ Antes do primeiro `--execute` remoto: confirmar versão instalada do Wrangler e 
 
 ### Estado atual e alteração de configuração futura
 
-Na decisão documental, nenhum binding D1 possui `remote = true`; logo `getPlatformProxy({ remoteBindings: true })` ainda não seleciona um D1 remoto. Staging e production já possuem identificadores distintos, sem registrá-los em documentação ou logs. A implementação do 13B deverá alterar `wrangler.toml`: development permanece local, staging recebe `remote = true` exclusivamente em `ACTS_DB`, e production permanece não selecionável pelo executor. Essa alteração futura é parte do 13B, não desta PR documental.
+O binding `ACTS_DB` de staging possui `remote = true`; development permanece local, staging e production possuem identificadores distintos e production permanece não selecionável pelo executor. A execução real de staging não foi feita nesta entrega e continua pendente.
+
+Todos os bindings D1, inclusive o binding raiz e as repetições de development, staging e production, declaram `migrations_dir = "database/migrations"`. Wrangler 4.118.0 resolve esse caminho relativamente ao `wrangler.toml`; por isso `npm run db:migrate:local` encontra exatamente `0001`, `0002` e `0003`. A ausência anterior da propriedade fazia o Wrangler procurar o default `migrations/`, que não pertence à árvore oficial. As migrations não são movidas nem duplicadas.

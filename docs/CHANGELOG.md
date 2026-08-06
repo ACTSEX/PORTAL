@@ -1,3 +1,12 @@
+## 2026-08-06 — Lote 13B: backfill operacional de cidades
+
+- Implementados canonicalização `unicode-17.0.0-v1`, slug geográfico com SHA-256, resolução de cidade nas escritas de Listings e executor D1 local/staging com dry-run padrão, paginação keyset e retomada sem checkpoint.
+- A dependência `unicode-case-folding` 1.1.1 (MIT) foi conferida contra todas as 1.585 entradas Common + Full do `CaseFolding-17.0.0.txt`; não usa rede nem scripts de instalação e é compatível com Node e Workers.
+- SQLite real e D1 local comprovaram constraints, criação/reuso, lotes, concorrência fail-closed, retry e segunda execução inerte. Nenhuma publicação foi solicitada.
+- A implementação local do 13B está concluída, mas o lote ainda não foi aceito operacionalmente: staging real não recebeu escrita e continua pendente com backup/restore e gates remotos; o Lote 13 integral, 13C, 13D e 14 permanecem incompletos/bloqueados.
+- Todos os bindings D1 usam `migrations_dir = "database/migrations"`; o comando oficial local encontra somente `0001`–`0003` e sua segunda execução não reaplica migrations.
+- Antes do `npm ci` obrigatório foram auditados os únicos lifecycle scripts do lockfile: `esbuild` e `workerd` validam/instalam seus binários opcionais específicos da plataforma, e `fsevents` é opcional e restrito a Darwin. `unicode-case-folding` não possui lifecycle script nem dependências.
+
 ## 2026-08-06 — correção documental da preparação do Lote 13
 
 - A prova técnica no SQLite/D1 confirmou ausência de `normalize()`, NFC/NFKD, remoção Unicode geral de marcas, casefold equivalente ao JavaScript e `sha256()` nativo; `lower()` é essencialmente ASCII, NFC e NFD não convergem, SQL não executa JavaScript e `replace()` parcial não cumpre o contrato Unicode.

@@ -20,10 +20,14 @@
     "db:migrate:local": "wrangler d1 migrations apply ACTS_DB --local --env development",
     "db:migrate:staging": "wrangler d1 migrations apply ACTS_DB --remote --env staging",
     "db:migrate:production": "wrangler d1 migrations apply ACTS_DB --remote --env production",
+    "city:backfill": "node scripts/backfill-cities.js",
     "deploy:staging": "wrangler pages deploy site --project-name acts-portal-staging --branch staging",
     "deploy:production": "wrangler pages deploy site --project-name acts-portal-production --branch main"
   },
   "devDependencies": {
     "wrangler": "4.118.0"
+  },
+  "dependencies": {
+    "unicode-case-folding": "1.1.1"
   }
 }
