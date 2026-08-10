@@ -405,3 +405,14 @@ Nenhuma.
 - Exigidas distinção física staging/production, validações fail-closed da combinação e backup/restore antes de escrita; proxy incompatível não admite fallback.
 - Autorizadas futuramente no 13B apenas as atualizações de `wrangler.toml` para staging remoto, `package.json` para `city:backfill`/dependência Unicode aprovada e `package-lock.json` correspondente.
 - Esta correção permanece exclusivamente documental; nenhuma configuração foi alterada e os lotes seguintes continuam bloqueados.
+
+## 2026-08-10 — Etapa 3/7: reconstrução do ROADMAP oficial
+
+- Reorganizado o plano de implementação sobre a arquitetura oficial STANDARD/PREMIUM, sem criar plano FREE e separando condição comercial de plano estrutural.
+- Preservados o histórico e as fundações dos Lotes 1–13B; 7, 8, 9 e 11 passam a ter adequações futuras explícitas, sem serem classificados como incorretos ou refeitos.
+- Mantido o 13B como tecnicamente implementado, porém operacionalmente pendente do gate D1 remoto/staging, backup/restore e evidência idempotente.
+- Reavaliado o 13C para que validação e contração de `city_id` permaneçam relevantes sem cristalizar o domínio imobiliário legado.
+- Criados os blocos futuros 13E (produto, planos e domínio), 13F (JSON individual, catálogo leve, minisite e Blogger client-side) e 13G (impulsionamentos e pagamentos avulsos).
+- Adiado o 13D de Publish/SEO final até a conclusão das adequações de produto, contratos públicos, minisite, prova Blogger e decisões comerciais/SEO.
+- Redistribuídos testes, gates, dependências, decisões pendentes, painel/superadmin, frontend e aceite transversal do Lote 18.
+- Alteração exclusivamente documental: nenhum código, schema, migration, banco ou `docs/TREE.md` foi alterado; nenhum lote posterior foi iniciado.
