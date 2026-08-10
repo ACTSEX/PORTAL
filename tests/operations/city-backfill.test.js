@@ -39,10 +39,25 @@ test('canonicalization rejects controls, limits, empty result and unknown versio
   for (const city of ['A\u0000B', 'x'.repeat(121), '---']) assert.throws(() => canonicalizeCityLocation({ countryCode: 'BR', region: 'SP', city }), ListingsError);
   assert.throws(() => canonicalizeCityLocation({ countryCode: 'BR', region: 'SP', city: 'Santos' }, 'unicode-16.0.0-v1'), (error) => error.code === 'UNKNOWN_CANONICALIZATION_VERSION');
 });
+test('canonicalization rejects unsupported scripts, symbols and contaminated valid-looking keys', () => {
+  for (const city of ['Αθήνα', 'Nova 🏙️', 'San東京tos', 'Santos💥']) {
+    assert.throws(() => canonicalizeCityLocation({ countryCode: 'BR', region: 'SP', city }), (error) => error.code === 'INVALID_CITY');
+  }
+  assert.equal(canonicalizeCityLocation({ countryCode: 'BR', region: 'Paraná', city: 'São José' }).canonicalKey, 'BR|parana|sao jose');
+  assert.equal(canonicalizeCityLocation({ countryCode: 'DE', region: 'Test', city: 'Straße' }).cityKey, 'strasse');
+});
 test('city-slug-v1 uses canonical geography and first 12 SHA-256 hex digits', async () => {
   assert.equal(await createCitySlug('BR|parana|londrina'), 'br-parana-londrina-5d5b845b907c');
   assert.notEqual(await createCitySlug('BR|parana|santa maria'), await createCitySlug('BR|rio grande do sul|santa maria'));
   assert.equal(await createCitySlug('BR|parana|londrina'), await createCitySlug('BR|parana|londrina'));
+});
+test('city-slug-v1 reserves an 87-character stem and never exceeds 100 characters', async () => {
+  const canonicalKey = `BR|${'a'.repeat(80)}|${'b'.repeat(80)}`;
+  const slug = await createCitySlug(canonicalKey);
+  assert.equal(slug.slice(0, 87), `br-${'a'.repeat(80)}-${'b'.repeat(3)}`);
+  assert.equal(slug.length, 100);
+  assert.equal(slug, await createCitySlug(canonicalKey));
+  assert.notEqual(slug, await createCitySlug(`BR|${'a'.repeat(79)}c|${'b'.repeat(80)}`));
 });
 test('dry-run scans real SQLite without any write or timestamp change and exposes only allowlisted metrics', async () => {
   const f = fixture(); try { listing(f.file, 'listing-00000001'); const before = scalar(f.file, "SELECT total_changes()||'|'||updated_at FROM listings;"); const report = await backfillCities(f.db); assert.equal(report.mode, 'dry-run'); assert.equal(report.remaining, 1); assert.equal(scalar(f.file, 'SELECT count(*) FROM cities;'), '0'); assert.equal(scalar(f.file, 'SELECT count(*) FROM city_publication_state;'), '0'); assert.equal(scalar(f.file, "SELECT total_changes()||'|'||updated_at FROM listings;"), before); assert.doesNotMatch(JSON.stringify(report), /Londrina|Paraná|listing-/); } finally { f.close(); }

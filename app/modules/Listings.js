@@ -13,12 +13,14 @@ export function canonicalizeCityLocation(input, version = CITY_CANONICALIZATION_
   const countryCode = input.countryCode;
   if (typeof countryCode !== 'string' || !COUNTRY.test(countryCode)) throw new ListingsError('INVALID_CITY');
   const canonicalize = (value, publicLimit) => {
-    if (typeof value !== 'string' || value.length < 1 || value.length > publicLimit || /\p{Cc}/u.test(value)) throw new ListingsError('INVALID_CITY');
+    if (typeof value !== 'string' || [...value].length < 1 || [...value].length > publicLimit || /[\p{Cc}\p{Cs}\p{Cn}\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/u.test(value)) throw new ListingsError('INVALID_CITY');
     const publicName = value.normalize('NFC').replace(/\s+/gu, ' ').trim();
     let key = caseFold(publicName.normalize('NFKD').replace(/\p{M}/gu, ''));
     key = key.replace(/[‐‑‒–—―−]/gu, '-').replace(/[’‘‛′`´]/gu, "'");
-    key = key.replace(/[\p{P}\p{Z}\s]+/gu, ' ').replace(/[^a-z0-9 ]+/g, ' ').replace(/ +/g, ' ').trim();
-    if (!publicName || publicName.length > publicLimit || !key || key.length > 80 || !CITY_COMPONENT.test(key)) throw new ListingsError('INVALID_CITY');
+    key = key.replace(/[\p{P}\p{Z}\s]+/gu, ' ');
+    if (/[^a-z0-9 ]/u.test(key)) throw new ListingsError('INVALID_CITY');
+    key = key.replace(/ +/g, ' ').trim();
+    if (!publicName || [...publicName].length > publicLimit || !key || key.length > 80 || !CITY_COMPONENT.test(key)) throw new ListingsError('INVALID_CITY');
     return { publicName, key };
   };
   const region = canonicalize(input.region, 120); const city = canonicalize(input.city, 120);
@@ -30,7 +32,7 @@ export async function createCitySlug(canonicalKey) {
   const parts = canonicalKey.split('|'); if (parts.length !== 3 || !COUNTRY.test(parts[0]) || !CITY_COMPONENT.test(parts[1]) || !CITY_COMPONENT.test(parts[2])) throw new ListingsError('INVALID_CITY');
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalKey));
   const suffix = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('').slice(0, 12);
-  const stem = parts.join('-').toLowerCase().replace(/ +/g, '-'); return `${stem.slice(0, 87 - suffix.length).replace(/-+$/g, '')}-${suffix}`;
+  const stem = parts.join('-').toLowerCase().replace(/ +/g, '-'); return `${stem.slice(0, 87).replace(/-+$/g, '')}-${suffix}`;
 }
 function view(row) { return row && Object.freeze({ id: row.id, ownerId: row.owner_id, categoryId: row.category_id, cityId: row.city_id, slug: row.slug, title: row.title,
   description: row.description, listingType: row.listing_type, status: row.status, priceMinor: row.price_minor, currency: row.currency,
@@ -71,6 +73,7 @@ export function createListings(options) {
       city ??= await db.first('SELECT * FROM cities WHERE canonical_key = ?', [canonical.canonicalKey]);
     }
     if (!city || city.slug !== slug || city.canonicalization_version !== canonical.canonicalizationVersion || city.country_code !== canonical.countryCode || city.region_key !== canonical.regionKey || city.city_key !== canonical.cityKey) throw new ListingsError('CITY_CONFLICT');
+    if (city.active !== 1) throw new ListingsError('INACTIVE_CITY');
     try { await db.write("INSERT INTO city_publication_state (city_id, status) VALUES (?, 'idle')", [city.id]); } catch { if (!await db.first('SELECT city_id FROM city_publication_state WHERE city_id = ?', [city.id])) throw new ListingsError('CITY_CONFLICT'); }
     return city.id;
   }
