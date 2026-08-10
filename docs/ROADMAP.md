@@ -1,280 +1,321 @@
 # ACTS Portal — Plano mestre de implantação
 
-**Versão:** 1.1
+**Versão:** 2.0
 **Status:** Oficial
+**Arquitetura de referência:** Etapa 2/7, formalizada em 2026-08-10
 **Unidade de avanço:** lote funcional
 
-## 1. Governança
-
-O ROADMAP controla a ordem do projeto por lotes funcionais. Vários arquivos do mesmo lote podem ser implementados, testados, commitados e revisados na mesma PR; cada arquivo conserva sua responsabilidade individual. Um lote só começa depois que o anterior estiver implementado, testado, revisado, aprovado e mesclado na `main`.
-
-Um lote pode ser dividido em A, B ou C quando a revisão deixar de ser segura. Limite inicial recomendado por PR: até 20 arquivos alterados, aproximadamente 2.000 linhas líquidas de implementação, uma fronteira funcional, testes do lote incluídos e nenhuma refatoração alheia. Complexidade pode reduzir esse limite.
-
-São proibidos placeholders, arquivos vazios, TODOs substitutivos, pastas vazias, antecipação de lote futuro, arquivos fora do `TREE.md`, regra de negócio ou SQL de domínio no Core, regra comercial em Pages Functions e consulta pública direta ao D1. Testes acompanham seus lotes; o Lote 18 completa apenas validações transversais.
-
-**Definição de concluído comum (DoD):** todos os arquivos do lote completos; testes próprios aprovados; revisão e critérios específicos satisfeitos; documentação/contratos atualizados; nenhum segredo ou pendência; PR aprovada e mergeada na `main`. Só então o lote indicado como seguinte fica desbloqueado.
-
-## 2. Matriz executiva
-
-| Lote/PR | Fronteira | Arquivos estimados | Depende de | Desbloqueia |
-|---|---|---:|---|---|
-| 1 | Raiz e Cloudflare | 6 | Lote 0 documental | 2 |
-| 2 | Fundação/observabilidade | 4 | 1 | 3 |
-| 3 | Eventos/persistência | 5 | 2 | 4 |
-| 4 | Segurança/roteamento | 3 | 3 | 5 |
-| 5 | Render/publicação/composição | 4 | 4 | 6 |
-| 6 | Banco e schemas | 10 | 5 | 7 |
-| 7 | Identidade/assinaturas | 6 | 6 | 8 |
-| 8 | Catálogo/mídia | 5 | 7 | 9 |
-| 9 | Descoberta/navegação | 6 | 8 | 9A |
-| 9A | Adequação da Arquitetura 2.0 | Ajustes em caminhos existentes | 9 | 10 |
-| 10 | Relacionamento | 5 | 9A | 11 |
-| 11 | Pagamentos/integrações | 5 | 10 | 12 |
-| 12 | Gestão | 5 | 11 | 13 |
-| 13 | Publicação/SEO | 3 | 12 | 14A |
-| 14A | Componentes básicos | 7 | 13 | 14B |
-| 14B | Componentes compostos | 7 | 14A | 15 |
-| 15 | Layouts/templates | 11 | 14B | 16A |
-| 16A | Middleware e APIs | 9 | 15 | 16B |
-| 16B | Painel/jobs/webhook | 7 | 16A | 17 |
-| 17 | Frontend público | 10 | 16B | 18 |
-| 18 | Aceite transversal | 4 novos + ajustes necessários | 17 | produção aceita |
-
-Contagens incluem testes novos do lote e excluem ajustes documentais ocasionais. O lockfile conta como arquivo do Lote 1. Sublotes 14 e 16 mantêm uma fronteira de revisão segura; o Lote 15 permanece abaixo de 20 arquivos e não precisa divisão inicial.
-
-## 3. Lotes detalhados
-
-### LOTE 1 — Raiz e ambiente Cloudflare
-
-- **Objetivo:** tornar build, teste e desenvolvimento reproduzíveis e declarar bindings/ambientes Cloudflare.
-- **Arquivos e responsabilidades:** `.gitignore` (exclusões); `LICENSE` (licença); `README.md` (uso do repositório); `package.json` (ESM, engines, dependências e scripts de dev/build/lint/test/migration/deploy); `package-lock.json` (resolução imutável); `wrangler.toml` (Pages, D1, KV, R2, Queue e ambientes, sem segredos).
-- **Dependências:** plano documental aprovado; nomes reais dos recursos Cloudflare confirmados antes do merge.
-- **Testes/checks:** instalação limpa; scripts de lint/test/build; `wrangler` valida configuração nos três ambientes.
-- **Aceite:** nenhum segredo; lockfile corresponde ao manifesto; execução local documentada; bindings separados por ambiente.
-- **Riscos:** bindings incorretos e dependências incompatíveis com Workers.
-- **DoD/desbloqueio:** DoD comum e toolchain reproduzível; desbloqueia Lote 2.
-
-### LOTE 2 — Core: fundação e observabilidade
-
-- **Objetivo:** fornecer configuração, utilitários puros e logging seguro.
-- **Arquivos:** `app/core/config.js` (config/bindings); `app/core/helpers.js` (utilitários técnicos); `app/core/logger.js` (logs estruturados/redação); `tests/core/config-helpers-logger.test.js` (contratos, defaults, pureza, correlação e sigilo).
-- **Dependências:** Lote 1.
-- **Testes:** unitários em runtime compatível com Workers, incluindo ausência de segredo nos logs.
-- **Aceite/riscos:** configuração falha cedo e helpers não carregam domínio; risco de vazamento e globais ocultas.
-- **DoD/desbloqueio:** DoD comum; desbloqueia Lote 3.
-
-### LOTE 3 — Core: eventos e persistência
-
-- **Objetivo:** padronizar eventos e acesso técnico a D1, KV/cache e R2.
-- **Arquivos:** `app/core/events.js` (Event Bus); `app/core/db.js` (primitivas D1 parametrizadas); `app/core/cache.js` (cache/KV); `app/core/storage.js` (R2); `tests/core/events-persistence.test.js` (unidade e integração dos bindings).
-- **Dependências:** Lote 2.
-- **Testes:** emissão/consumo, falhas, parametrização, TTL/invalidação e objetos R2 com doubles locais.
-- **Aceite/riscos:** nenhuma query de domínio; D1 continua fonte; risco de consistência eventual e chave/TTL incorretos.
-- **DoD/desbloqueio:** DoD comum; desbloqueia Lote 4.
-
-### LOTE 4 — Core: segurança e roteamento
-
-- **Objetivo:** autenticar, autorizar tecnicamente e despachar requisições com respostas/erros seguros sem arquivos genéricos adicionais.
-- **Arquivos:** `app/core/auth.js` (identidade e políticas comuns); `app/core/router.js` (rota/método/despacho); `tests/core/auth-router.test.js` (tokens, negação padrão, métodos, parâmetros e erros públicos).
-- **Dependências:** Lote 3.
-- **Testes:** unitários e casos negativos de autenticação, autorização, entrada e exposição de falhas.
-- **Aceite/riscos:** deny-by-default, nenhum negócio no Router; riscos de bypass e enumeração.
-- **DoD/desbloqueio:** DoD comum; desbloqueia Lote 5.
-
-### LOTE 5 — Core: renderização, publicação e composição
-
-- **Objetivo:** compor a aplicação e gerar derivados sem violar D1 como fonte.
-- **Arquivos:** `app/core/render.js` (composição visual); `app/core/publish.js` (pipeline de artefatos); `app/core/app.js` (bootstrap/registro explícito); `tests/core/render-publish-app.test.js` (ordem, falha, idempotência e composição).
-- **Dependências:** Lote 4.
-- **Testes:** unitários e integração do fluxo D1 confirmado→Queue→Publisher→R2→Edge Cache.
-- **Aceite/riscos:** nenhuma descoberta mágica, publicação após persistência, saída segura; riscos de artefato parcial e cache obsoleto.
-- **DoD/desbloqueio:** DoD comum; desbloqueia Lote 6.
-
-### LOTE 6 — Banco de dados e schemas
+## 1. Governança e leitura de estado
 
-- **Objetivo:** estabelecer modelo D1 inicial e contratos JSON versionados.
-- **Arquivos:** `database/schema.sql` (snapshot canônico); `database/migrations/0001_initial_schema.sql` (criação inicial imutável); seis schemas `app/schemas/listing.schema.json`, `app/schemas/user.schema.json`, `app/schemas/profile.schema.json`, `app/schemas/plan.schema.json`, `app/schemas/settings.schema.json`, `app/schemas/theme.schema.json`; `tests/database/schema-migrations.test.js` (aplicação limpa, reaplicação controlada e equivalência); `tests/schemas/schemas.test.js` (válidos/inválidos e versão).
-- **Dependências:** Lote 5 e modelo de domínio aprovado. Sem seed de produção.
-- **Testes:** migration em D1 local vazio, constraints/índices, snapshot e validação de cada schema.
-- **Aceite/riscos:** nomes/constraints explícitos, migration revisada e estratégia de restauração; riscos de perda e incompatibilidade futura.
-- **DoD/desbloqueio:** possui 10 arquivos contando testes; se passar 2.000 linhas, dividir 6A banco/6B schemas sem alterar ordem. Desbloqueia Lote 7.
+Este ROADMAP reorganiza o plano de implementação sem reconstruir o projeto. Os Lotes 1–13B mantêm sua numeração e seu histórico técnico. Uma fundação preservada não é considerada errada: ela pode estar concluída e ainda exigir uma adequação posterior, explicitamente planejada, para o produto oficial.
 
-### LOTE 7 — Identidade e assinaturas
+Legenda:
 
-- **Objetivo:** implementar contas, perfis profissionais, planos e ciclo de assinatura.
-- **Arquivos:** `app/modules/Auth.js`, `app/modules/Users.js`, `app/modules/Imobiliaristas.js`, `app/modules/Plans.js`, `app/modules/Subscriptions.js`; `tests/modules/identity-subscriptions.test.js`.
-- **Dependências:** Lote 6.
-- **Testes:** cadastro/login, permissões de domínio, perfil, limites de plano e transições/idempotência de assinatura.
-- **Aceite/riscos:** dados pessoais protegidos e eventos contratuais; riscos de elevação de privilégio e transição inválida.
-- **DoD/desbloqueio:** DoD comum; desbloqueia Lote 8.
+- ✅ **concluído:** implementação e testes locais documentados e mergeados;
+- 🟡 **implementado tecnicamente, gate pendente:** o código existe, mas falta evidência operacional exigida;
+- 🔧 **preservado com adequação futura:** fundação válida; mudança de produto será feita em lote novo;
+- ⛔ **bloqueado:** não pode começar antes das dependências e decisões indicadas;
+- ⬜ **não iniciado:** entrega futura autorizada apenas quando desbloqueada.
 
-### LOTE 8 — Catálogo de anúncios e mídia
+Um lote só começa após o anterior aplicável estar implementado, testado, revisado, aprovado e mergeado na `main`. Nenhuma linha deste documento inicia automaticamente um lote, autoriza deploy ou dispensa PR. Limite inicial recomendado: uma fronteira funcional, até 20 arquivos e aproximadamente 2.000 linhas líquidas; dividir somente quando a revisão deixar de ser segura.
 
-- **Objetivo:** gerir categorias, anúncios, biblioteca e upload seguro.
-- **Arquivos:** `app/modules/Categories.js`, `app/modules/Listings.js`, `app/modules/Media.js`, `app/modules/Upload.js`; `tests/modules/catalog-media.test.js`.
-- **Dependências:** Lote 7.
-- **Testes:** CRUD/regra de publicação, ownership, tipo/tamanho de upload, metadados e falhas R2.
-- **Aceite/riscos:** SQL no módulo, upload validado e eventos após commit; riscos de arquivo malicioso e registro órfão.
-- **DoD/desbloqueio:** DoD comum; desbloqueia Lote 9.
+São proibidos placeholders, antecipação de lote, regra de negócio no Core, regra comercial em Functions e consulta pública normal ao D1. Testes funcionais acompanham cada lote; o Lote 18 valida transversalmente o sistema completo.
 
-### LOTE 9 — Descoberta e navegação
+**DoD comum:** arquivos completos; testes próprios aprovados; documentação e contratos coerentes; segurança e rollback avaliados; nenhuma decisão pendente escondida; PR aprovada e mergeada na `main`; gates específicos comprovados.
 
-- **Objetivo:** busca, geolocalização, mapas, favoritos e comparação.
-- **Arquivos:** `app/modules/Search.js`, `app/modules/Geolocation.js`, `app/modules/Maps.js`, `app/modules/Favorites.js`, `app/modules/Compare.js`; `tests/modules/discovery.test.js`.
-- **Dependências:** Lote 8.
-- **Testes:** filtros/ordenação, coordenadas/consentimento, links de mapa, idempotência de favoritos e limites de comparação.
-- **Aceite/riscos:** dados públicos vêm de índices publicados; riscos de privacidade geográfica e resultados obsoletos.
-- **DoD/desbloqueio:** DoD comum; desbloqueia Lote 9A.
+## 2. Arquitetura de produto que governa os lotes futuros
 
-### LOTE 9A — Adequação técnica da Arquitetura 2.0
+As entregas abaixo obedecem simultaneamente a estas decisões, que não podem ser revertidas por implementação incidental:
 
-- **Arquivos alterados:** caminhos existentes de configuração e Core (`wrangler.toml`, `app/core/app.js`, `config.js`, `events.js`, `publish.js`, `storage.js`) e três suítes Core; nenhum caminho novo.
-- **Implementado e testável:** configuração da Queue; producer; processamento e agregação por cidade no batch entregue; deduplicação de `eventId`; ack/retry de todas as mensagens; projeção allowlist; catálogo determinístico; digest da projeção e integral; objeto versionado imutável; confirmação por `head`; manifest ativado depois e preservado em falha; rollback; KV fora da composição pública; pacote/cota explícitos e idempotência persistida.
-- **Não é produção:** faltam `queue()` ligado ao runtime, projeção real do domínio, cidade canônica, versão persistente concorrente, conversão de evento em pedido técnico, janela persistente entre batches, retry final/dead-letter, Cron, Cache Rules/domínio e staging. Lote 13 resolve domínio; 16B resolve runtime/janela/reconciliação; 18 valida operação.
-- **Dependência/desbloqueio:** depende do Lote 9; concluído antes do Lote 10.
+1. existem apenas os planos estruturais `STANDARD` e `PREMIUM`; `FREE` não é plano;
+2. trial, cortesia, promoção e gratuidade são **condições comerciais** independentes;
+3. PREMIUM habilita minisite em `{slug}.acompanhantesex.com`, integração Blogger client-side e direito de comprar impulsionamentos separados; não inclui impulsionamento;
+4. downgrade PREMIUM → STANDARD é reversível e preserva conta, anúncio, perfil, configurações e Blogger externo;
+5. cada anunciante tem uma pequena JSON pública ACTS individual; o catálogo municipal é somente índice leve para cards e descoberta;
+6. Blogger é consultado diretamente pelo navegador e permanece fora de backend, Publisher, D1, R2, KV, Queue e Cron;
+7. navegação pública normal usa Edge/R2 e não consulta D1, KV, Worker ou Pages Function.
 
-### LOTE 10 — Relacionamento
+Schemas exatos, preços e demais decisões ainda abertas não são definidos por este ROADMAP.
 
-- **Objetivo:** contatos, leads, avaliações e notificações.
-- **Arquivos:** `app/modules/Contacts.js`, `app/modules/Leads.js`, `app/modules/Reviews.js`, `app/modules/Notifications.js`; `tests/modules/relationship.test.js`.
-- **Dependências:** Lote 9A.
-- **Testes:** anti-spam, consentimento, transições de lead, moderação/rating e preferências/retry de notificação.
-- **Aceite/riscos:** PII minimizada e auditoria; riscos de abuso, duplicação e envio indevido.
-- **DoD/desbloqueio:** DoD comum; desbloqueia Lote 11.
+## 3. Matriz executiva
 
-**Estado de implementação (2026-08-04):** os quatro módulos e a suíte oficial foram implementados sobre as tabelas D1 já existentes, sem migration e sem integração externa. Ownership, idempotência persistida, paginação parametrizada, transições, moderação, preferências e eventos mínimos sem PII estão cobertos. Somente a mudança de uma avaliação para dentro ou fora do estado público emite impacto de cidade; Contacts, Leads e Notifications permanecem privados e não publicam catálogo. O Lote 10 está concluído no merge da PR #18; o Lote 11 foi posteriormente concluído no merge da PR #19.
+| Lote | Estado | Fronteira | Depende de | Desbloqueia |
+|---|---|---|---|---|
+| 1–6 | ✅ preservar | raiz/Cloudflare, Core, eventos, segurança, render e banco base | histórico | 7 |
+| 7 | ✅ 🔧 | identidade e assinaturas; adequar em 13E | 6 | 8 |
+| 8 | ✅ 🔧 | catálogo e mídia; adequar em 13E/13F | 7 | 9 |
+| 9 | ✅ 🔧 | descoberta; adequar ao catálogo leve em 13F | 8 | 9A |
+| 9A | ✅ preservar | infraestrutura técnica de publicação | 9 | 10 |
+| 10 | ✅ preservar | relacionamento | 9A | 11 |
+| 11 | ✅ 🔧 | Asaas, pagamentos e integrações; ampliar em 13G | 10 | 12 |
+| 12 | ✅ preservar | gestão | 11 | 13A |
+| 13A | ✅ preservar | expansão segura de cidade | 12 | 13B |
+| 13B | 🟡 gate remoto | canonicalização e backfill técnico | 13A | 13C somente após gate |
+| 13C | ⛔ | validação e contração compatível com domínio ACTS | gate 13B | 13E |
+| 13E | ⛔ | produto, planos, condição comercial e domínio do anúncio | 13C + decisões próprias | 13F |
+| 13F | ⛔ | JSON individual, catálogo leve, minisite e prova Blogger | 13E | 13G |
+| 13G | ⛔ | impulsionamentos e adequação financeira | 13F + decisão de downgrade | 13D |
+| 13D | ⛔ | publicação ACTS e SEO finais | 13E–13G + gates SEO | 14A |
+| 14A–14B | ⛔ | componentes básicos e compostos | 13D | 15 |
+| 15 | ⛔ | layouts e templates | 14B | 16A |
+| 16A–16B | ⛔ | APIs ACTS, painel, administração e jobs ACTS | 15 | 17 |
+| 17 | ⛔ | frontend público estático e Blogger client-side | 16B | 18 |
+| 18 | ⛔ | aceite transversal, staging e produção | 17 | produção aceita |
 
-### LOTE 11 — Pagamentos e integrações
+> A ordem intencional do bloco 13 é `13C → 13E → 13F → 13G → 13D`. O identificador 13D é preservado por continuidade histórica, mas sua antiga implementação de Publish/SEO fica adiada até a adequação de produto. Não existe Lote 13D pronto.
 
-- **Objetivo:** cobrança e integração externa isolada com Asaas.
-- **Arquivos:** `app/modules/Payments.js` (regras financeiras), `app/modules/Integrations.js` (catálogo/configuração de integrações), `app/gateways/Asaas.js` (protocolo Asaas), migration corretiva `database/migrations/0002_payment_event_ordering.sql`, snapshot/teste de evolução do banco, `tests/modules/payments-integrations.test.js`, `tests/gateways/asaas.contract.test.js`.
-- **Dependências:** Lote 10.
-- **Testes:** valores/estados/idempotência, timeout/retry, tradução de payload e contrato sandbox/double; nenhum segredo em log.
-- **Aceite/riscos:** caminho único do gateway, assinatura e idempotência prontas para webhook; riscos de cobrança dupla e divergência externa.
-- **DoD/desbloqueio:** DoD comum; desbloqueia Lote 12.
+## 4. Histórico preservado — Lotes 1 a 12
 
-**Estado de implementação (2026-08-04):** Payments conserva o D1 como fonte de verdade, resolve valores do plano, reserva idempotência antes da rede e elege um único vencedor por constraint persistente. Identificador e POST são determinísticos; timeout ambíguo conserva resultado técnico recuperável. Webhooks reservam antes do efeito, conferem updates condicionais e ordenam eventos por `external_updated_at`, incluído pela migration `0002` sem alterar a inicial. Integrations registra somente Asaas sem segredo e o gateway aplica injeção, timeout, retry e tradução fechada. A Function HTTP permanece no Lote 16B; nenhum dado financeiro entra no catálogo e o Lote 12 não foi iniciado.
+### Lotes 1–6 — preservar sem refazer
 
-**Riscos residuais sem invalidar o lote:** reserva com `response_status = NULL` pode ficar abandonada entre a reserva e o registro do resultado, pois não há lease de recuperação. Em batch, zero linhas é sucesso técnico e não provoca rollback; conferir `meta.changes` após a execução detecta conflito, mas não desfaz statement anterior já confirmado. Coerência deve estar no SQL/operação atômica que falhe. Antes da exposição financeira, integração D1 real deve validar reserva, update condicional, conclusão idempotente, emissão única e recuperação da reserva abandonada; fakes unitários não substituem essa prova.
+- **Lote 1:** raiz, toolchain e ambientes Cloudflare.
+- **Lote 2:** configuração, helpers e observabilidade do Core.
+- **Lote 3:** Event Bus e primitivas técnicas de D1/cache/R2.
+- **Lote 4:** autenticação/autorização técnica e roteamento.
+- **Lote 5:** renderização, pipeline genérico de publicação e composição.
+- **Lote 6:** schema e contratos iniciais.
 
-### LOTE 12 — Gestão
+Essas fundações permanecem válidas. O pipeline técnico do Lote 5 não equivale ao Publisher final do produto.
 
-- **Objetivo:** painéis privados, métricas privadas e relatórios privados e limitados.
-- **Arquivos:** `app/modules/Dashboard.js`, `app/modules/Analytics.js`, `app/modules/Reports.js`; `tests/modules/management.test.js`.
-- **Dependência/desbloqueio:** depende do Lote 11 e desbloqueia o Lote 13.
-- **Regras:** D1 é a fonte de verdade; RBAC e ownership são obrigatórios; SQL parametrizado permanece no módulo. Métricas usam allowlist, período máximo, paginação, limite de grupos e consultas compatíveis com índices. São proibidos consulta arbitrária, SQL do cliente, PII desnecessária e exportação ilimitada; CSV deve neutralizar formula injection.
-- **Limites:** nenhuma migration, R2, KV, Publisher ou catálogo público preventivo. Uma lacuna real de índice interrompe a implementação até migration específica documentalmente justificada; índice hipotético não é autorizado.
-- **IA:** não integra o MVP nem bloqueia Gestão. Não há finalidade aprovada, provider, contrato de custo, persistência ou caminho autorizado; `ai_jobs`, ledger/budgets, Queue/provider/prompt storage de IA e `0003_ai_governance.sql` estão rejeitados. Avaliação pós-MVP exige RFC/ADR e lote futuro específico.
-- **DoD:** testes de autorização, limites, paginação, métricas e exportação segura; desbloqueia Lote 13.
+### Lotes 7–9 — preservar e adequar, sem apagar histórico
 
-**Estado de implementação (2026-08-04):** concluído com Dashboard privado por indicadores allowlist, Analytics privado com cinco métricas controladas e Reports síncrono em JSON/CSV. Ownership sempre usa o usuário autenticado; escopos globais exigem `management.dashboard.global`, `management.analytics.global` ou `management.reports.global` no contexto. UTC, períodos de 7/30/90 dias no Dashboard, intervalo máximo de 366 dias, 100 pontos, 20 grupos, 500 linhas, 8 colunas e 512.000 bytes limitam consultas e exportações. Projeções excluem PII e referências externas, e o CSV neutraliza formula injection. A suíte oficial possui 44 casos; nenhuma migration, IA, KV, R2, Publisher, Queue ou publicação foi adicionada. O Lote 13 permanece intacto e não iniciado.
+- **Lote 7 — identidade/assinaturas:** `Auth.js`, `Users.js`, `Imobiliaristas.js`, `Plans.js`, `Subscriptions.js` e testes estão implementados. Os conceitos de plano, perfil e assinatura serão adequados no 13E; o legado imobiliário não é removido de forma oportunista.
+- **Lote 8 — catálogo/mídia:** categorias, Listings, mídia e upload são fundações válidas. O domínio comercial do anúncio será remodelado no 13E e a projeção pública será separada no 13F.
+- **Lote 9 — descoberta:** busca, geolocalização, mapas, favoritos e comparação permanecem. O consumo do novo índice municipal leve será adequado no 13F e no frontend.
 
-### LOTE 13 — cidade canônica, publicação e SEO (sequência bloqueante)
+### Lote 9A — preservar sem refazer
 
-O Lote 13 está parcialmente implementado pelos 13A e 13B e só conclui após **13A → 13B → 13C → 13D**, na mesma ordem. A prova SQLite/D1 impede migration SQL única; os arquivos `[P]` são autorizações futuras, não entregas.
+A infraestrutura técnica já cobre Queue, deduplicação, projeção allowlist, objetos versionados, confirmação antes do manifest, idempotência e rollback. Ela não é produção: runtime real, reconciliação, Cache Rules, staging e projeções finais continuam nos lotes 13D, 16B e 18. O conceito antigo de cidade como JSON completa não governa as novas projeções.
 
-#### 13A — expansão do schema
+### Lotes 10 e 12 — preservar sem refazer
 
-**Estado: implementado em 2026-08-06**, sem concluir o Lote 13; 13B–13D e 14 permanecem bloqueados.
+- **Lote 10:** relacionamento implementado, mantendo contatos, leads e notificações privados e avaliações moderadas.
+- **Lote 12:** Dashboard, Analytics e Reports privados implementados com RBAC, limites e exportação segura.
 
-- **Arquivos:** `[E] database/migrations/0003_city_publication_state.sql`; `[E] database/schema.sql` e `[E] tests/database/schema-migrations.test.js` atualizados.
-- **Entrega:** criar `cities`, `city_publication_state`, `listings.city_id` temporariamente anulável e somente constraints/índices seguros, preservando dados e contratos. Sem Unicode/backfill SQL, publicação ou manifest.
-- **Gate:** migration limpa e sobre banco preenchido aprovada; backup e rollback da expansão ensaiados. Desbloqueia apenas 13B.
+### Lote 11 — preservar e adequar
 
-#### 13B — backfill operacional
+O gateway único Asaas, a reserva idempotente, ordenação de webhook, timeout recuperável e D1 como fonte financeira são preservados. O 13G ampliará o domínio para assinatura e compra avulsa de impulsionamento, sem reimplementar ou substituir o gateway. Provas D1 reais e recuperação de reserva abandonada continuam obrigatórias antes da exposição financeira.
 
-- **Estado: implementação local concluída em 2026-08-06, ainda não aceita operacionalmente**, sem concluir o Lote 13; a validação real em D1 staging, seu backup/restore e o gate remoto permanecem pendentes, portanto 13C–14 continuam bloqueados.
-- **Arquivos:** `[E] scripts/backfill-cities.js`, `[E] tests/operations/city-backfill.test.js`; `[E] app/modules/Listings.js`, `[E] wrangler.toml`, `[E] package.json`, `[E] package-lock.json` e testes diretamente afetados atualizados.
-- **Entrega:** JavaScript parametrizado via `getPlatformProxy()`/`ACTS_DB`, em lotes limitados, idempotente e retomável por `city_id IS NULL`, sem checkpoint persistido; paginação keyset, varredura final, métricas sem PII e concorrência fail-closed. `Listings.js` evita novas pendências. Produção é proibida no 13B.
-- **Alterações de raiz autorizadas somente no 13B:** `wrangler.toml` marca exclusivamente o `ACTS_DB` de staging com `remote = true`; `package.json` registra `city:backfill`; lockfile acompanha apenas resolução necessária e eventual dependência Unicode previamente aprovada. Development permanece local, production não é selecionável e nenhuma outra configuração/dependência é autorizada por esta decisão.
-- **Gate:** zero pendências/ambiguidades e segunda execução sem mutação; relatório final e restore aprovados. Desbloqueia apenas 13C.
+## 5. Cidade canônica — Lotes 13A a 13C
 
-#### 13C — validação e contração
+### 13A — expansão do schema ✅
 
-- **Arquivos:** `[P] database/migrations/0004_city_publication_contract.sql`; atualização de `[E] database/schema.sql` para snapshot final e `[E] tests/database/schema-migrations.test.js`.
-- **Entrega:** validar nulos, órfãos, ambiguidades, unicidade, FKs, contagens e inventário integral; reconstruir `listings` com `city_id NOT NULL`, abortando qualquer inválido. Instalação limpa nasce nesse estado final e dispensa backfill.
-- **Gate:** backup/rollback, equivalência semântica snapshot/evolução e staging aprovados. Desbloqueia apenas 13D; `city_id` anulável não é estado final.
+Implementado em 2026-08-06: `cities`, `city_publication_state` e `listings.city_id` temporariamente anulável, preservando o contrato anterior. Não fez backfill, contração ou publicação. Não deve ser refeito pela nova arquitetura.
 
-#### 13D — publicação e SEO
+### 13B — canonicalização e backfill 🟡
 
-- **Arquivos:** `[P] app/modules/Publish.js`, `[P] app/modules/Seo.js`, `[P] tests/modules/publishing-seo.test.js`; atualizações condicionais de `[E] app/core/publish.js` e `[E] tests/core/render-publish-app.test.js`.
-- **Entrega:** projeção canônica, publicação/manifest, SEO e testes somente sobre cidade contraída. `Publish.js` valida pela função pública de `Listings.js`; `Seo.js` não normaliza/backfilleia; Core continua genérico.
-- **Gate/DoD:** catálogo/manifest anterior permanece até nova publicação integralmente confirmada. Testes, staging e merge de todo o Lote 13 desbloqueiam 14A.
+**Estado:** implementação técnica local concluída; aceite operacional ainda pendente.
 
-**Bloqueio do Lote 14:** 14A e todo o Lote 14 permanecem intactos e proibidos até expansão, backfill, validação, contração, implementação de publicação/SEO, testes e staging do Lote 13 estarem aprovados e o Lote 13 estar mesclado. `Publish.js` e `Seo.js` não são considerados prontos antes disso.
+- executor JavaScript parametrizado via `getPlatformProxy()`/`ACTS_DB`;
+- paginação keyset, retomada por `city_id IS NULL`, concorrência fail-closed, relatórios sem PII e segunda execução idempotente;
+- testes SQLite e D1 local existentes;
+- **gate pendente:** D1 remoto de staging representativo, backup, execução, relatório de zero pendências/ambiguidades, segunda execução sem mutação e restore comprovado.
 
-**Evidência do 13B (2026-08-06):** o executor usa exclusivamente `wrangler.toml`, `getPlatformProxy()` e o binding fixo `ACTS_DB`; `development/local` e `staging/remote` são as únicas combinações. A retomada deriva do vínculo persistido no D1, sem tabela de checkpoint. SQLite real e D1 local cobrem dry-run, escrita e retry; staging real não foi escrito e permanece gate pendente. Esta entrega não desbloqueia 13C, 13D ou 14.
+Sem essa evidência, 13B não está operacionalmente concluído e 13C permanece bloqueado. A nova arquitetura não autoriza refazer canonicalização ou backfill.
 
-### LOTE 14A — Componentes visuais básicos
+### 13C — validação e contração ⛔
 
-- **Objetivo:** primitives acessíveis e reutilizáveis.
-- **Arquivos:** `app/components/Alert.js`, `app/components/Breadcrumb.js`, `app/components/Button.js`, `app/components/Card.js`, `app/components/Grid.js`, `app/components/Menu.js`; `tests/components/components.test.js` (arquivo compartilhado iniciado aqui).
-- **Dependências:** Lote 13.
-- **Testes:** render, escaping, estados, teclado, ARIA e contratos de propriedades dos componentes 14A.
-- **Aceite/riscos:** nenhum domínio/D1; risco de inconsistência e acessibilidade.
-- **DoD/desbloqueio:** DoD comum; desbloqueia 14B.
+Finalidade preservada: validar nulos, órfãos, ambiguidades, unicidade, FKs, contagens e inventário; depois impor `city_id NOT NULL` com backup/rollback, equivalência snapshot/evolução e staging.
 
-### LOTE 14B — Componentes visuais compostos
+Antes de implementar, o inventário e a reconstrução de `listings` devem ser compatíveis com o domínio final do anúncio ACTS planejado no 13E. A contração não pode cristalizar como produto final venda, aluguel, preço/endereço imobiliário ou profissional imobiliário. Não editar migrations antigas; evolução será forward-only e controlada.
 
-- **Objetivo:** completar componentes interativos/estruturados.
-- **Arquivos:** `app/components/Form.js`, `app/components/Gallery.js`, `app/components/Modal.js`, `app/components/Pagination.js`, `app/components/Table.js`, `app/components/Tabs.js`; atualização de `tests/components/components.test.js` para cobrir 14B.
-- **Dependências:** 14A.
-- **Testes:** foco/teclado, validação visual, paginação, tabelas e mídia responsiva.
-- **Aceite/riscos:** composição independente de layout; risco de foco preso e XSS em conteúdo.
-- **DoD/desbloqueio:** DoD comum; desbloqueia Lote 15.
+**Gate:** 13B aceito remotamente + contrato de compatibilidade 13C/13E revisado. Desbloqueia somente 13E.
 
-### LOTE 15 — Layouts e templates
+## 6. Bloco bloqueante de adequação da nova arquitetura
 
-- **Objetivo:** compor todas as superfícies visuais autorizadas.
-- **Arquivos:** layouts `app/layouts/public.js`, `app/layouts/panel.js`, `app/layouts/admin.js`; templates `app/templates/home.js`, `app/templates/listing.js`, `app/templates/listings.js`, `app/templates/profile.js`, `app/templates/location.js`, `app/templates/panel.js`, `app/templates/error.js`; `tests/rendering/layouts-templates.test.js`.
-- **Dependências:** 14B.
-- **Testes:** snapshot estrutural seletivo, escaping, estados vazios/erro, acessibilidade e zero acesso a D1.
-- **Aceite/riscos:** dados chegam prontos; risco de acoplamento entre template e domínio.
-- **DoD/desbloqueio:** 11 arquivos, sem divisão inicial; dividir 15A layouts/15B templates somente se complexidade superar limite. Desbloqueia 16A.
+### LOTE 13E — Produto, planos e domínio comercial ⛔
 
-### LOTE 16A — Pages Functions: middleware e APIs
+**Objetivo:** adequar as fundações válidas dos Lotes 7 e 8 ao produto oficial antes de qualquer Publisher/SEO ou frontend final.
 
-- **Objetivo:** expor adaptadores HTTP finos para domínios principais.
-- **Arquivos:** `functions/_middleware.js`; `functions/api/auth.js`, `functions/api/listings.js`, `functions/api/users.js`, `functions/api/media.js`, `functions/api/payments.js`, `functions/api/publish.js`; `tests/functions/api.test.js`; `tests/contract/public-api.test.js` (contratos HTTP iniciado aqui).
-- **Dependências:** Lote 15.
-- **Testes:** método, parsing, auth, status/headers, contratos, rate limits aplicáveis e delegation spy.
-- **Aceite/riscos:** nenhuma regra comercial; riscos de CORS, bypass e contrato inconsistente.
-- **DoD/desbloqueio:** DoD comum; desbloqueia 16B.
+#### 13E.1 — Planos, condição comercial e entitlements
 
-### LOTE 16B — Pages Functions: painel, administração, webhook e jobs
+- adequar `Plans.js`, `Subscriptions.js`, contratos/schemas, testes e, em implementação futura própria, banco/snapshot/migration necessários;
+- permitir somente `STANDARD` e `PREMIUM`; rejeitar `FREE` como plano;
+- representar trial, cortesia, promoção e gratuidade fora da identidade do plano;
+- definir entitlements para anúncio, mídias oficiais, minisite, subdomínio, apresentação Blogger e elegibilidade de nova compra de boost;
+- definir preço/versionamento, inadimplência/tolerância e efeitos de condição comercial antes de persistir o modelo.
 
-- **Objetivo:** orquestrar superfícies protegidas e entradas assíncronas; ligar o `queue()` real ao runtime Cloudflare, executar janela persistente entre batches, webhook, retry final/dead-letter e reconciliação.
-- **Arquivos:** `functions/painel/[[path]].js`, `functions/admin/[[path]].js`, `functions/webhooks/asaas.js`, `functions/scheduled.js`; `tests/functions/panel-admin.test.js`, `tests/functions/webhooks-scheduled.test.js`; atualização de `tests/contract/public-api.test.js`.
-- **Dependências:** 16A.
-- **Testes:** RBAC, assinatura/replay/idempotência do webhook, cron idempotente, retries e respostas seguras.
-- **Aceite/riscos:** Functions somente orquestram; riscos de webhook forjado, replay e job duplicado.
-- **DoD/desbloqueio:** DoD comum; desbloqueia Lote 17.
+#### 13E.2 — Upgrade, downgrade e reativação
 
-### LOTE 17 — Frontend público estático
+Testar explicitamente:
 
-- **Objetivo:** entregar navegação pública estática e responsiva, consumindo somente catálogo e manifest do R2 via Edge, sem D1, KV, Worker ou Function no fluxo normal.
-- **Arquivos:** `site/index.html`, `site/404.html`, `site/robots.txt`, `site/css/app.css`, `site/js/app.js`, `site/js/router.js`, `site/js/api.js`, `site/js/search.js`; `tests/site/public-frontend.test.js`; atualização de `tests/contract/public-api.test.js` para o consumidor público.
-- **Dependências:** 16B.
-- **Testes:** HTML/links, módulos ES, busca, navegação/404, robots, acessibilidade, performance budget e inspeção que proíbe binding/query D1.
-- **Aceite/riscos:** JSON unificada versionada da cidade e artefatos publicados no R2/Edge; nenhum diretório de asset vazio. Imagem/ícone só entra após nome e necessidade definidos no TREE; riscos de cache, SEO e progressive enhancement.
-- **DoD/desbloqueio:** DoD comum; desbloqueia Lote 18.
+- PREMIUM → STANDARD preserva conta, card/anúncio, perfil, contatos, dados, mídias permitidas, configuração de minisite, configuração Blogger e Blogger externo;
+- desativa minisite, publicação do subdomínio, apresentação Blogger dentro do ACTS e novas compras de impulsionamento;
+- invalida publicação/cache ACTS para não manter entitlement removido;
+- STANDARD → PREMIUM reativa configurações preservadas sem reconstruir patrimônio editorial;
+- gratuidade continua uma condição, sem terceiro plano.
 
-### LOTE 18 — Testes, segurança, implantação e aceite final
+#### 13E.3 — Domínio final do anúncio
 
-- **Objetivo:** validar transversalmente o portal completo, ensaiar deploy/rollback e obter aceite operacional; não concentrar testes funcionais já entregues.
-- **Arquivos novos:** `tests/integration/publication-flow.test.js`, `tests/e2e/critical-flows.test.js`, `tests/security/security.test.js`; atualizações de `tests/contract/public-api.test.js` e dos documentos operacionais apenas se os ensaios revelarem ajustes.
-- **Dependências:** Lote 17 e todos os testes anteriores verdes.
-- **Testes/checks:** suíte completa unitária/integrada/contrato/Functions/E2E; autenticação/autorização, SQLi, XSS, CSRF, upload e webhook; migrations em banco limpo e cópia restaurável; `wrangler` para development/staging/production; publicação incremental; prova automatizada de zero consulta pública ao D1, zero leitura pública no KV e zero Worker na navegação normal; carga/performance; backup/restore; deploy gradual, smoke, rollback e observabilidade/alertas.
-- **Aceite:** CI verde; segurança sem achado crítico/alto; migrations e restauração validadas; staging aprovado; runbooks de deploy, rollback e incidente executáveis; logs correlacionados sem segredos; SLOs/alertas ativos; proprietário registra aceite final antes de produção.
-- **Riscos:** diferença entre staging/produção, perda de dados, regressão de cache, alarmes ausentes; mitigar com canário, backup, rollback ensaiado e monitoramento pós-deploy.
-- **DoD/desbloqueio:** evidências arquivadas, aceite humano registrado e DoD comum; desbloqueia implantação de produção e operação contínua, não um lote de código posterior.
+Remodelar de forma faseada os conceitos imobiliários legados — venda, aluguel, preço/endereço de imóvel e profissional imobiliário — para o domínio comercial final ACTS. Preservar `city_id`, owner, categorias, status, mídia, slug, segurança e eventos úteis. Migrations antigas permanecem imutáveis e código legado só é removido após migração, compatibilidade, testes e rollback próprios.
 
-## 4. Dependências e publicação
+Inclui perfil comercial e somente configurações ACTS de minisite e Blogger (identificador/URL, habilitação e opções), nunca conteúdo editorial.
 
-A cadeia obrigatória é linear: `1→2→3→4→5→6→7→8→9→9A→10→11→12→13→14A→14B→15→16A→16B→17→18`. Dependências técnicas internas não autorizam antecipação. Cada PR parte da `main` já contendo o lote anterior.
+**Decisões/gates antes do DoD:** cardinalidade conta/anúncio/minisite; taxonomia e campos comerciais; limites de mídia; preço/versionamento dos planos; inadimplência; contrato de condição comercial; inventário legado e estratégia de migração.
 
-A publicação é incremental: ambientes locais no Lote 1; infraestrutura e pipeline técnico nos Lotes 3–5; regras de publicação no 13; endpoints no 16; consumidor público no 17; ensaio integral, staging, rollback e aceite no 18. Nenhum merge ou deploy é autorizado por este documento sem os gates correspondentes.
+### LOTE 13F — Estado público individual, catálogo, minisite e Blogger ⛔
 
-## 5. Situação do Lote 0
+**Dependência:** 13E concluído. O lote pode ser revisado em PRs coesas, mas sua ordem interna é obrigatória.
 
-O Lote 0 foi o replanejamento documental histórico. A auditoria atual comprova os Lotes 1 a 11 implementados e mesclados, com 60 caminhos não documentais rastreados. Os Lotes 12 e 13 permanecem não implementados; o Lote 14 permanece intacto.
+#### 13F.1 — JSON pública individual
+
+Entregar o princípio `1 anunciante → 1 pequena JSON pública ACTS`, incluindo contrato e versionamento, projeção allowlist, Publisher, invalidação, relação com catálogo municipal, testes, privacidade e rollback. O schema exato será decidido no lote, não neste ROADMAP. Mudança exclusivamente editorial no Blogger não regenera essa JSON.
+
+#### 13F.2 — catálogo municipal leve
+
+Substituir a premissa histórica `cidade = JSON completa` por `cidade = índice leve de descoberta`. O catálogo serve cards, filtros, ordenação, identificação e localização da JSON individual; o estado público completo permitido vem da JSON individual. Medir tamanho, cache, integridade, paginação/chunking se comprovadamente necessária e ausência de PII/duplicação.
+
+#### 13F.3 — minisite PREMIUM e wildcard
+
+Definir e testar `{slug}.acompanhantesex.com`, dependendo de entitlements, JSON individual, resolução segura e inequívoca do slug, publicação/manifest e infraestrutura wildcard Cloudflare validada. Downgrade deve retirar a apresentação e invalidar cache sem apagar configuração. STANDARD nunca recebe minisite.
+
+#### 13F.4 — gate técnico Blogger em navegador real
+
+Antes da experiência editorial completa, comprovar em navegador real: endpoint escolhido, CORS, blogs reais, conteúdo adulto, labels, paginação, imagens, vídeos, timeout e CSP. Registrar matriz de browsers, evidências e privacidade.
+
+**Falha do gate:** parar. Não criar proxy, sincronização ou fallback backend; abrir nova decisão arquitetural.
+
+#### 13F.5 — integração editorial client-side
+
+Somente após o gate, planejar frontend para fetch direto, timeout, parsing, sanitização, normalização, allowlist, URLs/providers seguros, lazy loading, paginação, fotos, vídeos, labels, loading/erro/fallback, retry limitado, CSP, XSS, iframe sandbox e privacidade.
+
+É proibido criar backend sync, Worker proxy, endpoint ACTS de feed, D1/R2/KV de posts, Queue Blogger ou Cron Blogger. O Blogger não entra no Publisher e sua indisponibilidade não derruba perfil, contatos, mídias oficiais ou informações comerciais do minisite.
+
+**Decisões/gates:** schema/versionamento da JSON; campos do índice leve; manifest individual; wildcard; endpoint/CORS/paginação Blogger; providers; limites; privacidade; aprovação da prova técnica.
+
+### LOTE 13G — Impulsionamentos e adequação financeira ⛔
+
+**Objetivo:** adicionar produto comercial separado sem confundi-lo com PREMIUM e sem reimplementar Asaas.
+
+- elegibilidade: somente PREMIUM compra novos impulsionamentos;
+- definir produtos, preço/versionamento, período, alvo, campanha, estados, pagamento avulso, ativação, expiração, auditoria e idempotência;
+- definir ranking/posição e comportamento determinístico no catálogo leve;
+- adequar Payments/Integrations/Asaas para assinatura e compra avulsa, preservando gateway único e garantias existentes;
+- cobrir cobrança duplicada, webhook/replay, timeout, expiração, concorrência, cache e rollback.
+
+**Decisão obrigatoriamente pendente:** comportamento de impulsionamento já pago/ativo durante downgrade. Nenhuma implementação ou teste deve inventar essa regra. O gate de produto aprova essa decisão antes do desenvolvimento do fluxo.
+
+## 7. LOTE 13D — Publicação ACTS e SEO finais ⛔
+
+O antigo 13D é preservado como identificador histórico, mas fica **depois** de 13E, 13F e 13G. Não pode publicar o antigo catálogo completo de cidade nem tratar Blogger.
+
+### Publicação
+
+- `Publish.js` trata somente estado ACTS confirmado: JSON individual, catálogo municipal leve, manifests e invalidação;
+- Core permanece genérico; R2/Edge entrega artefatos e D1 permanece fonte privada;
+- Blogger fica fora de Publisher, Queue, Cron, R2, KV e D1;
+- ativação atômica de manifest, retenção/rollback, Cache Rules e reconciliação são comprovadas em staging.
+
+### Gate SEO
+
+Depois de definidos portal, anúncio, JSON individual, catálogo, minisite/subdomínio e política Blogger, decidir formalmente — sem pressupor resposta — canonical, indexação do minisite, indexação ou não do editorial client-side, sitemap, robots e duplicidade com Blogger.
+
+**DoD:** contratos e testes de publicação/SEO aprovados; cache antigo preservado até ativação íntegra; staging e rollback comprovados. Só então 14A é desbloqueado.
+
+## 8. Lotes visuais, Functions e frontend
+
+### LOTE 14A/14B — Componentes ⛔
+
+Primitivas e compostos permanecem depois da arquitetura de produto. Devem cobrir acessibilidade, escaping e estados de anúncio, modal, minisite, galeria, vídeos, Blogger loading/error, paginação, lightbox e impulsionamento. Componentes recebem dados prontos, não acessam D1 nem incorporam regra comercial.
+
+### LOTE 15 — Layouts e templates ⛔
+
+Compor portal, listagem/anúncio, minisite, painel/admin e erros sobre contratos aprovados. Templates não consultam Blogger nem D1; estados editoriais são apresentados pelo frontend client-side. Dividir 15A/15B apenas se a revisão exigir.
+
+### LOTE 16A — Middleware e APIs ACTS ⛔
+
+Functions finas somente para estado ACTS: autenticação, perfil, anúncio, plano, configuração de minisite, configuração Blogger, compra de boost, pagamentos, mídia e publicação administrativa. Nenhuma API de posts, proxy ou endpoint ACTS que sirva feed Blogger.
+
+### LOTE 16B — Painel, superadmin, webhook e jobs ACTS ⛔
+
+- painel da anunciante administra seu estado ACTS e configura a origem Blogger, sem importar conteúdo;
+- superadmin administra contas, plano, condição comercial/cortesia, moderação, mídias oficiais, minisite, slug, suspensão da **apresentação** Blogger e impulsionamentos;
+- superadmin não administra Blogger, Conta Google, posts ou mídia editorial da cliente;
+- ligar Queue/publicação ACTS, janela persistente, webhook Asaas, expirações comerciais, retry/dead-letter e reconciliação; nenhum job consulta Blogger.
+
+### LOTE 17 — Frontend público ⛔
+
+Fluxos obrigatórios:
+
+```text
+Portal   → Edge → catálogo municipal leve
+Anúncio  → Edge → JSON individual ACTS
+Minisite → Edge → JSON individual ACTS
+         + Browser → Blogger
+```
+
+Nenhuma consulta pública D1, KV, Worker ou Function no fluxo normal. O frontend implementa busca/descoberta sobre índice leve, anúncio/minisite sobre JSON individual e, somente no minisite PREMIUM, consumo Blogger client-side aprovado no gate 13F.4.
+
+## 9. Testes distribuídos e gates obrigatórios
+
+Cada lote adiciona seus testes, no mínimo:
+
+- **13C:** integridade, equivalência, staging, backup e rollback da contração;
+- **13E:** STANDARD, PREMIUM, gratuidade sem terceiro plano, entitlements, upgrade, downgrade, reativação, preservação de configuração e cache após downgrade;
+- **13F:** JSON individual, catálogo leve, zero D1 público, wildcard/subdomínio, CORS real, parsing, XSS, CSP, feed inválido, timeout, Blogger indisponível e zero persistência editorial;
+- **13G:** elegibilidade, impulsionamentos, ranking aprovado, expiração, pagamento avulso, idempotência e regra de downgrade aprovada;
+- **13D:** manifests, invalidação, Cache Rules, SEO, staging e rollback;
+- **14–17:** acessibilidade, estados visuais, RBAC, APIs somente ACTS, ausência de endpoint Blogger e fluxos públicos Edge;
+- **18:** segurança, performance, Cloudflare, pagamentos, publicação, cache, subdomínios, downgrade, Blogger, rollback, observabilidade e produção.
+
+Gates que bloqueiam avanço:
+
+1. aceite remoto do 13B;
+2. compatibilidade 13C com o domínio final ACTS;
+3. decisões de produto do 13E;
+4. contratos da JSON individual e catálogo leve;
+5. wildcard e resolução segura de slug;
+6. prova Blogger em navegador real;
+7. regra de boost ativo durante downgrade;
+8. decisões SEO;
+9. staging/rollback de publicação;
+10. aceite transversal humano no 18.
+
+## 10. LOTE 18 — Aceite transversal e produção ⛔
+
+O lote final não substitui testes funcionais. Ele valida de ponta a ponta:
+
+- autenticação/autorização, SQLi, XSS, CSRF, upload, webhook e CSP;
+- performance e arquitetura Cloudflare, incluindo zero D1/KV/Function público normal;
+- assinaturas, compras avulsas, Asaas, idempotência e expiração;
+- JSON individual, catálogo leve, publicação, manifests, cache e rollback;
+- wildcard, resolução de subdomínio, upgrade/downgrade e cache após downgrade;
+- Blogger client-side, CORS, falha isolada e prova de zero persistência/processamento editorial ACTS;
+- migrations/evolução, backup/restore, staging representativo, deploy gradual e rollback;
+- logs sem segredos, métricas, alertas, runbooks, observabilidade e smoke em produção.
+
+**Aceite:** CI verde; nenhum achado crítico/alto; gates e evidências arquivados; staging e rollback aprovados; proprietário registra aceite humano. Só então produção é desbloqueada. Não há merge ou deploy automático.
+
+## 11. Decisões pendentes e itens bloqueados
+
+Permanecem explicitamente pendentes, não devendo ser inventados durante implementação: cardinalidade conta/anúncio/minisite; schema da JSON individual; campos do catálogo leve; manifest individual; domínio comercial/taxonomia final; destino das estruturas imobiliárias; limites de mídia oficial; preço/versionamento de planos e boosts; inadimplência/tolerância; boost ativo no downgrade; endpoint/CORS/paginação Blogger; providers de vídeo; privacidade Google/Blogger; limites de conteúdo; wildcard Cloudflare; algoritmo de ranking; canonical/noindex editorial, sitemap, robots e duplicidade.
+
+Enquanto pendentes, ficam bloqueadas as partes dependentes de 13E–13G, 13D e todos os Lotes 14–18. Uma falha da prova Blogger exige nova decisão, nunca mudança automática para backend.
+
+## 12. Ordem futura completa
+
+```text
+13B gate remoto
+→ 13C validação/contração compatível com ACTS
+→ 13E planos STANDARD/PREMIUM
+→ condição comercial e entitlements
+→ upgrade/downgrade/reativação
+→ domínio comercial do anúncio
+→ 13F JSON individual
+→ catálogo municipal leve
+→ minisite/subdomínio e wildcard
+→ prova Blogger em navegador real
+→ integração Blogger client-side
+→ 13G impulsionamentos e pagamentos avulsos
+→ 13D publicação ACTS e decisões SEO
+→ 14 componentes
+→ 15 templates
+→ 16 Functions/painel/superadmin
+→ 17 frontend
+→ 18 aceite transversal
+→ produção aceita e operação contínua
+```
+
+## 13. Fronteira documental com a Etapa 4/7
+
+Este ROADMAP pode nomear caminhos futuros, mas não altera nem autoriza caminhos em `docs/TREE.md`. A árvore atual ainda reflete fronteiras anteriores; toda divergência de novos módulos, schemas, Functions, componentes, templates, site e testes deve ser resolvida exclusivamente na Etapa 4/7 antes da implementação. Código, schema e migrations permanecem intocados nesta etapa.
