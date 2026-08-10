@@ -106,21 +106,71 @@ Nenhuma implementação pode contrariar esta Constituição sem aprovação form
 
 ---
 
-## Arquitetura 2.0 — decisão vigente (2026-08-04)
+---
 
-Esta seção substitui qualquer descrição anterior incompatível neste documento. A evolução preserva os Lotes 1 a 9 já concluídos; ajustes de implementação dependem de necessidade concreta, autorização e lote futuro. Esta revisão é exclusivamente documental.
+## Arquitetura 3.0 — decisão vigente (2026-08-10)
 
-- Há **um único D1 operacional por ambiente**, única fonte de verdade relacional para usuários, anúncios, clientes, planos, assinaturas, pagamentos, configurações e demais dados oficiais. Não existe segundo D1 público. Toda mutação é validada e confirmada no D1 antes de publicar; derivados nunca se tornam fonte de verdade.
-- O R2 é a origem oficial de JSONs públicos compilados, catálogos de cidades, manifests, mídia, imagens e demais artefatos públicos aprovados. Esses objetos são reconstruíveis do D1.
-- O KV fica fora da navegação pública normal: visitantes não fazem `KV.get()` para catálogos e KV não origina os JSONs públicos. Seu uso limita-se a configuração, feature flags, coordenação, cache interno de baixo volume e metadados operacionais quando comprovado.
-- Valem simultaneamente: `navegação pública normal = zero consultas ao D1`, `navegação pública normal = zero leituras no KV` e `navegação pública normal = zero Worker/Pages Function`. Pages entrega HTML, CSS e JavaScript; R2 com Cloudflare Edge Cache entrega JSON e mídia. Functions e Workers servem escrita, autenticação, administração, integrações e processamento privado.
-- A unidade principal é **uma cidade = uma JSON pública unificada e versionada**. Ela reutiliza anunciantes por identificador e atende cidade, categorias, filtros, busca local, cards, detalhes, dados públicos de anunciantes, minisites e comparação. Não se adota como padrão JSON completa por anúncio, cliente ou minisite. Acesso direto a minisite resolve anunciante, cidade e versão, então reutiliza o catálogo da cidade.
-- A JSON permanece unificada enquanto tamanho e carregamento medidos forem aceitáveis. Divisão por categoria, página, chunk, geografia ou outro grupo exige necessidade real, aprovação, poucas requisições e reutilização dos dados carregados.
-- O Publisher produz projeções compactas, serializáveis, minificáveis, sem campos internos, dados privados ou duplicação evitável, adequadas a parsing e compressão HTTP no Edge. Otimização estrutural, minificação e compressão HTTP são etapas distintas; não se exige Brotli/Gzip manual sem validação futura.
-- Catálogos usam nomes imutáveis versionados, como `cidades/londrina/catalogo-v145.json`. Um manifest estável, como `cidades/londrina/manifest.json`, informa ao menos versão, caminho vigente, atualização e integridade aplicável. O catálogo admite cache longo/imutável e o manifest cache curto. O manifest só muda após confirmação integral do novo objeto.
-- R2 é origem e Edge Cache é a camada principal de entrega. JSON exige Cache Rules explícitas e validadas no domínio dos artefatos; hits devem atender o tráfego normal e apenas misses alcançam R2. Não há promessa de latência fixa.
-- Cloudflare Queue é o transporte principal da publicação assíncrona, com desacoplamento, recompilação, retries, agrupamento e recuperação. Não substitui D1. O fluxo é `Painel → Function/Worker de escrita → módulo → D1 → evento → Queue → Publisher → JSON otimizada → R2 → Edge Cache → navegador`. Separadamente: escrita `Painel → backend privado → D1`; publicação `D1 confirmado → Queue → Publisher → R2`; leitura `Pages + Edge Cache + R2 → navegador`.
-- Alterações marcam cidades afetadas e somente elas são recompiladas. O Lote 9A agrega mensagens da mesma cidade apenas dentro do batch entregue; `dueAt` calculado não executa espera persistente. A janela entre batches/invocações permanece pendente para o runtime do Lote 16B, enquanto regras de domínio são do Lote 13 e reconciliação operacional pertence aos Lotes 16B e 18. Cron é complementar, nunca o caminho obrigatório de cada alteração.
-- Falha de publicação não reverte o negócio confirmado: D1 permanece verdadeiro. Publicação é repetível/idempotente, suporta republicação e retenção temporária de versões para rollback; falha em R2 não aponta manifest a arquivo parcial.
-- O navegador prioriza cache HTTP, memória, Cache Storage quando necessário, IndexedDB para persistência estruturada e `localStorage` somente para pequenos metadados/preferências. A JSON completa não tem `localStorage` como armazenamento principal.
-- Catálogos contêm somente projeções públicas aprovadas: sem e-mail privado, dados administrativos, tokens, pagamentos, endereço privado não autorizado ou coordenada precisa proibida.
+Esta seção substitui toda descrição anterior incompatível neste documento. A decisão é exclusivamente documental e não autoriza implementação, schema, migration, 13C, 13D ou Lote 14.
+
+### Produto e planos
+
+O ACTS possui três superfícies distintas:
+
+1. **Portal central — `acompanhantesex.com`:** descoberta por cidade e categoria, cards, busca, acesso aos anúncios e exposição comercial da rede.
+2. **Anúncio:** representação comercial da anunciante dentro do portal, disponível nos planos STANDARD e PREMIUM.
+3. **Minisite — `{slug}.acompanhantesex.com`:** vitrine individual na infraestrutura ACTS, exclusiva do PREMIUM. Exemplo: `juliana.acompanhantesex.com`.
+
+Existem somente dois planos estruturais:
+
+- **STANDARD:** conta ACTS, card, anúncio, perfil, contatos e mídias oficiais permitidas; não inclui minisite, subdomínio, integração Blogger no ACTS nem direito de comprar impulsionamento.
+- **PREMIUM:** tudo do STANDARD, minisite, subdomínio, integração Blogger no minisite e direito de comprar impulsionamentos pagos separadamente.
+
+Não existe plano FREE. Trial, cortesia, promoção e gratuidade temporária são condições comerciais associadas a STANDARD ou PREMIUM e nunca uma terceira identidade de plano. **`PREMIUM != IMPULSIONAMENTO INCLUÍDO`**: impulsionamento é produto comercial separado, com preço próprio; PREMIUM apenas habilita novas compras. Produto, duração, alvo, estado, cobrança e expiração serão definidos futuramente, sem estrutura de banco nesta decisão.
+
+### Estado e publicação ACTS
+
+Há um único D1 operacional por ambiente. Ele é a única fonte de verdade do estado privado e comercial ACTS: conta, autenticação, perfil, anúncio, plano, assinatura, pagamento, condição comercial, configuração, moderação e eventos legítimos. D1 pode guardar configuração de integração Blogger — identificador, URL, habilitação, opções permitidas e seções — mas nunca posts, HTML, mídia editorial, histórico ou cache do feed. Isso não limita uma cliente a uma linha; separa estado ACTS de acervo editorial externo.
+
+A unidade pública individual é `1 anunciante → 1 pequeno estado público ACTS → 1 JSON individual`. Essa JSON contém somente projeção pública legítima do ACTS e é regenerada apenas quando estado ACTS relevante da anunciante muda, como nome artístico, perfil, cidade, serviços, contatos públicos, mídia oficial, plano efetivo, disponibilidade/configuração pública do minisite ou moderação. Ela nunca contém posts, fotos ou vídeos editoriais, histórico, HTML ou cópia do feed Blogger.
+
+A cidade deixa de ser uma JSON pública unificada completa e passa a ser **índice público leve de descoberta**. O catálogo municipal contém apenas o necessário para cards, descoberta, filtros, ordenação, identificação e localização da JSON individual; não carrega o minisite, posts Blogger nem duplica desnecessariamente a JSON individual. Os contratos exatos permanecem pendentes.
+
+Fluxos públicos oficiais:
+
+- portal: `D1 privado → evento legítimo → publicação → R2 → Edge Cache → catálogo municipal → navegador`;
+- anunciante: `D1 privado → evento legítimo → publicação → R2 → Edge Cache → JSON individual → navegador`;
+- minisite PREMIUM: o navegador recebe HTML/CSS/JS e JSON individual ACTS; separadamente, busca o feed diretamente no Blogger e o transforma client-side.
+
+A navegação pública normal continua com zero consulta D1, zero leitura KV e zero Worker/Pages Function. R2 contém apenas responsabilidades ACTS: mídias oficiais, JSON públicas, manifests, artefatos versionados, assets e derivados autorizados. KV permanece técnico e privado. Queue permanece válida para publicação e processamento assíncrono interno. Cron permanece válido para reconciliação, expiração comercial, manutenção, pagamentos e operações. Nenhum desses componentes pode armazenar, importar, baixar, copiar, sincronizar ou gerar artefato do acervo Blogger.
+
+### Blogger: propriedade e fronteira obrigatória
+
+O Blogger e a Conta Google pertencem à anunciante. Posts, fotos, vídeos e histórico permanecem sob responsabilidade e controle dela e da infraestrutura de origem. O ACTS não se torna proprietário, repositório, backup ou CMS desse patrimônio. **Premium habilita a vitrine; não hospeda o patrimônio editorial.**
+
+Fluxo único permitido:
+
+`Blogger → feed público → navegador do visitante → parser client-side → sanitização → normalização → modelo interno de apresentação → renderização no minisite`.
+
+O feed não passa por backend ACTS; não entra em D1, R2 ou KV; não gera JSON ou HTML derivado persistente; não usa Queue, Cron ou Worker para importação, cópia ou sincronização; e não cria banco ACTS de posts nem storage ACTS de mídia editorial. É proibido trocar silenciosamente essa arquitetura por proxy ou sincronização backend. Se a prova técnica futura mostrar inviável o consumo direto no navegador, a implementação deve parar até nova aprovação arquitetural.
+
+Alteração editorial Blogger não é evento de domínio ACTS. Novo post, foto ou vídeo implica zero write D1, zero publicação ACTS, zero Queue ACTS e zero R2 ACTS; por isso também não regenera a JSON individual.
+
+O feed é conteúdo externo não confiável. O frontend deve aplicar limites, timeout, parsing seguro, sanitização, allowlist, validação de URLs e providers, DOM seguro, CSP, proteção XSS e iframe sandbox quando aplicável. HTML bruto nunca pode ser confiado ou inserido diretamente. O Core backend permanece genérico e não conhece conteúdo Blogger.
+
+Falha do Blogger não derruba o minisite nem causa write backend. Estrutura ACTS, perfil, contatos, mídias oficiais e informações comerciais continuam disponíveis; a área editorial isola loading, timeout e erro, oferece fallback visual e retry limitado ou manual.
+
+### Downgrade e crescimento desacoplado
+
+O downgrade PREMIUM → STANDARD é reversível. Permanecem conta, card, anúncio, perfil, dados, contatos e mídias oficiais permitidas. São desativados minisite, publicação do subdomínio, integração Blogger no ACTS e direito de novas compras de impulsionamento. Configurações de minisite e Blogger devem ser preserváveis para reativação futura.
+
+O ACTS não apaga, altera, migra ou copia Blogger; não exclui histórico editorial; não executa limpeza R2 do acervo Blogger. Um upgrade futuro pode reativar o minisite sem reconstruir esse patrimônio.
+
+O crescimento editorial deve permanecer desacoplado do crescimento proporcional da infraestrutura ACTS. Vinte ou dois mil posts, cem ou milhares de fotos continuam representando estado backend relativamente pequeno. O modelo busca baixo custo marginal, pouca escrita D1, pouco storage editorial ACTS, poucas limpezas, menos processamento e jobs, liberdade da anunciante e propriedade editorial descentralizada, sem promessa financeira quantitativa.
+
+### Domínio legado e decisões pendentes
+
+Referências imobiliárias são legado técnico do projeto inicial e não definem o produto final AcompanhanteSex. Código, banco e migrations não são apagados nesta etapa; a adequação futura requer decisão própria.
+
+## DECISÕES PENDENTES
+
+Permanecem abertas e bloqueadas para implementação: cardinalidade conta/anúncio/minisite; estrutura exata da JSON individual; conteúdo exato do catálogo municipal; política de manifest individual; comportamento de impulsionamento ativo durante downgrade; inadimplência e tolerância; preço/versionamento dos planos; endpoint, CORS e paginação Blogger; providers de vídeo; canonical/noindex editorial; política de privacidade Google/Blogger; wildcard Cloudflare; limites exatos de mídia oficial; taxonomia final; destino técnico das estruturas imobiliárias; e algoritmo de ranking de impulsionamento.

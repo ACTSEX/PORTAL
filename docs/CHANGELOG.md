@@ -1,3 +1,13 @@
+## 2026-08-10 — Etapa 2/7: nova arquitetura oficial
+
+- Formalizadas as três superfícies do ACTS: portal central em `acompanhantesex.com`, anúncio para STANDARD/PREMIUM e minisite PREMIUM em `{slug}.acompanhantesex.com`.
+- Fixados STANDARD e PREMIUM como únicos planos estruturais; FREE deixa de ser plano e gratuidade passa a ser condição comercial. PREMIUM habilita, mas não inclui, impulsionamento pago.
+- Substituído o catálogo municipal completo por índice leve de descoberta e adotada uma pequena JSON pública individual por anunciante, regenerada somente por mudança de estado ACTS.
+- Fixado o Blogger como patrimônio da anunciante e origem exclusivamente client-side: sem proxy, sincronização, persistência ou derivados no backend, D1, R2 ou KV e sem importação por Queue, Cron ou Worker.
+- Formalizados downgrade reversível, isolamento de falha Blogger, segurança obrigatória de conteúdo externo, estado ACTS pequeno, responsabilidades de D1/R2/KV/Queue/Cron e princípio econômico sem promessa quantitativa.
+- Registradas em `DECISÕES PENDENTES` as definições ainda bloqueadas e caracterizado o domínio imobiliário como legado técnico, sem apagar código, banco ou migrations.
+- Alteração exclusivamente documental em Constituição, arquitetura, projeto e modelos especializados; nenhum código, teste, schema, migration, ROADMAP ou TREE foi alterado e 13C, 13D e Lote 14 não foram iniciados.
+
 ## 2026-08-06 — Lote 13B: backfill operacional de cidades
 
 - Implementados canonicalização `unicode-17.0.0-v1`, slug geográfico com SHA-256, resolução de cidade nas escritas de Listings e executor D1 local/staging com dry-run padrão, paginação keyset e retomada sem checkpoint.
