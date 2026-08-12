@@ -247,3 +247,43 @@ A evolução de cidade segue obrigatoriamente expansão `0003`, backfill JavaScr
 ## Estado após o Lote 13A
 
 A `0003` instala somente estado vazio: nenhuma linha, versão publicada, artifact path, digest, job ou manifest é criada. `canonicalization_version=unicode-17.0.0-v1` versiona transformação, não catálogo. Publisher, Queue, KV, R2 e catálogo permanecem inalterados.
+
+## Contrato futuro de publicação ACTS — Etapa 5/7
+
+Este contrato é de modelagem; 13F/13D não são iniciados aqui. O Publisher projeta somente estado ACTS confirmado depois do commit D1. R2 será a origem dos artefatos públicos ACTS, Edge Cache sua entrega, e D1 permanecerá fora da navegação pública normal.
+
+### Unidades públicas e allowlist
+
+Há duas unidades independentes:
+
+1. **JSON individual:** `1 anunciante pública → 1 pequena projeção JSON ACTS`, carregada ao abrir anúncio/minisite ou quando necessária. Contém somente id público, slug, nome artístico, idade derivada quando permitida, categoria, cidade; foto principal, rating quando habilitado, apresentação/perfil/serviços; contatos explicitamente públicos; até cinco fotos ACTS e vídeo oficial autorizado; disponibilidade/URL do minisite; e, apenas sob entitlement efetivo, configuração Blogger mínima para o browser.
+2. **Catálogo municipal:** índice leve de descoberta cujas entradas bastam para renderizar card, filtrar, ordenar, identificar e localizar anúncio/JSON individual. Não duplica perfil completo, galeria, vídeo, configuração Blogger ou a JSON individual inteira.
+
+Nunca se serializa linha D1 completa. E-mail, data de nascimento, IDs de assinatura/pagamento, estado interno de moderação, auditoria, secrets, tokens e PII privada são denylist absoluta. STANDARD publica anúncio/perfil/contato/mídia oficial, sem minisite ou Blogger. PREMIUM elegível pode publicar disponibilidade/URL do minisite e configuração Blogger pública mínima, nunca dados financeiros.
+
+Mídia ACTS (foto de card, até cinco fotos oficiais, vídeo oficial e derivados autorizados) tem ownership/storage separado de posts, fotos/vídeos editoriais e histórico Blogger.
+
+### Matriz seletiva
+
+| Fato confirmado | JSON individual | Catálogo municipal |
+| --- | --- | --- |
+| mudança que altera card | regenerar | regenerar catálogo(s) afetado(s) |
+| mudança apenas no perfil/página individual | regenerar | não regenerar |
+| configuração ou conteúdo Blogger | nada | nada |
+| post/mídia/histórico Blogger | nada | nada |
+| ativação/expiração de boost que afeta posição/destaque/prioridade | não, salvo futura presença explícita na página individual | regenerar catálogo(s) afetado(s) |
+| downgrade, upgrade, suspensão ou status público | regenerar ou retirar pointer individual | regenerar catálogo(s) afetado(s) |
+
+`BloggerConfigChanged` é evento legítimo de configuração/auditoria, mas não solicita publicação. Uma mudança ACTS independente de entitlement (`MinisiteEligibilityChanged`, plano ou status) regenera a projeção e aplica a configuração então elegível; **Blogger nunca dispara publicação**. Publisher jamais consulta, parseia, sanitiza, armazena ou versiona Blogger, cria manifest editorial ou invalida por novo post.
+
+### Cidade, não publicidade e consistência
+
+Troca de cidade é uma única intenção lógica pós-commit: preparar JSON com cidade nova, remover card do catálogo antigo e inserir no novo. A ativação só ocorre depois de todos os artefatos referidos existirem; retry converge pela mesma revisão. Não pode permanecer card em duas cidades. Falha parcial mantém integralmente o último conjunto público confirmado.
+
+Para anúncio suspenso/removido, a política segura é retirar/inativar pointer individual e remover sua entrada de descoberta, seguida de invalidação rápida. A URL não deve servir normalmente os dados antigos. Artefatos imutáveis anteriores podem permanecer privados/não descobertos para rollback e auditoria.
+
+### Imutabilidade, ativação e cache
+
+JSON individual e catálogo são artefatos imutáveis e versionados, com digest sobre bytes canônicos. O fluxo obrigatório é: reservar revisão/idempotency key; gerar allowlist após commit; upload R2; confirmar objeto e digest; somente então ativar manifest/pointer que nunca referencia objeto ausente; invalidar/atualizar Edge; registrar confirmação. Retry da mesma entrada não cria estado divergente. Ativação falha preserva o pointer anterior; rollback troca para versão previamente confirmada.
+
+Downgrade e suspensão exigem invalidação prioritária para não deixar minisite ou dados inelegíveis ativos indefinidamente. TTL, caminho R2 e formato exato de manifest/pointer permanecem abertos. KV não é origem do catálogo nem da JSON.

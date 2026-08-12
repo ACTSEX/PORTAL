@@ -424,3 +424,12 @@ Nenhuma.
 - Fixado Blogger exclusivamente no arquivo client-side coeso do minisite, sem módulo, Function, proxy, Worker, script, banco, cache, Queue, Cron ou Publisher Blogger.
 - Marcados os principais arquivos do domínio imobiliário como legado/reavaliar no 13E, preservando código, schema e migrations nesta etapa.
 - Reduzida a antiga previsão fragmentada de componentes, layouts, templates, endpoints e assets; nenhum código, schema, migration ou lote de implementação foi iniciado.
+
+## 2026-08-12 — Etapa 5/7: contratos de banco e publicação
+
+- Definidos conceitualmente cardinalidade única de conta/perfil/anúncio/minisite, separação entre identidade, perfil, assinatura, condição comercial, configurações, boost/order/campanha e pagamento.
+- Formalizados STANDARD e PREMIUM como únicos planos, entitlements derivados, downgrade reversível e upgrade por reativação; FREE não é plano e PREMIUM não inclui boost.
+- Redefinido o contrato futuro de `listings` para anúncio ACTS, preservando owner/categoria/cidade/slug/status/mídia/publicação/moderação e mapeando o legado imobiliário sem removê-lo.
+- Fixadas allowlists da pequena JSON individual e do catálogo municipal leve, matriz seletiva, status não público, troca de cidade e publicação imutável com confirmação, pointer, digest, retry e rollback.
+- Reafirmado Blogger exclusivamente client-side e fora de Publisher/D1/R2/KV, com somente configuração mínima preservável e sem sync/import ou eventos editoriais.
+- Registradas decisões fechadas e pendências reservadas aos lotes próprios. Alteração exclusivamente documental: nenhum código, schema, migration, banco, Function, Worker, frontend ou lote 13C/13E/13F/13G/13D foi iniciado.

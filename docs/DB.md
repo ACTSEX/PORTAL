@@ -417,3 +417,52 @@ Vetores obrigatórios: `BR|parana|primavera` e `BR|sao paulo|primavera` produzem
 O 13B não adicionará tabela de checkpoint. Sua garantia durável será exclusivamente `listings.city_id` confirmado no D1. Pendências são selecionadas por `city_id IS NULL` em paginação keyset por `id`, nunca por `OFFSET`; reinício volta ao menor ID pendente. O cursor de uma passagem e o relatório são efêmeros. Uma varredura final desde o início, limitada em número de passagens, impede conclusão quando inserções concorrentes ainda produzirem nulos.
 
 A atualização condiciona `id = ? AND city_id IS NULL`; zero alterações exige releitura e somente o vínculo esperado é aceito. Cidades concorrentes convergem por unicidade, com releitura e validação. `city_publication_state` mantém exclusivamente sua semântica de publicação e não armazena cursor ou checkpoint do backfill.
+
+## Contrato futuro ACTS — Etapa 5/7 (modelagem, sem implementação)
+
+Esta seção é normativa para os lotes futuros, mas **não descreve tabelas já instaladas**. O formato físico, nomes finais, índices e migrations serão decididos nos lotes próprios. Nesta etapa `schema.sql`, migrations e runtime permanecem intocados.
+
+### Fonte da verdade e cardinalidade do MVP
+
+D1 é a fonte da verdade privada do estado ACTS. A navegação pública normal não consulta D1: consome projeções confirmadas em R2/Edge.
+
+A cardinalidade oficial é `1 conta anunciante → 1 perfil comercial → 1 anúncio principal → 0 ou 1 configuração de minisite`. A conta deve ser única nos vínculos de perfil, anúncio principal e configuração de minisite. STANDARD tem zero minisite **efetivamente público**; PREMIUM pode ter um. Configuração preservada não equivale a superfície ativa e não autoriza segundo minisite ou anúncio.
+
+`users` continua identidade técnica (autenticação, status, e-mail, segurança e identidade interna). Plano e conteúdo Blogger não pertencem a `users`; ficam nos domínios próprios.
+
+### Agregados futuros
+
+| Agregado lógico | Contrato mínimo futuro | Restrições |
+| --- | --- | --- |
+| perfil comercial | owner; nome artístico; apresentação; telefone/WhatsApp; dados físicos e comerciais aprovados; data de nascimento privada; campos administrativos e timestamps | separar allowlists privada, pública e administrativa; idade pública é derivada da data de nascimento e nunca fonte persistida |
+| anúncio principal (`listings`) | owner; categoria; `city_id`; slug; status; datas; mídia oficial; publicação e moderação | representação comercial única; sem sale/rent, preço/endereço/profissional imobiliário |
+| assinatura | conta; plano estrutural; estado; períodos de ativação/renovação; cancelamento/suspensão; condição comercial associada; timestamps | somente STANDARD ou PREMIUM; impedir terceiro plano por constraint estrutural futura |
+| condição comercial | tipo `NORMAL`, `TRIAL`, `CORTESIA`, `PROMOCAO` ou `GRATUIDADE_TEMPORARIA`; início/fim; motivo; ator; estado; timestamps | auditável e separada do plano; jamais cria FREE |
+| configuração de minisite | owner; slug; ativação desejada; tema/configuração mínima; moderação; timestamps | no máximo uma por conta; desejo separado de elegibilidade efetiva |
+| configuração Blogger | owner; referência canônica ao blog/feed; habilitação desejada; labels/seções; versão de contrato; validação técnica mínima | configuração somente; proibir posts, HTML, fotos, vídeos, cache, JSON derivada, histórico e campos de sync/import |
+
+`cities`, `city_id`, identidade canônica, slug municipal e estado de publicação municipal são preservados. O domínio novo é compatível com a contração futura `listings.city_id NOT NULL`: todo anúncio principal publicável pertence exatamente a uma cidade canônica. Isso apenas confirma 13C; não o implementa.
+
+### Planos, assinatura e entitlements
+
+Os únicos planos estruturais são `STANDARD` e `PREMIUM`. STANDARD dá portal, card, anúncio, perfil, contatos e mídias oficiais. PREMIUM acrescenta elegibilidade para minisite/subdomínio, exposição client-side do Blogger no minisite e compra separada de boost. **PREMIUM não inclui boost.**
+
+`subscriptions` será o vínculo conta–plano e suportará ativação, renovação, upgrade, downgrade, cancelamento e suspensão. Entitlements não serão dezenas de flags persistidas: `canUseMinisite`, `canExposeBlogger`, `canPurchaseBoost` e `canPublishListing` são resultados calculados de `plano + estado da assinatura + condição comercial vigente + regras administrativas`. A preferência gravada pelo usuário nunca substitui esse cálculo.
+
+### Boost e pagamentos
+
+O domínio separa: (1) produto de boost — tipo, duração, preço, elegibilidade e alvo permitido; (2) order — comprador, produto, preço contratado, moeda, instante e vínculo de pagamento; (3) campanha — anúncio, alvo, início/fim, estado e prioridade/ranking aplicável. Somente conta PREMIUM elegível inicia compra; a elegibilidade é revalidada antes da ativação. O destino de boost pago durante downgrade permanece **decisão bloqueante para 13G**.
+
+Asaas, idempotência e ordenação de webhooks permanecem. O contrato financeiro aceitará assinatura e order avulsa de boost; payment terá referência tipada/inequívoca ao objeto cobrado, em vez de ser obrigatoriamente filho de subscription. Preços, estados físicos e desenho exato `order → payment` continuam para 13G.
+
+### Upgrade, downgrade e estado não público
+
+No downgrade PREMIUM → STANDARD preservam-se user, perfil, anúncio, mídia oficial, configurações de minisite/Blogger e histórico financeiro. Tornam-se inelegíveis minisite/subdomínio públicos, exposição Blogger e novas compras de boost; a projeção individual deve refletir isso com invalidação rápida. Nada editorial é apagado ou copiado.
+
+No upgrade STANDARD → PREMIUM, slug e configurações preservadas podem ser reutilizados, sujeitos a elegibilidade, validação, moderação e colisão. Anúncio suspenso/removido deixa de ter projeção normalmente acessível; o pointer público é retirado/inativado e caches são invalidados rapidamente, preservando internamente o último artefato confirmado para auditoria/rollback controlado.
+
+### Eventos e legado
+
+Eventos de domínio legítimos incluem `ProfileUpdated`, `ListingUpdated`, `ListingPublished`, `PlanChanged`, `CommercialConditionChanged`, `MinisiteEligibilityChanged`, `BloggerConfigChanged`, `BoostActivated` e `BoostExpired`. São emitidos após commit D1 e carregam identificação/revisão, não snapshots privados. Não existem eventos de post, mídia editorial, importação ou sincronização Blogger.
+
+Mapeamento do legado imobiliário: preservar `users`, cidades, IDs, timestamps, pagamentos/auditoria aproveitáveis e infraestrutura genérica; migrar owner, categoria, `city_id`, slug, status e referências de mídia após decisão de dados; reconstruir perfil comercial, assinatura/condição, configurações, projeções e boost; descontinuar conceitualmente sale/rent, preço/endereço/profissional imobiliário. Nenhuma coluna ou linha é apagada nesta etapa.
