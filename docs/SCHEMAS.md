@@ -141,3 +141,35 @@ Estado
 Os schemas listados representam a estrutura inicial aprovada.
 
 Novos schemas deverão ser registrados neste documento antes de sua implementação.
+
+## Contratos conceituais de projeção pública — Etapa 5/7
+
+Não há novo arquivo de schema nem implementação nesta etapa. Os nomes abaixo são contratos lógicos para posterior versionamento formal.
+
+### `ActsAdvertiserPublicProjection`
+
+Uma projeção pequena por anunciante pública, produzida por allowlist:
+
+- metadados: `contractVersion`, revisão/digest técnico e instante publicado;
+- identidade: id público opaco, slug, nome artístico, idade **derivada quando autorizada**, categoria e cidade canônica pública;
+- card/perfil: foto principal, rating apenas quando habilitado, apresentação, campos públicos de perfil e serviços aprovados;
+- contato: WhatsApp/telefone e outros contatos apenas quando marcados públicos;
+- mídia ACTS: no máximo cinco fotos oficiais e vídeo oficial autorizado;
+- minisite: disponibilidade efetiva e URL oficial somente sob entitlement;
+- Blogger: somente referência/configuração mínima necessária ao fetch client-side, apenas se `canExposeBlogger` for verdadeiro.
+
+São proibidos data de nascimento, e-mail privado, IDs financeiros/assinatura/pagamento, moderação/auditoria interna, secrets/tokens, PII privada, linha D1 integral e qualquer post/HTML/mídia/cache/derivado Blogger. STANDARD omite/desativa minisite e Blogger; PREMIUM não expõe finanças.
+
+Quando o anúncio não estiver público, não se serve normalmente essa projeção: seu pointer público é retirado/inativado. A forma física do envelope e a política exata de idade permanecem abertas.
+
+### `ActsMunicipalCatalog`
+
+Índice leve versionado de uma cidade. Cada entrada contém somente id público, slug/locator da projeção individual, nome/foto de card, categoria/cidade, campos mínimos de filtro/ordenação e sinalização de destaque/prioridade quando aplicável. Deve renderizar o card sem fan-out para JSONs individuais.
+
+Não contém perfil/apresentação completos, todos os contatos, galeria/vídeo completos, minisite completo ou configuração/conteúdo Blogger. Catálogo é descoberta; projeção individual é estado público detalhado e só é carregada quando necessária.
+
+### Versionamento e validação
+
+Ambos exigem versão explícita de contrato, serialização determinística, allowlist, limites de tamanho/quantidade, referências públicas válidas e digest verificável. Catálogo só referencia revisão individual já confirmada. Consumidores devem rejeitar versão incompatível sem fazer fallback para D1.
+
+Mudança de card produz ambas as unidades; mudança apenas individual produz somente a projeção; configuração ou conteúdo Blogger não produz nenhuma. Uma mudança ACTS independente de entitlement pode voltar a projetar a configuração então elegível. Boost que só altera ranking produz catálogo. Troca de cidade coordena projeção nova, catálogo antigo e novo como uma ativação lógica idempotente.
