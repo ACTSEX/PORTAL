@@ -416,3 +416,11 @@ Nenhuma.
 - Adiado o 13D de Publish/SEO final até a conclusão das adequações de produto, contratos públicos, minisite, prova Blogger e decisões comerciais/SEO.
 - Redistribuídos testes, gates, dependências, decisões pendentes, painel/superadmin, frontend e aceite transversal do Lote 18.
 - Alteração exclusivamente documental: nenhum código, schema, migration, banco ou `docs/TREE.md` foi alterado; nenhum lote posterior foi iniciado.
+
+## 2026-08-10 — Etapa 4/7: reconstrução do TREE oficial
+
+- Separada a árvore versionada dos artefatos conceituais publicados em R2/Edge, sem criar arquivos de runtime no Git.
+- Consolidado o inventário mínimo futuro para STANDARD/PREMIUM, Profiles/Cities, JSON individual, índice municipal leve, minisite compartilhado, Boosts, Publish/SEO e superfícies posteriores.
+- Fixado Blogger exclusivamente no arquivo client-side coeso do minisite, sem módulo, Function, proxy, Worker, script, banco, cache, Queue, Cron ou Publisher Blogger.
+- Marcados os principais arquivos do domínio imobiliário como legado/reavaliar no 13E, preservando código, schema e migrations nesta etapa.
+- Reduzida a antiga previsão fragmentada de componentes, layouts, templates, endpoints e assets; nenhum código, schema, migration ou lote de implementação foi iniciado.
