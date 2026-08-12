@@ -335,7 +335,9 @@ A migration imutável `0002_payment_event_ordering.sql` acrescenta somente
 `payments.external_updated_at`. O campo registra o timestamp do último evento
 Asaas efetivamente aplicado e permite rejeitar eventos antigos. A mudança de pagamento e a conclusão idempotente usam batch D1 e `changes()`. Batch reverte quando um statement falha; condição que altera zero linhas é sucesso técnico e não causa rollback. O domínio deve conferir o resultado. Conferência posterior ao commit detecta conflito, mas não desfaz statement anterior já confirmado; coerência atômica deve estar no próprio SQL ou em operação que falhe.
 
-## Arquitetura 2.0 — decisão vigente (2026-08-04)
+## HISTÓRICO — Arquitetura 2.0 (substituída pela Arquitetura 3.0)
+
+> **Estado:** registro histórico do estado então aprovado em 2026-08-04. Esta seção não é normativa para o estado alvo; em conflito, prevalecem `CONSTITUTION.md`, `ARCHITECTURE.md` (Arquitetura 3.0) e os contratos específicos mais recentes.
 
 Esta seção substitui qualquer descrição anterior incompatível neste documento. A evolução preserva os Lotes 1 a 9 já concluídos; ajustes de implementação dependem de necessidade concreta, autorização e lote futuro. Esta revisão é exclusivamente documental.
 

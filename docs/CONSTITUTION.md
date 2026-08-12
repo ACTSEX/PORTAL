@@ -14,7 +14,8 @@ O D1 é a única fonte de verdade para dados da aplicação.
 
 O KV limita-se a necessidades técnicas pequenas e comprovadas, fora da navegação pública normal.
 
-O R2 armazena apenas arquivos.
+O R2 armazena somente artefatos próprios do ACTS: mídia oficial, projeções
+públicas, manifests, assets e derivados autorizados.
 
 2. Arquitetura Edge
 
@@ -25,6 +26,10 @@ Pages Functions apenas orquestram.
 O Core fornece exclusivamente infraestrutura técnica genérica.
 
 Regras de negócio permanecem exclusivamente nos módulos.
+
+Cada responsabilidade de negócio relevante possui um módulo principal coeso.
+Providers e gateways externos ficam separados somente quando a fronteira de
+integração justificar; não se cria um Worker, Function ou arquivo por operação.
 
 3. Organização
 
@@ -56,7 +61,8 @@ Todo acesso passa por Auth e Security.
 
 Segredos nunca são registrados em logs.
 
-Erros nunca expõem detalhes internos.
+Erros nunca expõem detalhes internos. Autorização, publicação, projeção pública
+e integrações falham fechadas e operam com menor privilégio.
 
 7. Governança
 
@@ -78,15 +84,15 @@ decisão explícita mais recente, formalmente aprovada e registrada;
 
 ARCHITECTURE.md;
 
-ADR específico aprovado;
-
-documentação especializada aplicável;
-
-TREE.md;
+contrato normativo específico ou ADR aprovado;
 
 ROADMAP.md;
 
-contratos e schemas;
+TREE.md;
+
+documentação especializada aplicável;
+
+histórico e CHANGELOG;
 
 implementação existente.
 
@@ -98,7 +104,9 @@ Listas de referência de documentos especializados não autorizam arquivos: `TRE
 
 O lote funcional é a unidade oficial de implantação, testes, commit, revisão, Pull Request, aprovação e avanço. Cada arquivo conserva responsabilidade individual, mas não constitui uma etapa isolada de autorização.
 
-O código existente não se torna regra apenas por já estar implementado.
+O código existente não se torna regra apenas por já estar implementado. Quando
+o estado físico divergir do contrato aprovado, a documentação deve identificar
+explicitamente **ESTADO ATUAL** e **CONTRATO/ESTADO ALVO**.
 
 Regra Final
 
@@ -167,10 +175,14 @@ O ACTS não apaga, altera, migra ou copia Blogger; não exclui histórico editor
 
 O crescimento editorial deve permanecer desacoplado do crescimento proporcional da infraestrutura ACTS. Vinte ou dois mil posts, cem ou milhares de fotos continuam representando estado backend relativamente pequeno. O modelo busca baixo custo marginal, pouca escrita D1, pouco storage editorial ACTS, poucas limpezas, menos processamento e jobs, liberdade da anunciante e propriedade editorial descentralizada, sem promessa financeira quantitativa.
 
+Blogger nunca se torna backend por conveniência. O patrimônio editorial externo
+não pertence ao ACTS, e seu crescimento não pode provocar crescimento
+proporcional do backend ACTS.
+
 ### Domínio legado e decisões pendentes
 
 Referências imobiliárias são legado técnico do projeto inicial e não definem o produto final AcompanhanteSex. Código, banco e migrations não são apagados nesta etapa; a adequação futura requer decisão própria.
 
 ## DECISÕES PENDENTES
 
-Permanecem abertas e bloqueadas para implementação: cardinalidade conta/anúncio/minisite; estrutura exata da JSON individual; conteúdo exato do catálogo municipal; política de manifest individual; comportamento de impulsionamento ativo durante downgrade; inadimplência e tolerância; preço/versionamento dos planos; endpoint, CORS e paginação Blogger; providers de vídeo; canonical/noindex editorial; política de privacidade Google/Blogger; wildcard Cloudflare; limites exatos de mídia oficial; taxonomia final; destino técnico das estruturas imobiliárias; e algoritmo de ranking de impulsionamento.
+O cadastro normativo único, com decisão e lote responsável, está em `CONTRACTS.md` § 11.8. Nenhuma pendência autoriza implementação por pressuposto.

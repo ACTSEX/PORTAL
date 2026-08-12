@@ -88,4 +88,9 @@ O volume editorial não deve aumentar proporcionalmente D1, R2, KV, publicação
 
 ## DECISÕES PENDENTES
 
-Ficam abertas e bloqueadas para implementação: endpoint Blogger; CORS; paginação; providers de vídeo; canonical/noindex editorial; política de privacidade Google/Blogger; limites de conteúdo e mídia; e detalhes de fallback/retry que dependam da prova técnica.
+A lista normativa única está em `CONTRACTS.md`. O gate 13F.4 deve comprovar em
+navegador real endpoint, CORS, blogs reais, conteúdo adulto, paginação, labels,
+imagens, vídeos/providers, CSP e timeout. Deve ainda validar parsing,
+sanitização, normalização, allowlists, URLs, iframe sandbox, loading, erro,
+fallback e retry limitado/manual. Falha significa **PARAR → NOVA DECISÃO
+ARQUITETURAL**, nunca criar proxy backend automaticamente.

@@ -86,4 +86,4 @@ Referências imobiliárias são legado técnico do projeto inicial e não define
 
 ## DECISÕES PENDENTES
 
-Permanecem abertas e bloqueadas para implementação: cardinalidade conta/anúncio/minisite; estrutura exata da JSON individual; conteúdo exato do catálogo municipal; manifest individual; boost ativo durante downgrade; inadimplência e tolerância; preço/versionamento dos planos; endpoint, CORS e paginação Blogger; providers de vídeo; canonical/noindex editorial; privacidade Google/Blogger; wildcard Cloudflare; limites exatos de mídia oficial; taxonomia final; destino das estruturas imobiliárias; e algoritmo de ranking de impulsionamento.
+O cadastro normativo único, com decisão e lote responsável, está em `CONTRACTS.md` § 11.8. Nenhuma pendência autoriza implementação por pressuposto.

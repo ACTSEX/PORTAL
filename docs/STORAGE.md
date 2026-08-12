@@ -196,7 +196,9 @@ O D1 armazena apenas metadados; o conteúdo permanece no R2.
 
 ---
 
-## Arquitetura 2.0 — decisão vigente (2026-08-04)
+## HISTÓRICO — Arquitetura 2.0 (substituída pela Arquitetura 3.0)
+
+> **Estado:** registro histórico do estado então aprovado em 2026-08-04. Esta seção não é normativa para o estado alvo; em conflito, prevalecem `CONSTITUTION.md`, `ARCHITECTURE.md` (Arquitetura 3.0) e os contratos específicos mais recentes.
 
 Esta seção substitui qualquer descrição anterior incompatível neste documento. A evolução preserva os Lotes 1 a 9 já concluídos; ajustes de implementação dependem de necessidade concreta, autorização e lote futuro. Esta revisão é exclusivamente documental.
 
@@ -214,3 +216,7 @@ Esta seção substitui qualquer descrição anterior incompatível neste documen
 - Falha de publicação não reverte o negócio confirmado: D1 permanece verdadeiro. Publicação é repetível/idempotente, suporta republicação e retenção temporária de versões para rollback; falha em R2 não aponta manifest a arquivo parcial.
 - O navegador prioriza cache HTTP, memória, Cache Storage quando necessário, IndexedDB para persistência estruturada e `localStorage` somente para pequenos metadados/preferências. A JSON completa não tem `localStorage` como armazenamento principal.
 - Catálogos contêm somente projeções públicas aprovadas: sem e-mail privado, dados administrativos, tokens, pagamentos, endereço privado não autorizado ou coordenada precisa proibida.
+
+## Contrato vigente — Arquitetura 3.0
+
+D1 é a fonte da verdade ACTS. R2 pode conter mídia oficial ACTS (card, galeria/vídeo permitidos e derivados), JSON individual allowlisted, catálogo municipal leve, manifests, assets e artefatos ACTS. KV permanece técnico/privado e não é origem pública. Posts, feed, HTML, fotos e vídeos editoriais Blogger nunca são copiados para D1, R2 ou KV. O path final e o manifest individual permanecem pendentes em `CONTRACTS.md`.

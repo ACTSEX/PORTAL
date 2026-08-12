@@ -234,7 +234,9 @@ medido antes de ampliar indicadores; o Lote 13 não foi iniciado.
 
 ---
 
-## Arquitetura 2.0 — decisão vigente (2026-08-04)
+## HISTÓRICO — Arquitetura 2.0 (substituída pela Arquitetura 3.0)
+
+> **Estado:** registro histórico do estado então aprovado em 2026-08-04. Esta seção não é normativa para o estado alvo; em conflito, prevalecem `CONSTITUTION.md`, `ARCHITECTURE.md` (Arquitetura 3.0) e os contratos específicos mais recentes.
 
 Esta seção substitui qualquer descrição anterior incompatível neste documento. A evolução preserva os Lotes 1 a 9 já concluídos; ajustes de implementação dependem de necessidade concreta, autorização e lote futuro. Esta revisão é exclusivamente documental.
 
@@ -286,3 +288,7 @@ O 13A altera somente schema. `Listings.js` não normaliza nem preenche `city_id`
 Quando o 13B for implementado, `Listings.js` resolverá e persistirá `city_id` tanto na criação quanto em mudanças de localização, mantendo os campos textuais durante a transição. `cityId` vindo do cliente será campo desconhecido e rejeitado. A única função canônica pública do módulo será consumida pelo executor, sem duplicação ou importação do script pelo domínio.
 
 Essa resolução não solicita publicação. Listings inseridas antes da ativação, ou concorrentes ainda sem vínculo, permanecem no conjunto operacional derivado por `city_id IS NULL`. Esta decisão é somente documental e não altera o módulo atual.
+
+## Contrato alvo de módulos — Arquitetura 3.0
+
+`TREE.md` é o inventário físico oficial. Uma responsabilidade de negócio relevante corresponde a um módulo principal coeso; providers/gateways externos só se separam quando a integração justificar. Não se cria módulo Blogger, Worker por módulo, Function por CRUD, componente por fragmento nem arquivo por anunciante. `Listings.js` evoluirá do estado imobiliário legado para o anúncio comercial; `Plans.js` possuirá apenas STANDARD/PREMIUM e entitlements; boost será produto separado conforme o futuro `Boosts.js` já previsto no TREE. Estes nomes são contrato futuro, não implementação concluída.

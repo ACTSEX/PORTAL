@@ -151,7 +151,7 @@ Remodelar de forma faseada os conceitos imobiliários legados — venda, aluguel
 
 Inclui perfil comercial e somente configurações ACTS de minisite e Blogger (identificador/URL, habilitação e opções), nunca conteúdo editorial.
 
-**Decisões/gates antes do DoD:** cardinalidade conta/anúncio/minisite; taxonomia e campos comerciais; limites de mídia; preço/versionamento dos planos; inadimplência; contrato de condição comercial; inventário legado e estratégia de migração.
+**Decisões/gates antes do DoD:** taxonomia e campos comerciais; limites de mídia; preço/versionamento dos planos; inadimplência; contrato de condição comercial; inventário legado e estratégia de migração.
 
 ### LOTE 13F — Estado público individual, catálogo, minisite e Blogger ⛔
 
@@ -288,7 +288,7 @@ O lote final não substitui testes funcionais. Ele valida de ponta a ponta:
 
 ## 11. Decisões pendentes e itens bloqueados
 
-Permanecem explicitamente pendentes, não devendo ser inventados durante implementação: cardinalidade conta/anúncio/minisite; schema da JSON individual; campos do catálogo leve; manifest individual; domínio comercial/taxonomia final; destino das estruturas imobiliárias; limites de mídia oficial; preço/versionamento de planos e boosts; inadimplência/tolerância; boost ativo no downgrade; endpoint/CORS/paginação Blogger; providers de vídeo; privacidade Google/Blogger; limites de conteúdo; wildcard Cloudflare; algoritmo de ranking; canonical/noindex editorial, sitemap, robots e duplicidade.
+Permanecem explicitamente pendentes, não devendo ser inventados durante implementação: schema da JSON individual; campos do catálogo leve; manifest individual; domínio comercial/taxonomia final; destino das estruturas imobiliárias; limites de mídia oficial; preço/versionamento de planos e boosts; inadimplência/tolerância; boost ativo no downgrade; endpoint/CORS/paginação Blogger; providers de vídeo; privacidade Google/Blogger; limites de conteúdo; wildcard Cloudflare; algoritmo de ranking; canonical/noindex editorial, sitemap, robots e duplicidade.
 
 Enquanto pendentes, ficam bloqueadas as partes dependentes de 13E–13G, 13D e todos os Lotes 14–18. Uma falha da prova Blogger exige nova decisão, nunca mudança automática para backend.
 
@@ -316,6 +316,10 @@ Enquanto pendentes, ficam bloqueadas as partes dependentes de 13E–13G, 13D e t
 → produção aceita e operação contínua
 ```
 
-## 13. Fronteira documental com a Etapa 4/7
+## 13. Fronteira documental com o TREE oficial
 
-Este ROADMAP pode nomear caminhos futuros, mas não altera nem autoriza caminhos em `docs/TREE.md`. A árvore atual ainda reflete fronteiras anteriores; toda divergência de novos módulos, schemas, Functions, componentes, templates, site e testes deve ser resolvida exclusivamente na Etapa 4/7 antes da implementação. Código, schema e migrations permanecem intocados nesta etapa.
+O `TREE.md`, formalizado na Etapa 4/7, é o inventário físico oficial para os
+caminhos futuros nomeados por este ROADMAP. O ROADMAP controla ordem e gates;
+o TREE controla existência/localização. Divergência futura exige decisão
+documental explícita antes da implementação. Código, schema e migrations não
+são alterados por este planejamento.

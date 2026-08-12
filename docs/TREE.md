@@ -404,14 +404,15 @@ placeholders.
 4. A árvore física não possui hoje `functions/`, `site/`, componentes,
    templates ou Worker. Todos continuam futuros e bloqueados.
 
-## 11. Decisões reservadas à Etapa 5/7
+## 11. Fronteira com os contratos da Etapa 5/7
 
-Não são decididos aqui: cardinalidade conta/anúncio/minisite; schema e URL da
-JSON individual; campos e URL do índice municipal; política de manifest;
-contratos D1/publicação; taxonomia final; destino dos dados imobiliários;
-preços/versionamento e inadimplência; boost ativo no downgrade; ranking de
-boost; wildcard; limites de mídia; endpoint/CORS/paginação Blogger, providers e
-privacidade; canonical/noindex, sitemap e robots.
+A Etapa 5/7 fechou a cardinalidade `1 conta anunciante → 1 perfil → 1 anúncio
+principal → 0 ou 1 minisite` e os limites lógicos D1/publicação em
+`CONTRACTS.md`, `DB.md`, `SCHEMAS.md` e `PUBLISHER.md`. Este TREE apenas
+inventaria seus caminhos. As decisões ainda abertas — schema/URL da JSON,
+campos/URL do índice, manifest, taxonomia/legado, preços/inadimplência, boost
+ativo no downgrade, ranking, wildcard, mídia, Blogger/CORS/providers/
+privacidade e SEO — estão consolidadas em `CONTRACTS.md` § 11.8.
 
 Qualquer decisão que exija novo caminho além deste inventário deve primeiro
-revisar este TREE. A Etapa 5/7 não é iniciada por este documento.
+revisar este TREE. Este documento não inicia lote de implementação.

@@ -207,7 +207,9 @@ Sempre que houver divergência entre Cache e D1, prevalece o conteúdo do D1.
 
 ---
 
-## Arquitetura 2.0 — decisão vigente (2026-08-04)
+## HISTÓRICO — Arquitetura 2.0 (substituída pela Arquitetura 3.0)
+
+> **Estado:** registro histórico do estado então aprovado em 2026-08-04. Esta seção não é normativa para o estado alvo; em conflito, prevalecem `CONSTITUTION.md`, `ARCHITECTURE.md` (Arquitetura 3.0) e os contratos específicos mais recentes.
 
 Esta seção substitui qualquer descrição anterior incompatível neste documento. A evolução preserva os Lotes 1 a 9 já concluídos; ajustes de implementação dependem de necessidade concreta, autorização e lote futuro. Esta revisão é exclusivamente documental.
 
@@ -225,3 +227,7 @@ Esta seção substitui qualquer descrição anterior incompatível neste documen
 - Falha de publicação não reverte o negócio confirmado: D1 permanece verdadeiro. Publicação é repetível/idempotente, suporta republicação e retenção temporária de versões para rollback; falha em R2 não aponta manifest a arquivo parcial.
 - O navegador prioriza cache HTTP, memória, Cache Storage quando necessário, IndexedDB para persistência estruturada e `localStorage` somente para pequenos metadados/preferências. A JSON completa não tem `localStorage` como armazenamento principal.
 - Catálogos contêm somente projeções públicas aprovadas: sem e-mail privado, dados administrativos, tokens, pagamentos, endereço privado não autorizado ou coordenada precisa proibida.
+
+## Contrato vigente — Arquitetura 3.0
+
+O fluxo público normal é `Edge Cache → R2`; navegador, Worker e Function não consultam D1. JSON individual e catálogo municipal leve têm invalidação seletiva. Downgrade, suspensão e moderação exigem retirada/invalidação segura das projeções afetadas, sem apagar configuração privada. TTL exato permanece na lista única de `CONTRACTS.md`; não se presume valor. Blogger é buscado pelo navegador e não usa cache editorial ACTS em KV, R2 ou backend.

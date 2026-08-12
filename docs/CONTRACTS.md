@@ -181,4 +181,23 @@ Publicação nunca aponta a objeto inexistente; troca de cidade converge sem dup
 
 Fechadas: um anúncio principal e no máximo um minisite por conta; STANDARD não expõe Blogger; PREMIUM elegível o habilita; config Blogger sobrevive ao downgrade; catálogo renderiza card sozinho; JSON individual é sob demanda; Blogger nunca dispara publicação; boost pode alterar catálogo/ranking; D1 é fonte da verdade ACTS.
 
-Continuam abertas, sem pressuposto: desenho físico das tabelas; paths R2 e manifest individual; campanha paga durante downgrade; inadimplência; preços; ranking; wildcard Cloudflare; endpoint Blogger/CORS; providers; SEO; TTL/invalidação exatos; política pública exata de idade.
+Este é o cadastro único de decisões pendentes. Documentos especializados devem
+referenciá-lo, sem criar respostas ou listas concorrentes:
+
+| Decisão ainda aberta | Lote que deve fechá-la |
+| --- | --- |
+| desenho físico das novas tabelas e migrations forward-only | 13E (domínio) e 13G (boost/pagamento) |
+| path exato no R2, formato/pointer do manifest individual e campos finais das projeções | 13F, ratificação em 13D |
+| destino físico do legado imobiliário e taxonomia comercial final | 13E |
+| boost já pago/ativo durante downgrade; produto, preço, período e ranking | 13G |
+| inadimplência, tolerância, reativação e preço/versionamento dos planos | 13E |
+| wildcard, resolução de slug e operação de subdomínio | 13F |
+| endpoint Blogger, CORS, paginação, labels, limites e providers de vídeo | gate 13F.4 |
+| privacidade Google/Blogger, cookies, conteúdo externo e contatos/PII | 13F, com validação jurídica antes de produção |
+| canonical, indexação Blogger/minisite, duplicidade, sitemap, robots, noindex e SEO client-side | 13D, após 13E–13G |
+| TTL e invalidação exatos para downgrade, suspensão e moderação | 13F/13D, validação no 18 |
+| política pública exata de idade derivada | 13E, com validação jurídica antes de produção |
+| limites exatos de mídia ACTS | 13E/13F |
+
+Uma falha no gate Blogger significa **PARAR → NOVA DECISÃO ARQUITETURAL**;
+jamais autoriza automaticamente proxy, importação ou sincronização backend.
