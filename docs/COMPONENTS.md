@@ -129,3 +129,7 @@ Estado
 Todos os componentes listados estão aprovados conceitualmente.
 
 A implementação seguirá a ordem definida no ROADMAP.
+
+## Contrato alvo de componentes e minisite
+
+Componentes recebem dados públicos prontos e não consultam D1. O minisite PREMIUM é virtual e compartilhado: um template, assets/CSS/JS compartilhados, uma JSON individual ACTS por anunciante e feed Blogger externo consultado no navegador. Não existem template, pasta, aplicação, CSS ou JavaScript por anunciante. STANDARD não expõe minisite, subdomínio ou Blogger no ACTS. Detalhes de SEO e wildcard aguardam 13D e 13F.

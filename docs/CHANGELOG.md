@@ -433,3 +433,12 @@ Nenhuma.
 - Fixadas allowlists da pequena JSON individual e do catálogo municipal leve, matriz seletiva, status não público, troca de cidade e publicação imutável com confirmação, pointer, digest, retry e rollback.
 - Reafirmado Blogger exclusivamente client-side e fora de Publisher/D1/R2/KV, com somente configuração mínima preservável e sem sync/import ou eventos editoriais.
 - Registradas decisões fechadas e pendências reservadas aos lotes próprios. Alteração exclusivamente documental: nenhum código, schema, migration, banco, Function, Worker, frontend ou lote 13C/13E/13F/13G/13D foi iniciado.
+## 2026-08-12 — Etapa 6/7: consolidação documental completa
+
+- Auditados integralmente os 43 documentos rastreados em `docs/` e, apenas para conferência do estado físico, schema, migrations, aplicação, schemas, scripts, testes e configurações; nenhum arquivo fora de `docs/` foi alterado.
+- Fixada a precedência Constituição → Arquitetura → contratos/ADR → ROADMAP → TREE → especializados → histórico e esclarecido que Arquitetura 3.0 e ROADMAP 2.0 versionam documentos distintos, sem conflito semântico.
+- Reclassificadas como históricas as seções da Arquitetura 2.0 que ainda descreviam a JSON completa de cidade; o contrato alvo permanece JSON individual allowlisted + catálogo municipal leve, entregue por R2/Edge sem D1 público.
+- Consolidados produto AcompanhanteSex, STANDARD/PREMIUM, condição comercial, cardinalidade, anúncio, perfil/idade derivada, minisite compartilhado, downgrade não destrutivo, mídia ACTS/Blogger, publicação seletiva, cache, Cloudflare, segurança, testes e operações.
+- Reafirmado Blogger exclusivamente client-side e patrimônio da anunciante, sem proxy, sync/import, Queue/Cron editorial ou persistência D1/R2/KV; falha do gate 13F.4 exige nova decisão arquitetural.
+- Consolidado em `CONTRACTS.md` o cadastro único de decisões pendentes com lote responsável: tabelas/migrations, R2/manifest, boost ativo no downgrade, inadimplência/preços/ranking, wildcard, Blogger/CORS/providers, privacidade, SEO, TTL, idade e mídia.
+- Preservados como estado atual o código, schema, migrations e referências imobiliárias históricas; nenhum código, schema, migration, módulo, Function, Worker, template, frontend ou teste foi criado, e nenhum lote 13C/13E/13F/13G/13D foi iniciado.

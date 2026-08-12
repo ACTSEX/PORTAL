@@ -160,7 +160,9 @@ A operação do Portal ACTS deve ser continuamente monitorada, documentada eorie
 
 ---
 
-## Arquitetura 2.0 — decisão vigente (2026-08-04)
+## HISTÓRICO — Arquitetura 2.0 (substituída pela Arquitetura 3.0)
+
+> **Estado:** registro histórico do estado então aprovado em 2026-08-04. Esta seção não é normativa para o estado alvo; em conflito, prevalecem `CONSTITUTION.md`, `ARCHITECTURE.md` (Arquitetura 3.0) e os contratos específicos mais recentes.
 
 Esta seção substitui qualquer descrição anterior incompatível neste documento. A evolução preserva os Lotes 1 a 9 já concluídos; ajustes de implementação dependem de necessidade concreta, autorização e lote futuro. Esta revisão é exclusivamente documental.
 
@@ -282,3 +284,7 @@ Antes do primeiro `--execute` remoto: confirmar versão instalada do Wrangler e 
 O binding `ACTS_DB` de staging possui `remote = true`; development permanece local, staging e production possuem identificadores distintos e production permanece não selecionável pelo executor. A execução real de staging não foi feita nesta entrega e continua pendente.
 
 Todos os bindings D1, inclusive o binding raiz e as repetições de development, staging e production, declaram `migrations_dir = "database/migrations"`. Wrangler 4.118.0 resolve esse caminho relativamente ao `wrangler.toml`; por isso `npm run db:migrate:local` encontra exatamente `0001`, `0002` e `0003`. A ausência anterior da propriedade fazia o Wrangler procurar o default `migrations/`, que não pertence à árvore oficial. As migrations não são movidas nem duplicadas.
+
+## Operação alvo — ACTS versus Blogger
+
+Operações ACTS cobrem D1, publicação imutável em R2, Edge Cache, Queue/Cron legítimos, pagamentos, moderação, suspensão, downgrade, rollback e reconciliação. Não existe runbook de sync/import de posts Blogger: conta Google, blog, posts e mídia editorial são da anunciante e permanecem na origem. A futura observabilidade pode registrar, com privacidade e sem conteúdo editorial, falhas client-side agregadas de CORS, timeout, parsing e renderização; isso não autoriza proxy. Falha no gate 13F.4 exige parar e obter nova decisão arquitetural.

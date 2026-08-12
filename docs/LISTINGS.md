@@ -129,3 +129,9 @@ Compatível com MODULE_SPECIFICATION.
 Regra final
 
 Toda manipulação de anúncios do Portal ACTS deve ocorrer exclusivamente atravésdo módulo Listings.
+
+## Estado atual e contrato alvo do anúncio ACTS
+
+**ESTADO ATUAL:** `Listings.js`, schemas, banco e migrations ainda preservam campos e fluxos do domínio imobiliário original. Eles explicam compatibilidade física e não definem o produto AcompanhanteSex. Esta etapa não os altera.
+
+**CONTRATO/ESTADO ALVO:** Listing é o único anúncio comercial principal da conta anunciante. Preserva owner, categoria, `city_id` canônico, slug, status, datas, mídia ACTS, moderação e publicação; sem semântica normativa de sale/rent, imóvel, preço/endereço imobiliário ou imobiliarista. A migração forward-only e o desenho físico pertencem ao 13E. O anúncio existe em STANDARD e PREMIUM; minisite e compra de novos boosts dependem de PREMIUM.

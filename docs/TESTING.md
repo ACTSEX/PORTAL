@@ -171,7 +171,9 @@ A revisão e o commit são feitos por lote funcional. Um arquivo de teste contin
 
 ---
 
-## Arquitetura 2.0 — decisão vigente (2026-08-04)
+## HISTÓRICO — Arquitetura 2.0 (substituída pela Arquitetura 3.0)
+
+> **Estado:** registro histórico do estado então aprovado em 2026-08-04. Esta seção não é normativa para o estado alvo; em conflito, prevalecem `CONSTITUTION.md`, `ARCHITECTURE.md` (Arquitetura 3.0) e os contratos específicos mais recentes.
 
 Esta seção substitui qualquer descrição anterior incompatível neste documento. A evolução preserva os Lotes 1 a 9 já concluídos; ajustes de implementação dependem de necessidade concreta, autorização e lote futuro. Esta revisão é exclusivamente documental.
 
@@ -216,3 +218,7 @@ A suíte futura deve distinguir proxy local, proxy remoto e SQLite real. Deve pr
 Retomada deve ser testada por `city_id IS NULL`, keyset `id > ?`, ausência de `OFFSET`, reinício no menor pendente, atualização condicional, releitura após zero changes, vínculo divergente fail-closed, varredura final e limite de passagens. Relatório é evidência sem PII, nunca checkpoint. Staging exige validar a versão real do Wrangler, `remoteBindings`, backup/restore, dry-run, lote mínimo repetido, idempotência, ausência de publicação, `PRAGMA foreign_key_check` e contagem final de nulos antes de escrita ampla.
 
 O gate remoto comprova que `remoteBindings: true` e `remote = true` atuam juntos sobre staging fisicamente distinto de production. Como o proxy é best-effort fora do Worker, qualquer incompatibilidade falha sem fallback. SQLite local permanece útil para constraints, mas não substitui essa evidência D1.
+
+## Matriz futura da Arquitetura 3.0
+
+Sem criar testes nesta etapa, os lotes futuros devem cobrir: STANDARD e PREMIUM; trial/cortesia/promoção sem plano FREE; upgrade, downgrade não destrutivo, reativação e entitlements; perfil privado e idade derivada; JSON individual allowlisted; catálogo municipal autossuficiente para cards; minisite compartilhado e wildcard; Blogger direto com CORS, timeout, parsing, sanitização, XSS, CSP, iframe sandbox, fallback e indisponibilidade; mídia ACTS versus Blogger; boost separado, elegibilidade e pagamentos avulsos; assinatura, Asaas, idempotência, ordering, webhook e reconciliação; publicação seletiva, cache, suspensão, moderação, imutabilidade e rollback; SEO após decisão 13D. O gate Blogger deve também usar blogs reais, conteúdo adulto, paginação, labels, imagens, vídeos e providers.

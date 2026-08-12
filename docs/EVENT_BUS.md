@@ -1352,7 +1352,9 @@ Toda comunicação orientada a eventos do Portal ACTS deve seguir este documento
 
 ---
 
-## Arquitetura 2.0 — decisão vigente (2026-08-04)
+## HISTÓRICO — Arquitetura 2.0 (substituída pela Arquitetura 3.0)
+
+> **Estado:** registro histórico do estado então aprovado em 2026-08-04. Esta seção não é normativa para o estado alvo; em conflito, prevalecem `CONSTITUTION.md`, `ARCHITECTURE.md` (Arquitetura 3.0) e os contratos específicos mais recentes.
 
 Esta seção substitui qualquer descrição anterior incompatível neste documento. A evolução preserva os Lotes 1 a 9 já concluídos; ajustes de implementação dependem de necessidade concreta, autorização e lote futuro. Esta revisão é exclusivamente documental.
 

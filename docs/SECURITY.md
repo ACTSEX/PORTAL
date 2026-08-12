@@ -238,7 +238,9 @@ Toda funcionalidade do Portal ACTS deve ser projetada considerando segurançacom
 
 ---
 
-## Arquitetura 2.0 — decisão vigente (2026-08-04)
+## HISTÓRICO — Arquitetura 2.0 (substituída pela Arquitetura 3.0)
+
+> **Estado:** registro histórico do estado então aprovado em 2026-08-04. Esta seção não é normativa para o estado alvo; em conflito, prevalecem `CONSTITUTION.md`, `ARCHITECTURE.md` (Arquitetura 3.0) e os contratos específicos mais recentes.
 
 Esta seção substitui qualquer descrição anterior incompatível neste documento. A evolução preserva os Lotes 1 a 9 já concluídos; ajustes de implementação dependem de necessidade concreta, autorização e lote futuro. Esta revisão é exclusivamente documental.
 
@@ -263,3 +265,7 @@ O painel mantém alterações pendentes preferencialmente em IndexedDB. O rascun
 Decisão inicial: **até cinco envios de alterações por usuário por dia**, configurável e contado por ciclo explícito, não por item. Falha técnica após persistência confirmada não consome novo envio. A implementação definirá timezone, administradores, exceções, reset, auditoria e proteção contra repetição. Cada pacote preserva autenticação, autorização, propriedade, plano, domínio, concorrência/versão, transações e idempotência.
 
 Progresso usa fatos do cliente ou estados confirmados pelo backend: preparando, validando, enviando, persistindo, alterações salvas, aguardando agregação, compilando, publicando, concluído, falha recuperável ou falha definitiva. Sem progresso numérico real, exibem-se etapas, nunca percentuais inventados.
+
+## Contrato de segurança — Arquitetura 3.0
+
+Toda projeção pública é allowlist; linha/tabela D1, data de nascimento, e-mail privado, IDs financeiros, tokens, secrets, auditoria e moderação interna nunca são publicados. Autenticação, autorização, upload, webhook e publicação operam fail-closed, com least privilege. Conteúdo Blogger é externo e não confiável: fetch client-side limitado por timeout, parsing e normalização seguros, sanitização, allowlists de URL/provider, DOM seguro, CSP, proteção XSS e iframe sandbox. Falha usa fallback e retry limitado/manual, sem backend, persistência ou exposição de segredo. Política jurídica de Google/Blogger, cookies, PII e idade pública permanece pendente em `CONTRACTS.md`.

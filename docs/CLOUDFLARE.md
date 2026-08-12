@@ -192,7 +192,9 @@ Este documento é a referência oficial para a infraestrutura Cloudflare do Port
 
 ---
 
-## Arquitetura 2.0 — decisão vigente (2026-08-04)
+## HISTÓRICO — Arquitetura 2.0 (substituída pela Arquitetura 3.0)
+
+> **Estado:** registro histórico do estado então aprovado em 2026-08-04. Esta seção não é normativa para o estado alvo; em conflito, prevalecem `CONSTITUTION.md`, `ARCHITECTURE.md` (Arquitetura 3.0) e os contratos específicos mais recentes.
 
 Esta seção substitui qualquer descrição anterior incompatível neste documento. A evolução preserva os Lotes 1 a 9 já concluídos; ajustes de implementação dependem de necessidade concreta, autorização e lote futuro. Esta revisão é exclusivamente documental.
 
@@ -218,3 +220,7 @@ O executor Node futuro usará a API oficial `getPlatformProxy()` do Wrangler ins
 Os modos são separados: `development/local` usa binding sem `remote = true`; `staging/remote` exige simultaneamente `remoteBindings: true` no proxy e `remote = true` no `ACTS_DB` de staging. Produção é proibida no 13B. Autenticação remota segue o mecanismo normal do Wrangler, sem leitura direta de `process.env` pelo executor. Suporte da versão instalada e funcionamento real em staging são gates anteriores a qualquer `--execute` remoto.
 
 `remote = true` direciona operações ao recurso Cloudflare real configurado. Por isso, staging deve ser fisicamente distinto de production e o executor futuro deve comparar os IDs internamente sem imprimi-los. A configuração atual ainda não marca nenhum D1 como remoto; a implementação 13B deverá marcar somente staging. `getPlatformProxy()` é best-effort fora do runtime Worker: incompatibilidade interrompe, sem fallback automático para REST, endpoint, Worker, subprocesso SQL ou produção. Backup/restore validado precede escrita remota e SQLite local não substitui D1 staging.
+
+## Contrato vigente — Arquitetura 3.0
+
+D1 mantém estado ACTS privado; R2 mantém mídia/artefatos ACTS; Edge Cache entrega catálogo municipal leve e JSON individual. KV é técnico e privado. Queue e Cron são permitidos apenas para publicação, reconciliação, pagamentos, expirações e manutenção legítimas. Functions permanecem finas e Workers não são divididos por módulo. Cloudflare não intermedeia o feed Blogger. Wildcard `{slug}.acompanhantesex.com` é futuro e depende do lote 13F; configuração, validação e operação continuam pendentes em `CONTRACTS.md`.

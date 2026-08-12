@@ -340,7 +340,9 @@ Sempre que a arquitetura mudar, os documentos correspondentes deverão ser atual
 
 ---
 
-## Arquitetura 2.0 — decisão vigente (2026-08-04)
+## HISTÓRICO — Arquitetura 2.0 (substituída pela Arquitetura 3.0)
+
+> **Estado:** registro histórico do estado então aprovado em 2026-08-04. Esta seção não é normativa para o estado alvo; em conflito, prevalecem `CONSTITUTION.md`, `ARCHITECTURE.md` (Arquitetura 3.0) e os contratos específicos mais recentes.
 
 Esta seção substitui qualquer descrição anterior incompatível neste documento. A evolução preserva os Lotes 1 a 9 já concluídos; ajustes de implementação dependem de necessidade concreta, autorização e lote futuro. Esta revisão é exclusivamente documental.
 
@@ -358,3 +360,9 @@ Esta seção substitui qualquer descrição anterior incompatível neste documen
 - Falha de publicação não reverte o negócio confirmado: D1 permanece verdadeiro. Publicação é repetível/idempotente, suporta republicação e retenção temporária de versões para rollback; falha em R2 não aponta manifest a arquivo parcial.
 - O navegador prioriza cache HTTP, memória, Cache Storage quando necessário, IndexedDB para persistência estruturada e `localStorage` somente para pequenos metadados/preferências. A JSON completa não tem `localStorage` como armazenamento principal.
 - Catálogos contêm somente projeções públicas aprovadas: sem e-mail privado, dados administrativos, tokens, pagamentos, endereço privado não autorizado ou coordenada precisa proibida.
+
+## Precedência e versões documentais — consolidação 2026-08-12
+
+Em conflito, aplica-se `CONSTITUTION.md` → `ARCHITECTURE.md` → contrato normativo específico/ADR → `ROADMAP.md` → `TREE.md` → documentação especializada → histórico/`CHANGELOG.md`. O TREE inventaria caminhos físicos e o ROADMAP ordena lotes; nenhum dos dois substitui contrato de domínio.
+
+“Arquitetura 3.0” e “ROADMAP 2.0” versionam documentos de responsabilidades diferentes, não duas arquiteturas concorrentes. Preservam seus números. A Arquitetura 3.0 define o sistema vigente; ROADMAP 2.0 organiza a sequência para alcançar esse estado. Seções “Arquitetura 2.0” estão mantidas somente como histórico e não governam o contrato alvo.
