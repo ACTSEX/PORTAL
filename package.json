@@ -8,7 +8,7 @@
     "npm": ">=10"
   },
   "scripts": {
-    "dev": "wrangler pages dev site --env development",
+    "dev": "wrangler dev --env development",
     "lint": "npm run lint:js",
     "lint:js": "files=$(find app functions site tests -type f -name '*.js' 2>/dev/null || true); test -z \"$files\" || node --check $files",
     "test": "node --test",
@@ -21,8 +21,8 @@
     "db:migrate:staging": "wrangler d1 migrations apply ACTS_DB --remote --env staging",
     "db:migrate:production": "wrangler d1 migrations apply ACTS_DB --remote --env production",
     "city:backfill": "node scripts/backfill-cities.js",
-    "deploy:staging": "wrangler pages deploy site --project-name acts-portal-staging --branch staging",
-    "deploy:production": "wrangler pages deploy site --project-name acts-portal-production --branch main"
+    "deploy:staging": "wrangler deploy --env staging",
+    "deploy:production": "wrangler deploy --env production"
   },
   "devDependencies": {
     "wrangler": "4.118.0"
