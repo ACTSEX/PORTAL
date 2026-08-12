@@ -1,87 +1,22 @@
-name = "acts-portal"
-pages_build_output_dir = "site"
+name = "portal"
+main = "worker/index.js"
 compatibility_date = "2026-07-31"
+workers_dev = false
 
-# IDs are non-secret placeholders required by Wrangler. Replace them with the
-# IDs of resources provisioned independently for each environment before deploy.
-[[d1_databases]]
-binding = "ACTS_DB"
-database_name = "acts-portal-development"
-database_id = "00000000-0000-0000-0000-000000000001"
-migrations_dir = "database/migrations"
+# Resource bindings intentionally remain unconfigured. When real resources are
+# provisioned, retain these established binding names and migration location:
+# D1: ACTS_DB (migrations_dir = "database/migrations")
+# KV: ACTS_KV
+# R2: ACTS_FILES
+# Queue producer: ACTS_QUEUE
 
-[[kv_namespaces]]
-binding = "ACTS_KV"
-id = "00000000000000000000000000000001"
-
-[[r2_buckets]]
-binding = "ACTS_FILES"
-bucket_name = "acts-portal-development"
-
-[[queues.producers]]
-binding = "ACTS_QUEUE"
-queue = "acts-portal-development"
-
+# Environments are retained for local/deployment workflows, but do not declare
+# resource bindings until their real Cloudflare resources have been provisioned.
 [env.development]
-name = "acts-portal-development"
-
-[[env.development.d1_databases]]
-binding = "ACTS_DB"
-database_name = "acts-portal-development"
-database_id = "00000000-0000-0000-0000-000000000001"
-migrations_dir = "database/migrations"
-
-[[env.development.kv_namespaces]]
-binding = "ACTS_KV"
-id = "00000000000000000000000000000001"
-
-[[env.development.r2_buckets]]
-binding = "ACTS_FILES"
-bucket_name = "acts-portal-development"
-
-[[env.development.queues.producers]]
-binding = "ACTS_QUEUE"
-queue = "acts-portal-development"
+name = "portal-development"
 
 [env.staging]
-name = "acts-portal-staging"
-
-[[env.staging.d1_databases]]
-binding = "ACTS_DB"
-database_name = "acts-portal-staging"
-database_id = "00000000-0000-0000-0000-000000000002"
-migrations_dir = "database/migrations"
-remote = true
-
-[[env.staging.kv_namespaces]]
-binding = "ACTS_KV"
-id = "00000000000000000000000000000002"
-
-[[env.staging.r2_buckets]]
-binding = "ACTS_FILES"
-bucket_name = "acts-portal-staging"
-
-[[env.staging.queues.producers]]
-binding = "ACTS_QUEUE"
-queue = "acts-portal-staging"
+name = "portal-staging"
 
 [env.production]
-name = "acts-portal-production"
-
-[[env.production.d1_databases]]
-binding = "ACTS_DB"
-database_name = "acts-portal-production"
-database_id = "00000000-0000-0000-0000-000000000003"
-migrations_dir = "database/migrations"
-
-[[env.production.kv_namespaces]]
-binding = "ACTS_KV"
-id = "00000000000000000000000000000003"
-
-[[env.production.r2_buckets]]
-binding = "ACTS_FILES"
-bucket_name = "acts-portal-production"
-
-[[env.production.queues.producers]]
-binding = "ACTS_QUEUE"
-queue = "acts-portal-production"
+name = "portal"
