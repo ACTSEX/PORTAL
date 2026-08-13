@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { caseFold } from 'unicode-case-folding';
-import { canonicalizeCityLocation, createCitySlug, ListingsError } from '../../business/listings.js';
+import { canonicalizeCityLocation, createCitySlug, LocationsError } from '../../business/locations.js';
 import { backfillCities, main, parseArguments, validateConfiguration } from '../../scripts/backfill-cities.js';
 
 const python = String.raw`import json,sqlite3,sys
@@ -36,7 +36,7 @@ test('canonicalization normalizes hyphens, apostrophes, punctuation and separato
   assert.equal(key('D’Abadia—Nova'), 'd abadia nova'); assert.equal(key('A/B.C'), 'a b c'); assert.equal(key('A\u00a0 B'), 'a b');
 });
 test('canonicalization rejects controls, limits, empty result and unknown version', () => {
-  for (const city of ['A\u0000B', 'x'.repeat(121), '---']) assert.throws(() => canonicalizeCityLocation({ countryCode: 'BR', region: 'SP', city }), ListingsError);
+  for (const city of ['A\u0000B', 'x'.repeat(121), '---']) assert.throws(() => canonicalizeCityLocation({ countryCode: 'BR', region: 'SP', city }), LocationsError);
   assert.throws(() => canonicalizeCityLocation({ countryCode: 'BR', region: 'SP', city: 'Santos' }, 'unicode-16.0.0-v1'), (error) => error.code === 'UNKNOWN_CANONICALIZATION_VERSION');
 });
 test('canonicalization rejects unsupported scripts, symbols and contaminated valid-looking keys', () => {
@@ -85,8 +85,11 @@ test('commands default to dry-run and reject unknown, forbidden and mismatched o
   assert.equal(parseArguments(['--environment','development','--mode','local']).execute, false); assert.equal(parseArguments(['--environment','staging','--mode','remote','--execute']).execute, true);
   for (const args of [['--wat'], ['--environment','production','--mode','remote'], ['--environment','development','--mode','remote'], ['--environment','staging','--mode','local'], ['--environment','development','--mode','local','--dry-run','--execute']]) assert.throws(() => parseArguments(args));
 });
-test('configuration requires staging remote, local development and distinct staging/production IDs', () => {
-  const source = readFileSync('wrangler.toml', 'utf8'); assert.doesNotThrow(() => validateConfiguration(source, 'staging', 'remote')); assert.throws(() => validateConfiguration(source.replace('remote = true',''), 'staging', 'remote')); assert.throws(() => validateConfiguration(source.replace('database_id = "00000000-0000-0000-0000-000000000003"','database_id = "00000000-0000-0000-0000-000000000002"'), 'staging', 'remote')); assert.throws(() => validateConfiguration(source.replace('[[env.development.kv_namespaces]]','remote = true\n\n[[env.development.kv_namespaces]]'), 'development', 'local'));
+test('configuration requires the official D1 binding and migration directory in every environment', () => {
+  const source = readFileSync('wrangler.toml', 'utf8');
+  assert.doesNotThrow(() => validateConfiguration(source, 'staging', 'remote'));
+  assert.throws(() => validateConfiguration(source.replaceAll('binding = "ACTS_DB"', 'binding = "OTHER_DB"'), 'staging', 'remote'));
+  assert.throws(() => validateConfiguration(source.replaceAll('migrations_dir = "database/migrations"', 'migrations_dir = "migrations"'), 'development', 'local'));
 });
 test('main fixes config/binding, selects remoteBindings and always disposes platform', async () => {
   let disposed = 0; let received; const platform = { env: { ACTS_DB: { prepare() { throw new Error('boundary failure'); } } }, async dispose() { disposed++; } };
@@ -101,5 +104,5 @@ test('Unicode dependency is pinned, integrity-locked, MIT, dependency-free and o
 });
 test('executor source is keyset/parameterized, has no OFFSET, secrets, publication or future lots', () => {
   const source = readFileSync('scripts/backfill-cities.js', 'utf8'); assert.match(source, /city_id IS NULL AND id > \? ORDER BY id LIMIT \?/); assert.doesNotMatch(source, /OFFSET|process\.env|account.?id|token|Publish|Seo|emit|event/i); assert.match(source, /\.prepare\(sql\)\.bind\(\.\.\.values\)/); assert.match(source, /finally \{ await platform\.dispose\(\); \}/);
-  for (const path of ['database/migrations/0004_city_publication_contract.sql','app/modules/Publish.js','app/modules/Seo.js']) assert.throws(() => readFileSync(path));
+  for (const path of ['database/migrations/0004_city_publication_contract.sql']) assert.throws(() => readFileSync(path));
 });

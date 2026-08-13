@@ -1,3 +1,41 @@
+import { caseFold } from 'unicode-case-folding';
+
+const COUNTRY = /^[A-Z]{2}$/;
+
+export class LocationsError extends Error {
+  constructor(code, message = 'Location operation failed') { super(message); this.name = 'LocationsError'; this.code = code; }
+}
+
+const CITY_CANONICALIZATION_VERSION = 'unicode-17.0.0-v1';
+const CITY_COMPONENT = /^[a-z0-9]+(?: [a-z0-9]+)*$/;
+function canonicalizeCityLocation(input, version = CITY_CANONICALIZATION_VERSION) {
+  if (version !== CITY_CANONICALIZATION_VERSION) throw new LocationsError('UNKNOWN_CANONICALIZATION_VERSION');
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new LocationsError('INVALID_CITY');
+  const countryCode = input.countryCode;
+  if (typeof countryCode !== 'string' || !COUNTRY.test(countryCode)) throw new LocationsError('INVALID_CITY');
+  const canonicalize = (value, publicLimit) => {
+    if (typeof value !== 'string' || [...value].length < 1 || [...value].length > publicLimit || /[\p{Cc}\p{Cs}\p{Cn}\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/u.test(value)) throw new LocationsError('INVALID_CITY');
+    const publicName = value.normalize('NFC').replace(/\s+/gu, ' ').trim();
+    let key = caseFold(publicName.normalize('NFKD').replace(/\p{M}/gu, ''));
+    key = key.replace(/[‐‑‒–—―−]/gu, '-').replace(/[’‘‛′`´]/gu, "'");
+    key = key.replace(/[\p{P}\p{Z}\s]+/gu, ' ');
+    if (/[^a-z0-9 ]/u.test(key)) throw new LocationsError('INVALID_CITY');
+    key = key.replace(/ +/g, ' ').trim();
+    if (!publicName || [...publicName].length > publicLimit || !key || key.length > 80 || !CITY_COMPONENT.test(key)) throw new LocationsError('INVALID_CITY');
+    return { publicName, key };
+  };
+  const region = canonicalize(input.region, 120); const city = canonicalize(input.city, 120);
+  return Object.freeze({ countryCode, regionKey: region.key, cityKey: city.key, publicName: city.publicName,
+    canonicalKey: `${countryCode}|${region.key}|${city.key}`, canonicalizationVersion: version });
+}
+async function createCitySlug(canonicalKey) {
+  if (typeof canonicalKey !== 'string' || canonicalKey.length < 5 || canonicalKey.length > 170) throw new LocationsError('INVALID_CITY');
+  const parts = canonicalKey.split('|'); if (parts.length !== 3 || !COUNTRY.test(parts[0]) || !CITY_COMPONENT.test(parts[1]) || !CITY_COMPONENT.test(parts[2])) throw new LocationsError('INVALID_CITY');
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalKey));
+  const suffix = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('').slice(0, 12);
+  const stem = parts.join('-').toLowerCase().replace(/ +/g, '-'); return `${stem.slice(0, 87).replace(/-+$/g, '')}-${suffix}`;
+}
+
 const GeolocationScope = (() => {
 const COUNTRY = /^[A-Z]{2}$/;
 const clean = (value) => typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : '';
@@ -90,3 +128,5 @@ function createMaps({ normalizeLocation, publicLocation } = {}) {
 return { MapsError, createMaps };
 })();
 export const { MapsError, createMaps } = MapsScope;
+
+export { CITY_CANONICALIZATION_VERSION, canonicalizeCityLocation, createCitySlug };
