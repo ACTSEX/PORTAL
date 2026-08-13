@@ -3,6 +3,14 @@ main = "worker/index.js"
 compatibility_date = "2026-07-31"
 workers_dev = false
 
+[[routes]]
+pattern = "acompanhantesex.com"
+custom_domain = true
+
+[[routes]]
+pattern = "*.acompanhantesex.com/*"
+zone_name = "acompanhantesex.com"
+
 [[d1_databases]]
 binding = "ACTS_DB"
 database_name = "portal-db"
@@ -65,14 +73,6 @@ queue = "acts-queues"
 
 [env.production]
 name = "portal"
-
-[[env.production.routes]]
-pattern = "acompanhantesex.com"
-custom_domain = true
-
-[[env.production.routes]]
-pattern = "*.acompanhantesex.com/*"
-zone_name = "acompanhantesex.com"
 
 [[env.production.d1_databases]]
 binding = "ACTS_DB"
