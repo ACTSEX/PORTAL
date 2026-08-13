@@ -3,20 +3,83 @@ main = "worker/index.js"
 compatibility_date = "2026-07-31"
 workers_dev = false
 
-# Resource bindings intentionally remain unconfigured. When real resources are
-# provisioned, retain these established binding names and migration location:
-# D1: ACTS_DB (migrations_dir = "database/migrations")
-# KV: ACTS_KV
-# R2: ACTS_FILES
-# Queue producer: ACTS_QUEUE
+[[d1_databases]]
+binding = "ACTS_DB"
+database_name = "portal-db"
+database_id = "9b095e00-ad71-46c9-a33f-e9f67000e104"
+migrations_dir = "database/migrations"
 
-# Environments are retained for local/deployment workflows, but do not declare
-# resource bindings until their real Cloudflare resources have been provisioned.
+[[r2_buckets]]
+binding = "ACTS_MEDIA"
+bucket_name = "acts-midias"
+
+[[r2_buckets]]
+binding = "ACTS_DATA"
+bucket_name = "acts-dados"
+
+[[queues.producers]]
+binding = "ACTS_QUEUE"
+queue = "acts-queues"
+
 [env.development]
 name = "portal-development"
+
+[[env.development.d1_databases]]
+binding = "ACTS_DB"
+database_name = "portal-db"
+database_id = "9b095e00-ad71-46c9-a33f-e9f67000e104"
+migrations_dir = "database/migrations"
+
+[[env.development.r2_buckets]]
+binding = "ACTS_MEDIA"
+bucket_name = "acts-midias"
+
+[[env.development.r2_buckets]]
+binding = "ACTS_DATA"
+bucket_name = "acts-dados"
+
+[[env.development.queues.producers]]
+binding = "ACTS_QUEUE"
+queue = "acts-queues"
 
 [env.staging]
 name = "portal-staging"
 
+[[env.staging.d1_databases]]
+binding = "ACTS_DB"
+database_name = "portal-db"
+database_id = "9b095e00-ad71-46c9-a33f-e9f67000e104"
+migrations_dir = "database/migrations"
+
+[[env.staging.r2_buckets]]
+binding = "ACTS_MEDIA"
+bucket_name = "acts-midias"
+
+[[env.staging.r2_buckets]]
+binding = "ACTS_DATA"
+bucket_name = "acts-dados"
+
+[[env.staging.queues.producers]]
+binding = "ACTS_QUEUE"
+queue = "acts-queues"
+
 [env.production]
 name = "portal"
+
+[[env.production.d1_databases]]
+binding = "ACTS_DB"
+database_name = "portal-db"
+database_id = "9b095e00-ad71-46c9-a33f-e9f67000e104"
+migrations_dir = "database/migrations"
+
+[[env.production.r2_buckets]]
+binding = "ACTS_MEDIA"
+bucket_name = "acts-midias"
+
+[[env.production.r2_buckets]]
+binding = "ACTS_DATA"
+bucket_name = "acts-dados"
+
+[[env.production.queues.producers]]
+binding = "ACTS_QUEUE"
+queue = "acts-queues"
