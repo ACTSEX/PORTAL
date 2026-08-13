@@ -1,8 +1,8 @@
-# ACTS — operações
+# ACTS — deploy e operações
 
 ## Estado operacional atual
 
-`wrangler.toml` define o Worker `portal`, entrada `worker/index.js`, domínio principal e wildcard. Os bindings configurados são `ACTS_DB`, `ACTS_MEDIA`, `ACTS_DATA` e `ACTS_QUEUE`. O Worker atual responde apenas um health text; produto, publicação e frontend completos não devem ser presumidos implementados.
+`wrangler.toml` define o Worker `portal`, entrada `worker/index.js`, domínio principal e wildcard. Os bindings configurados são `ACTS_DB`, `ACTS_MEDIA`, `ACTS_DATA` e `ACTS_QUEUE`. O Worker atual entrega o portal público, projeções em `ACTS_DATA` e o minisite compartilhado; painel, admin e demais jornadas não devem ser presumidos implementados.
 
 Os ambientes nomeados são `development`, `staging` e `production`. Atualmente eles repetem os mesmos nomes e identificador de recursos no arquivo de configuração. **Não presumir isolamento físico:** antes de qualquer escrita remota, confirmar no dashboard/CLI que staging e produção apontam para recursos distintos; se não apontarem, interromper a operação.
 

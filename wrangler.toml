@@ -31,6 +31,7 @@ queue = "acts-queues"
 
 [env.development]
 name = "portal-development"
+routes = []
 
 [[env.development.d1_databases]]
 binding = "ACTS_DB"
@@ -52,6 +53,7 @@ queue = "acts-queues"
 
 [env.staging]
 name = "portal-staging"
+routes = []
 
 [[env.staging.d1_databases]]
 binding = "ACTS_DB"
@@ -73,6 +75,14 @@ queue = "acts-queues"
 
 [env.production]
 name = "portal"
+
+[[env.production.routes]]
+pattern = "acompanhantesex.com"
+custom_domain = true
+
+[[env.production.routes]]
+pattern = "*.acompanhantesex.com/*"
+zone_name = "acompanhantesex.com"
 
 [[env.production.d1_databases]]
 binding = "ACTS_DB"

@@ -12,7 +12,7 @@ frontend/   interface e assets compartilhados
 database/   schema e migrations D1
 tests/      testes por responsabilidade e fluxo
 scripts/    operações controladas e repetíveis
-docs/       os cinco documentos normativos
+docs/       arquitetura, banco, deploy e produto
 ```
 
 ## Responsabilidades
@@ -101,4 +101,13 @@ Asaas é o gateway financeiro atual. Seu adapter isola protocolo, assinatura e p
 
 ## Publicação e deploy
 
-O artefato implantável é o Worker configurado por `wrangler.toml`. Deploy promove o mesmo código validado entre ambientes, aplica migrations separadamente e verifica bindings, rotas, Queue, cache e smoke. Procedimentos ficam em `OPERATIONS.md`.
+O artefato implantável é o Worker configurado por `wrangler.toml`. Deploy promove o mesmo código validado entre ambientes, aplica migrations separadamente e verifica bindings, rotas, Queue, cache e smoke. Procedimentos ficam em `DEPLOY.md`.
+
+## Estado atual
+
+Estão implementados o Worker público, portal e minisite compartilhados, bindings
+Cloudflare, fundações em `core/` e `business/`, migrations, publicação assíncrona,
+gateway Asaas, backfill de cidades e testes correspondentes. O domínio imobiliário
+remanescente nessas fundações é legado técnico em migração, não uma regra do
+produto ACTS. Funcionalidades planejadas são identificadas em `PRODUCT.md` e não
+devem ser apresentadas como disponíveis.

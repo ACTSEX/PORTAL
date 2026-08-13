@@ -7,9 +7,8 @@ o HTTP/Cloudflare Edge Cache distribui conteúdo público.
 
 ## Documentação normativa
 
-Leia primeiro [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Os cinco documentos
-em [`docs/`](docs/) registram arquitetura, produto, operação, estado e orientação
-de leitura.
+Leia primeiro [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). A documentação
+consolidada em [`docs/`](docs/) cobre arquitetura, banco, deploy e produto.
 
 ## Requisitos e instalação
 
@@ -41,11 +40,11 @@ npm ci
 - `core/`: infraestrutura técnica independente do produto;
 - `business/`: sete domínios consolidados e adapters externos estritamente necessários;
 - `worker/`: entrada HTTP e consumers Cloudflare;
-- `frontend/`: portal, minisite, painel e admin;
+- `frontend/`: interfaces compartilhadas atualmente implementadas (portal e minisite);
 - `database/`: schema e migrations D1;
 - `tests/`: testes organizados por responsabilidade;
 - `scripts/`: operações controladas;
-- `docs/`: cinco documentos normativos.
+- `docs/`: documentação normativa consolidada.
 
 ## Licença
 
