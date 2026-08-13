@@ -2,7 +2,7 @@
 
 O Portal ACTS é uma plataforma Edge-first para publicação e consulta de
 conteúdo. O projeto usa Cloudflare Pages e Pages Functions, mantendo o D1 como
-fonte de verdade, o KV para cache e artefatos derivados e o R2 para arquivos.
+fonte de verdade e o R2 para mídia e artefatos derivados.
 Processamento assíncrono é encaminhado por Cloudflare Queues.
 
 ## Arquitetura resumida
@@ -10,7 +10,7 @@ Processamento assíncrono é encaminhado por Cloudflare Queues.
 O núcleo técnico segue uma arquitetura de microkernel: o Core fornece somente
 infraestrutura comum, enquanto regras de negócio pertencem aos módulos. A
 interface é composta por componentes e templates. No fluxo de publicação,
-alterações persistem primeiro no D1 e geram artefatos para KV/R2 e cache; por
+alterações persistem primeiro no D1 e geram artefatos para R2 e cache HTTP; por
 isso, a navegação pública não depende de consultas diretas ao banco.
 
 Consulte [`docs/`](docs/) para decisões, contratos e regras especializadas. O
@@ -23,7 +23,7 @@ precedência.
 - Node.js 22 ou mais recente;
 - npm 10 ou mais recente;
 - conta Cloudflare para validações ou deploys remotos;
-- recursos D1, KV, R2 e Queue configurados separadamente por ambiente antes de
+- recursos D1, R2 e Queue configurados separadamente por ambiente antes de
   qualquer deploy.
 
 Não versione credenciais. Autentique o Wrangler pelo mecanismo oficial da
@@ -61,7 +61,9 @@ repositório.
 ## Estrutura principal
 
 - `docs/`: documentação oficial e fonte das decisões do projeto;
-- `app/`: Core, módulos, gateways e apresentação, introduzidos por lotes;
+- `core/`: composição e infraestrutura do Worker;
+- `business/`: sete módulos consolidados de domínio;
+- `frontend/`: áreas físicas reservadas para os frontends atuais;
 - `functions/`: adaptadores HTTP e tarefas do Pages Functions;
 - `database/`: schema e migrations D1;
 - `site/`: frontend público e saída do Pages;

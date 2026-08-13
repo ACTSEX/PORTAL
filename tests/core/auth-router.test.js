@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { createAuth, createSecureId, timingSafeEqual, AuthError, AuthorizationError,
-  extractCredential } from '../../app/core/auth.js';
-import { validateOrigin } from '../../app/core/auth.js';
+  extractCredential } from '../../core/auth.js';
+import { validateOrigin } from '../../core/auth.js';
 import { createRouter, normalizeRequest, json, html, text, redirect, empty, errorResponse,
-  ValidationError, NotFoundError, ConflictError } from '../../app/core/router.js';
+  ValidationError, NotFoundError, ConflictError } from '../../core/router.js';
 
 const instant = new Date('2026-07-31T12:00:00.000Z');
 const secret = 'a-secure-test-secret-with-at-least-32-characters';
@@ -206,8 +206,8 @@ test('router rejects non-Response handlers and publishes safe completion events'
 
 test('Lote 4 source has no environment, persistence, domain imports or sensitive logging', async () => {
   const [authSource, routerSource] = await Promise.all([
-    readFile(new URL('../../app/core/auth.js', import.meta.url), 'utf8'),
-    readFile(new URL('../../app/core/router.js', import.meta.url), 'utf8'),
+    readFile(new URL('../../core/auth.js', import.meta.url), 'utf8'),
+    readFile(new URL('../../core/router.js', import.meta.url), 'utf8'),
   ]);
   const source = `${authSource}\n${routerSource}`;
   assert.doesNotMatch(source, /process\.env|from ['"].*(?:modules|gateways)|\bSELECT\b|\bINSERT\b|\bUPDATE\b|\bDELETE FROM\b/i);

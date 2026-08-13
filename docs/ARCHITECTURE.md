@@ -2,7 +2,7 @@
 
 ## Estado oficial
 
-ACTS adota arquitetura **Worker-first**. O Worker `portal` é a entrada HTTP e o ponto de composição do runtime. Pages e Pages Functions não são componentes principais. A implementação atual ainda mantém fundações em `app/`; a migração para a árvore abaixo é uma regra arquitetural, não uma alegação de que todos os diretórios já existem.
+ACTS adota arquitetura **Worker-first**. O Worker `portal` é a entrada HTTP e o ponto de composição do runtime. Pages e Pages Functions não são componentes principais. A implementação mantém as fundações em `core/` e os domínios consolidados em `business/`, com `worker/` como entrada única.
 
 ```text
 core/       infraestrutura independente do negócio

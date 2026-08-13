@@ -2,10 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { createContacts } from "../../app/modules/Contacts.js";
-import { createLeads } from "../../app/modules/Leads.js";
-import { createReviews } from "../../app/modules/Reviews.js";
-import { createNotifications } from "../../app/modules/Notifications.js";
+import { createContacts } from "../../business/listings.js";
+import { createLeads } from "../../business/listings.js";
+import { createReviews } from "../../business/listings.js";
+import { createNotifications } from "../../business/listings.js";
 
 const now = "2026-08-04T12:00:00.000Z";
 const clock = () => new Date(now);
@@ -474,12 +474,7 @@ test("Notifications persists preferences and supports read, failure, retry and p
 });
 
 test("Relationship boundaries use only D1 and events, without PII logs or future integrations", async () => {
-  const files = ["Contacts.js", "Leads.js", "Reviews.js", "Notifications.js"];
-  const sources = await Promise.all(
-    files.map((file) =>
-      readFile(new URL(`../../app/modules/${file}`, import.meta.url), "utf8"),
-    ),
-  );
+  const sources = [await readFile(new URL("../../business/listings.js", import.meta.url), "utf8")];
   const joined = sources.join("\n");
   assert.doesNotMatch(
     joined,

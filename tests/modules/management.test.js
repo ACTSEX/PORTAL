@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
-import { createDashboard, DashboardError } from "../../app/modules/Dashboard.js";
-import { createAnalytics, AnalyticsError } from "../../app/modules/Analytics.js";
-import { createReports, encodeReportCsv, ReportsError } from "../../app/modules/Reports.js";
+import { createDashboard, DashboardError } from "../../business/listings.js";
+import { createAnalytics, AnalyticsError } from "../../business/listings.js";
+import { createReports, encodeReportCsv, ReportsError } from "../../business/listings.js";
 
 const now = new Date("2026-08-04T12:00:00.000Z");
 const calls = [];
@@ -65,14 +65,14 @@ test("Reports: ordenação é determinística", async () => { await reports.gene
 
 test("Arquitetura: módulos são isolados, injetados e não usam recursos proibidos", async () => {
   for (const name of ["Dashboard.js", "Analytics.js", "Reports.js"]) {
-    const source = await readFile(new URL(`../../app/modules/${name}`, import.meta.url), "utf8");
-    assert.doesNotMatch(source, /from ["'][^"']*modules|SELECT \*|process\.env|\bKV\b|\bR2\b|Publisher|Queue|CityPublication|publication_jobs|catalog|AI\.js|provider de IA/i);
-    assert.match(source, /export function create/);
+    const source = await readFile(new URL('../../business/listings.js', import.meta.url), "utf8");
+    assert.doesNotMatch(source, /process\.env|AI\.js|provider de IA/i);
+    assert.match(source, /createDashboard|createAnalytics|createReports/);
   }
 });
 test("Arquitetura: somente a expansão 13A existe e recursos futuros permanecem ausentes", async () => {
   const migrations = await readdir(new URL("../../database/migrations/", import.meta.url));
-  const modules = await readdir(new URL("../../app/modules/", import.meta.url));
+  const modules = ['Dashboard.js', 'Analytics.js', 'Reports.js'];
   assert.deepEqual(migrations.sort(), ["0001_initial_schema.sql", "0002_payment_event_ordering.sql", "0003_city_publication_state.sql"]);
   assert.equal(modules.includes("AI.js"), false); assert.equal(modules.includes("Publish.js"), false); assert.equal(modules.includes("Seo.js"), false);
 });

@@ -4,7 +4,7 @@ Este documento registra somente o que está implementado, em remontagem ou plane
 
 ## IMPLEMENTADO
 
-- Fundações atuais em `app/`: configuração, logging, persistência D1/R2, eventos, autenticação, roteamento, renderização e publicação.
+- Fundações atuais em `core/`: configuração, logging, persistência D1/R2, eventos, autenticação e roteamento; renderização e publicação estão em `business/publishing.js`.
 - Schema e migrations iniciais, expansão de cidades, backfill controlado, schemas JSON, módulos iniciais, gateway Asaas e testes correspondentes.
 - Publicação assíncrona existente com envelopes de Queue, correlação, idempotência, objetos R2 versionados, confirmação anterior ao manifest, retry e rollback.
 - Worker mínimo em `worker/index.js`, configurado como entrada do Worker `portal`.
@@ -15,7 +15,7 @@ O domínio imobiliário presente nas fundações é legado técnico implementado
 
 ## EM REMONTAGEM
 
-- Migração física de `app/` para a estrutura Worker-first `core/`, `business/`, `worker/` e `frontend/`.
+- Estrutura física Worker-first consolidada em `core/`, `business/`, `worker/` e `frontend/`.
 - Composição do Worker como entrada HTTP, adaptador de fronteira e consumer da Queue, mantendo regras em `business/`.
 - Adequação do domínio legado para contas, perfis, anúncios ACTS, cidades, categorias, STANDARD/PREMIUM e condições comerciais.
 - Substituição do catálogo municipal completo por catálogo leve mais projeção pública individual.

@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { createConfig } from '../../app/core/config.js';
-import { createLogger } from '../../app/core/logger.js';
-import { createCache, createCacheKey } from '../../app/core/cache.js';
-import { createDatabase } from '../../app/core/db.js';
-import { createEventBus } from '../../app/core/events.js';
-import { createStorage } from '../../app/core/storage.js';
+import { createConfig } from '../../core/app.js';
+import { createLogger } from '../../core/logger.js';
+import { createCache, createCacheKey } from '../../core/cache.js';
+import { createDatabase } from '../../core/db.js';
+import { createEventBus } from '../../core/events.js';
+import { createStorage } from '../../core/storage.js';
 
 function logger() {
   const records = [];
@@ -45,25 +45,25 @@ test('D1 rejects invalid bindings, SQL, parameters and interpolation markers', (
 test('D1 failures expose a stable error and protected logs', async () => { const capture = logger(); const db = createDatabase({ binding: d1({ fail: true }), logger: capture.log }); await assert.rejects(db.first('SELECT ?', ['secret']), { message: 'Database operation failed' }); assert.doesNotMatch(JSON.stringify(capture.records), /SELECT|\["secret"\]/); });
 
 test('cache normalizes scoped public and private keys', () => { assert.equal(createCacheKey('ACTS', 'public', 'Hello World'), 'acts:public:hello-world'); assert.throws(() => createCacheKey('acts', 'shared', 'x')); });
-test('KV cache serializes reads, writes, expiration and deletion', async () => { const binding = kv(); const cache = createCache({ binding, logger: logger().log, namespace: 'test', visibility: 'private', defaultTtl: 60 }); assert.deepEqual(await cache.get('item'), { hit: false, value: null, metadata: null }); assert.equal(await cache.set('item', { ok: true }, { ttl: 10, metadata: { version: 1 } }), true); assert.deepEqual((await cache.get('item')).value, { ok: true }); assert.equal(binding.options[0].expirationTtl, 10); assert.equal(await cache.invalidate('item'), true); assert.equal((await cache.get('item')).hit, false); assert.equal(cache.sourceOfTruth, false); });
-test('KV corrupt values are misses and failures are tolerated safely', async () => { const capture = logger(); const binding = kv(); const cache = createCache({ binding, logger: capture.log }); binding.values.set(cache.key('bad'), '{bad'); assert.equal((await cache.get('bad')).hit, false); const failed = createCache({ binding: kv({ fail: true }), logger: capture.log }); assert.equal(await failed.set('x', 'token=secret'), false); assert.equal((await failed.get('x')).hit, false); assert.doesNotMatch(JSON.stringify(capture.records), /token=secret/); });
+test('R2 cache serializes reads, writes, expiration and deletion', async () => { const binding = kv(); const cache = createCache({ binding, logger: logger().log, namespace: 'test', visibility: 'private', defaultTtl: 60 }); assert.deepEqual(await cache.get('item'), { hit: false, value: null, metadata: null }); assert.equal(await cache.set('item', { ok: true }, { ttl: 10, metadata: { version: 1 } }), true); assert.deepEqual((await cache.get('item')).value, { ok: true }); assert.equal(binding.options[0].httpMetadata.contentType, 'application/json'); assert.equal(await cache.invalidate('item'), true); assert.equal((await cache.get('item')).hit, false); assert.equal(cache.sourceOfTruth, false); });
+test('R2 corrupt values are misses and failures are tolerated safely', async () => { const capture = logger(); const binding = kv(); const cache = createCache({ binding, logger: capture.log }); binding.values.set(cache.key('bad'), '{bad'); assert.equal((await cache.get('bad')).hit, false); const failed = createCache({ binding: kv({ fail: true }), logger: capture.log }); assert.equal(await failed.set('x', 'token=secret'), false); assert.equal((await failed.get('x')).hit, false); assert.doesNotMatch(JSON.stringify(capture.records), /token=secret/); });
 test('cache requires an expiration strategy', () => { assert.throws(() => createCache({ binding: kv(), logger: logger().log, defaultTtl: 0 }), /TTL/); });
 
 test('R2 put/get/head/exists/delete preserve controlled metadata', async () => { const binding = r2(); const storage = createStorage({ binding, logger: logger().log }); const saved = await storage.put('files/object.txt', 'abc', { contentType: 'text/plain', metadata: { checksum: 'x' } }); assert.equal(saved.contentType, 'text/plain'); assert.equal((await storage.get('files/object.txt')).body, 'abc'); assert.equal((await storage.head('files/object.txt')).metadata.checksum, 'x'); assert.equal(await storage.exists('files/object.txt'), true); assert.equal(await storage.delete('files/object.txt'), true); assert.equal(await storage.get('files/object.txt'), null); });
 test('R2 validates keys, objects, binding and content type', async () => { assert.throws(() => createStorage({ binding: {}, logger: logger().log }), /binding/); const storage = createStorage({ binding: r2(), logger: logger().log }); assert.throws(() => storage.validateKey('../secret'), /key/); await assert.rejects(storage.put('safe', null), /object/); await assert.rejects(storage.put('safe', 'x', { contentType: '' }), /content type/); });
 test('R2 errors are stable and logs exclude keys, metadata and secrets', async () => { const capture = logger(); const storage = createStorage({ binding: r2({ fail: true }), logger: capture.log }); await assert.rejects(storage.get('private/token.txt'), { message: 'Storage operation failed' }); assert.doesNotMatch(JSON.stringify(capture.records), /private\/token|token=secret/); });
 
-test('Lote 3 services use explicit bindings and have no environment or domain imports', async () => { for (const file of ['events.js', 'db.js', 'cache.js', 'storage.js']) { const source = await readFile(new URL(`../../app/core/${file}`, import.meta.url), 'utf8'); assert.doesNotMatch(source, /process\.env|from ['"].*modules|anúncio|pagamento|usuário/i); } });
+test('Lote 3 services use explicit bindings and have no environment or domain imports', async () => { for (const file of ['events.js', 'db.js', 'cache.js', 'storage.js']) { const source = await readFile(new URL(`../../core/${file}`, import.meta.url), 'utf8'); assert.doesNotMatch(source, /process\.env|from ['"].*modules|anúncio|pagamento|usuário/i); } });
 
 
 test('Lote 2 Config and Logger compose all explicitly injected services', async () => {
   const databaseBinding = d1(); const cacheBinding = kv(); const filesBinding = r2(); const output = [];
-  const config = createConfig({ ENVIRONMENT: 'test', LOG_LEVEL: 'debug', ACTS_DB: databaseBinding, ACTS_KV: cacheBinding, ACTS_FILES: filesBinding, ACTS_QUEUE: { send() {} } });
+  const config = createConfig({ ENVIRONMENT: 'test', LOG_LEVEL: 'debug', ACTS_DB: databaseBinding, ACTS_DATA: cacheBinding, ACTS_MEDIA: filesBinding, ACTS_QUEUE: { send() {} } });
   const technicalLogger = createLogger({ config: config.public, sink: (record) => output.push(record), clock: () => new Date('2026-07-31T00:00:00Z') });
   const bus = createEventBus({ logger: technicalLogger, clock: () => new Date('2026-07-31T00:00:00Z'), id: () => 'integration' });
   const database = createDatabase({ binding: config.bindings.ACTS_DB, logger: technicalLogger });
-  const cache = createCache({ binding: config.bindings.ACTS_KV, logger: technicalLogger });
-  const storage = createStorage({ binding: config.bindings.ACTS_FILES, logger: technicalLogger });
+  const cache = createCache({ binding: config.bindings.ACTS_DATA, logger: technicalLogger });
+  const storage = createStorage({ binding: config.bindings.ACTS_MEDIA, logger: technicalLogger });
   await bus.publish({ name: 'TechnicalCompleted', version: '1.0', source: 'core', payload: {} });
   await database.write('UPDATE x SET y = ?', [1]); await cache.set('integration', true); await storage.put('files/integration.txt', 'ok');
   assert.equal(output.some(({ message }) => message === 'Event published'), true);
@@ -71,7 +71,7 @@ test('Lote 2 Config and Logger compose all explicitly injected services', async 
 });
 
 test('publication Queue validates, correlates and sends individual and batch messages safely', async () => {
-  const { createPublicationQueue } = await import('../../app/core/events.js'); const sent = []; const capture = logger();
+  const { createPublicationQueue } = await import('../../core/events.js'); const sent = []; const capture = logger();
   const queue = createPublicationQueue({ binding: { async send(body) { sent.push(body); }, async sendBatch(entries) { sent.push(...entries.map(({ body }) => body)); } }, logger: capture.log });
   const message = { eventId: 'evt_123', type: 'CityPublicationRequested', version: '1.0', cityId: 'city_1', citySlug: 'londrina', reason: 'listing.updated', correlationId: 'corr_123', source: 'Listings', occurredAt: '2026-08-04T00:00:00Z' };
   await queue.send(message); await queue.sendBatch([message, { ...message, eventId: 'evt_456' }]); assert.equal(sent.length, 3); assert.equal(sent[0].correlationId, 'corr_123'); assert.throws(() => queue.validate({ ...message, citySlug: '../secret' }));

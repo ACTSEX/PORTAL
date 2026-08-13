@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { createRenderer } from '../../app/core/render.js';
-import { createPublisher, normalizePublicationKey, normalizeCityCatalog, consumePublicationBatch, submitChangePackage } from '../../app/core/publish.js';
-import { COMPOSITION_ORDER, createApp } from '../../app/core/app.js';
+import { createRenderer } from '../../business/publishing.js';
+import { createPublisher, normalizePublicationKey, normalizeCityCatalog, consumePublicationBatch, submitChangePackage } from '../../business/publishing.js';
+import { COMPOSITION_ORDER, createApp } from '../../core/app.js';
 
 const logger = () => ({ debug() {}, info() {}, warn() {}, error() {}, fatal() {} });
 function memoryCache() {
@@ -78,8 +78,8 @@ test('explicit package enforces atomic limits, persisted idempotency and safe da
 function environment() {
   const kv = new Map();
   return { ENVIRONMENT: 'test', LOG_LEVEL: 'debug', ACTS_DB: { prepare() {}, async batch() { return []; } },
-    ACTS_KV: { async get(key) { return kv.get(key) ?? null; }, async put(key, value) { kv.set(key, value); }, async delete(key) { kv.delete(key); } },
-    ACTS_FILES: { async get() { return null; }, async head() { return null; }, async put(key) { return { key }; }, async delete() {} },
+    ACTS_DATA: { async get(key) { return kv.get(key) ?? null; }, async put(key, value) { kv.set(key, value); }, async delete(key) { kv.delete(key); } },
+    ACTS_MEDIA: { async get() { return null; }, async head() { return null; }, async put(key) { return { key }; }, async delete() {} },
     ACTS_QUEUE: { async send() {} } };
 }
 
@@ -101,7 +101,7 @@ test('app prevents partial initialization and duplicate routes', () => {
 });
 
 test('Lote 5 sources contain no environment, domain, SQL, modules, or rejected imports', async () => {
-  for (const path of ['app/core/render.js', 'app/core/publish.js', 'app/core/app.js']) {
+  for (const path of ['business/publishing.js', 'core/app.js']) {
     const source = await readFile(new URL(`../../${path}`, import.meta.url), 'utf8');
     assert.doesNotMatch(source, /process\.env|app\/modules|\b(?:SELECT|INSERT|UPDATE|DELETE)\b/i);
     assert.doesNotMatch(source, /renderer\.js|publisher\.js|bootstrap\.js|container\.js|registry\.js|loader\.js/);

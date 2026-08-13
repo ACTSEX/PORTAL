@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { createIdentityAuth, IdentityError } from '../../app/modules/Auth.js';
-import { createUsers, UsersError } from '../../app/modules/Users.js';
-import { createImobiliaristas } from '../../app/modules/Imobiliaristas.js';
-import { createPlans, PlansError } from '../../app/modules/Plans.js';
-import { createSubscriptions, SubscriptionsError } from '../../app/modules/Subscriptions.js';
+import { createIdentityAuth, IdentityError } from '../../business/accounts.js';
+import { createUsers, UsersError } from '../../business/accounts.js';
+import { createImobiliaristas } from '../../business/accounts.js';
+import { createPlans, PlansError } from '../../business/plans.js';
+import { createSubscriptions, SubscriptionsError } from '../../business/accounts.js';
 
 const clock = () => new Date('2026-07-31T12:00:00.000Z');
 const logger = { info() {}, warn() {}, error() {}, debug() {} };
@@ -95,7 +95,7 @@ test('Auth recovery has an identical non-enumerating response for existing and a
 
 test('all Lote 7 modules use injected Core boundaries and contain no forbidden integration', async () => {
   const files = ['Auth.js', 'Users.js', 'Imobiliaristas.js', 'Plans.js', 'Subscriptions.js'];
-  const sources = await Promise.all(files.map((file) => readFile(new URL(`../../app/modules/${file}`, import.meta.url), 'utf8')));
+  const sources = [await readFile(new URL('../../business/accounts.js', import.meta.url), 'utf8')];
   for (const source of sources) {
     assert.doesNotMatch(source, /process\.env|from ['"]\.\/|env\.(?:DB|KV|R2)|fetch\s*\(/i);
     assert.match(source, /\?[^'`]*['`], \[/); assert.match(source, /events\.publish/);
