@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "wrangler dev --env development",
     "lint": "npm run lint:js",
-    "lint:js": "files=$(find core business worker scripts tests -type f -name '*.js' 2>/dev/null || true); test -z \"$files\" || node --check $files",
+    "lint:js": "files=$(find core business worker frontend scripts tests -type f -name '*.js' 2>/dev/null || true); test -z \"$files\" || node --check $files",
     "test": "node --test",
     "build": "mkdir -p .wrangler/tmp && wrangler types .wrangler/tmp/worker-configuration.d.ts --env development",
     "cf:validate": "npm run cf:validate:development && npm run cf:validate:staging && npm run cf:validate:production",

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "1.0",
+  "city": { "slug": "cidade-teste", "name": "Cidade Teste" },
+  "listings": [
+    { "slug": "anunciante-teste", "displayName": "Perfil de teste", "directory": "dir1", "category": "cat1", "tags": ["massagem", "centro"], "publicAge": 25, "shortCall": "Fixture automatizada", "premium": true, "featured": true },
+    { "slug": "perfil-dir2", "displayName": "Perfil DIR2", "directory": "dir2", "category": "cat3", "tags": ["centro"] },
+    { "slug": "perfil-dir3", "displayName": "Perfil DIR3", "directory": "dir3", "category": "cat8", "tags": ["massagem"] }
+  ]
+}
