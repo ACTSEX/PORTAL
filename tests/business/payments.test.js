@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { createPayments } from "../../business/payments.js";
-import { createIntegrations } from "../../business/payments.js";
 
 const now = "2026-08-04T12:00:00.000Z", clock = () => new Date(now);
 const hash = async (value) => createHash("sha256").update(value).digest("hex");
@@ -183,13 +182,10 @@ test("cancel is idempotent, owner protected, and rejects incompatible state", as
   await assert.rejects(service(new FinancialDb({ payments: [payment({ status: "paid" })] })).cancel("pay_existing", { userId: "usr_1" }), (error) => error.code === "INVALID_TRANSITION");
 });
 
-test("private pagination and Asaas-only integration require authorization", async () => {
-  const db = new FinancialDb({ payments: [payment()] }); assert.equal((await service(db).list({ pageSize: 100 }, { userId: "usr_1" })).pageSize, 50);
-  const integrationDb = { rows: [], async first() { return this.rows.shift() ?? null; }, async write() { return { meta: { changes: 1 } }; } };
-  const integration = createIntegrations({ db: integrationDb, events: bus(), logger: logger(), id: () => "1".repeat(32), clock });
-  integrationDb.rows.push(null, { id: "int_1", provider: "asaas", status: "disabled", created_at: now, updated_at: now });
-  assert.equal((await integration.configure({ isAdmin: true })).provider, "asaas");
-  await assert.rejects(integration.setStatus("active"), (error) => error.code === "FORBIDDEN");
+test("private pagination is owner protected and bounded", async () => {
+  const db = new FinancialDb({ payments: [payment()] });
+  assert.equal((await service(db).list({ pageSize: 100 }, { userId: "usr_1" })).pageSize, 50);
+  await assert.rejects(service(db).list(), (error) => error.code === "FORBIDDEN");
 });
 
 test("captured financial logs and events contain no secrets, raw keys, PII or provider payload", async () => {

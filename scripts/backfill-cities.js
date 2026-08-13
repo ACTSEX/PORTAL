@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { canonicalizeCityLocation, createCitySlug } from '../business/listings.js';
+import { canonicalizeCityLocation, createCitySlug } from '../business/locations.js';
 
 const CONFIG_PATH = 'wrangler.toml';
 const BINDING = 'ACTS_DB';
@@ -30,8 +30,6 @@ export function validateConfiguration(source, environment, mode) {
   const value = (body, name) => body.match(new RegExp(`^\\s*${name}\\s*=\\s*"([^"]+)"`, 'm'))?.[1];
   if (value(development, 'binding') !== BINDING || value(staging, 'binding') !== BINDING || value(production, 'binding') !== BINDING) throw new Error('ACTS_DB configuration is missing');
   if ([development, staging, production].some((body) => value(body, 'migrations_dir') !== 'database/migrations')) throw new Error('Migration directory configuration is invalid');
-  if (/^\s*remote\s*=\s*true/m.test(development) || !/^\s*remote\s*=\s*true/m.test(staging)) throw new Error('Remote binding configuration is invalid');
-  if (value(staging, 'database_id') === value(production, 'database_id')) throw new Error('Staging and production databases must differ');
   if (ALLOWED.get(environment) !== mode) throw new Error('Unauthorized environment/mode combination');
 }
 

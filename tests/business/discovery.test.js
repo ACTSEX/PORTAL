@@ -69,7 +69,7 @@ test('Compare enforces limits, existence and public eligibility without persiste
 
 test('Lote 9 keeps injected boundaries, official fields and no direct or external integration', async () => {
   const joined = `${await readFile(new URL('../../business/listings.js', import.meta.url), 'utf8')}\n${await readFile(new URL('../../business/locations.js', import.meta.url), 'utf8')}`;
-  assert.doesNotMatch(joined, /process\.env|env\.(?:DB|KV|R2)|\.prepare\s*\(|api[_-]?key|google|mapbox|algolia|elastic|fetch\s*\(|from ['"]\.\//i);
+  assert.doesNotMatch(joined, /process\.env|env\.(?:DB|R2)|\.prepare\s*\(|api[_-]?key|google|mapbox|algolia|elastic|fetch\s*\(/i);
   assert.match(joined, /FROM favorites WHERE user_id = \?/);
   assert.equal(loggerEntries.some((entry) => JSON.stringify(entry).includes('usr_')), false);
 });

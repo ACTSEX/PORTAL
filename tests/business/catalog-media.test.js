@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { webcrypto } from 'node:crypto';
 import { createCategories, CategoriesError } from '../../business/listings.js';
-import { createCitySlug, createListings, ListingsError } from '../../business/listings.js';
+import { createListings, ListingsError } from '../../business/listings.js';
+import { createCitySlug } from '../../business/locations.js';
 import { createMedia, MediaError } from '../../business/listings.js';
 import { createUpload, UploadError } from '../../business/listings.js';
 
@@ -122,7 +123,7 @@ test('Upload compensates registration failure, reports technical failure and log
 
 test('Lote 8 uses injected boundaries, parameterized SQL and exactly the official persistence contracts', async () => {
   const joined = await readFile(new URL('../../business/listings.js', import.meta.url), 'utf8');
-  assert.doesNotMatch(joined, /process\.env|env\.(?:DB|KV|R2)|from ['"]\.\/|\.prepare\s*\(|\.binding\b/);
+  assert.doesNotMatch(joined, /process\.env|env\.(?:DB|R2)|\.prepare\s*\(|\.binding\b/);
   assert.match(joined, /\?[^'`]*['`], \[/);
   assert.deepEqual(Object.keys(mediaRow()).sort(), ['alt_text', 'byte_size', 'checksum_sha256', 'created_at', 'height', 'id', 'listing_id', 'media_type', 'mime_type', 'owner_id', 'r2_key', 'sort_order', 'width'].sort());
 });

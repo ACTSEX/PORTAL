@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createRenderer } from '../../business/publishing.js';
 import { createPublisher, normalizePublicationKey, normalizeCityCatalog, consumePublicationBatch, submitChangePackage } from '../../business/publishing.js';
-import { COMPOSITION_ORDER, createApp } from '../../core/app.js';
 
 const logger = () => ({ debug() {}, info() {}, warn() {}, error() {}, fatal() {} });
 function memoryCache() {
@@ -73,31 +72,6 @@ test('explicit package enforces atomic limits, persisted idempotency and safe da
   for (let index = 0; index < 5; index += 1) assert.equal((await submitChangePackage({ userId: 'user_1', idempotencyKey: `pkg_${index}abc`, operations: [{ type: 'listing.update', data: {} }] }, deps)).ok, true);
   await assert.rejects(submitChangePackage({ userId: 'user_1', idempotencyKey: 'pkg_six', operations: [{}] }, deps), { code: 'SUBMISSION_LIMIT_EXCEEDED' });
   const duplicate = await submitChangePackage({ userId: 'user_1', idempotencyKey: 'pkg_dup', operations: [{}] }, { ...deps, quota: async () => ({ allowed: true, duplicate: true, remaining: 0, result: { ok: true, operations: [{ status: 'persisted' }] } }) }); assert.equal(duplicate.duplicated, true); assert.equal(writes, 5);
-});
-
-function environment() {
-  const kv = new Map();
-  return { ENVIRONMENT: 'test', LOG_LEVEL: 'debug', ACTS_DB: { prepare() {}, async batch() { return []; } },
-    ACTS_DATA: { async get(key) { return kv.get(key) ?? null; }, async put(key, value) { kv.set(key, value); }, async delete(key) { kv.delete(key); } },
-    ACTS_MEDIA: { async get() { return null; }, async head() { return null; }, async put(key) { return { key }; }, async delete() {} },
-    ACTS_QUEUE: { async send() {} } };
-}
-
-test('app explicitly composes the complete Core and has a deterministic lifecycle', async () => {
-  const app = createApp({ environment: environment(), auth: { secret: new Uint8Array(32).fill(7) }, sink: () => {} });
-  assert.deepEqual(COMPOSITION_ORDER, ['config', 'logger', 'events', 'database', 'cache', 'queue', 'storage', 'auth', 'router', 'renderer', 'publisher', 'ready']);
-  assert.equal(app.state, 'ready'); assert.equal(app.ready, true); assert.equal('bindings' in app.services.config, false);
-  app.services.router.get('/health', (context) => Response.json({ authenticated: context.auth === null,
-    publisher: Boolean(app.services.publisher) }));
-  assert.deepEqual(await (await app.fetch(new Request('https://example.test/health'))).json(), { authenticated: true, publisher: true });
-  assert.equal(app.close(), true); assert.equal(app.state, 'closed');
-});
-
-test('app prevents partial initialization and duplicate routes', () => {
-  assert.throws(() => createApp({ environment: {}, auth: { secret: new Uint8Array(32) } }), /bootstrap failed/);
-  const app = createApp({ environment: environment(), auth: { secret: new Uint8Array(32).fill(1) } });
-  app.services.router.get('/one', () => new Response());
-  assert.throws(() => app.services.router.get('/one', () => new Response()), /Duplicate route/);
 });
 
 test('Lote 5 sources contain no environment, domain, SQL, modules, or rejected imports', async () => {

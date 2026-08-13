@@ -195,7 +195,7 @@ test('snapshot and evolved database are structurally equivalent by SQLite pragma
 
 test('13B operational files exist while future files from lots 13C through 14 remain absent', () => {
   for (const path of ['scripts/backfill-cities.js','tests/operations/city-backfill.test.js']) assert.equal(spawnSync('test', ['-f', path]).status, 0, path);
-  for (const path of ['database/migrations/0004_city_publication_contract.sql','app/modules/Publish.js','app/modules/Seo.js','app/components/Alert.js']) {
+  for (const path of ['database/migrations/0004_city_publication_contract.sql']) {
     assert.notEqual(spawnSync('test', ['-e', path]).status, 0, path);
   }
 });

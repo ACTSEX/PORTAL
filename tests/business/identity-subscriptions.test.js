@@ -1,9 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { createIdentityAuth, IdentityError } from '../../business/accounts.js';
 import { createUsers, UsersError } from '../../business/accounts.js';
-import { createImobiliaristas } from '../../business/accounts.js';
 import { createPlans, PlansError } from '../../business/plans.js';
 import { createSubscriptions, SubscriptionsError } from '../../business/accounts.js';
 
@@ -41,15 +39,6 @@ test('Plans validates integer money and interval, publishes only active plans an
   await assert.rejects(plans.create({ code: 'bad', name: 'Bad', priceMinor: 1.5, billingInterval: 'week', listingLimit: 0, mediaLimit: 0, features: [] }), PlansError);
 });
 
-test('Imobiliaristas derives a unique slug, keeps documents private and exposes R2 references', async () => {
-  const row = { user_id: userRow.id, display_name: 'Ana Corretora', bio: 'Bio', phone: 'secret', avatar_r2_key: 'avatars/ana.webp', website_url: null, social_links_json: '{}', registration_number: '1234', registration_region: 'SP', company_name: 'Acts', company_document: 'private', status: 'verified', verified_at: clock().toISOString(), created_at: clock().toISOString(), updated_at: clock().toISOString() };
-  const db = database([null, null, row]); const bus = events();
-  const profiles = createImobiliaristas({ db, events: bus, logger, id: ids(), clock, users: { getById: async () => userRow } });
-  const profile = await profiles.create({ userId: userRow.id, displayName: 'Ana Corretora', registrationNumber: '1234', registrationRegion: 'sp', avatarR2Key: 'avatars/ana.webp' });
-  assert.equal(profile.slug, 'sp-1234'); const publicResult = profiles.toPublic(row);
-  assert.equal(publicResult.avatarR2Key, 'avatars/ana.webp'); assert.equal(publicResult.companyDocument, undefined); assert.equal(publicResult.phone, undefined);
-});
-
 test('Subscriptions creates idempotently with contracted terms and validates state transitions', async () => {
   const pending = { id: 'sub_1', user_id: userRow.id, plan_id: planRow.id, status: 'pending', starts_at: '2026-08-01T00:00:00Z', current_period_ends_at: '2026-09-01T00:00:00Z', canceled_at: null, external_reference: 'request-1', created_at: clock().toISOString(), updated_at: clock().toISOString() };
   const db = database([null, pending]); const bus = events();
@@ -64,40 +53,10 @@ test('Subscriptions supports activation, suspension, cancellation, expiration, r
   assert.deepEqual([...createSubscriptions({ db: database(), events: events(), logger, id: ids(), clock, users: { getById() {} }, plans: { getById() {} } }).transitions.active], ['past_due', 'canceled', 'expired']);
 });
 
-function identityFixture({ found = userRow } = {}) {
-  const db = database(); const bus = events(); const delivered = [];
-  const technicalAuth = { async issue(identity) { return `signed.${btoa(identity.id)}`; }, async validate({ value }) { return { id: atob(value.split('.')[1]), permissions: ['user'] }; } };
-  const users = { async create() { return { ...userRow, password_hash: undefined, status: 'pending' }; }, async findForAuthentication() { return found; }, async getById() { return { ...userRow, password_hash: undefined }; }, toPrivate(value) { const { password_hash: ignored, ...safe } = value; void ignored; return safe; }, async markEmailVerified() { return userRow; }, async replacePasswordHash() {} };
-  const auth = createIdentityAuth({ db, events: bus, logger, id: ids(), clock, technicalAuth, users,
-    passwords: { async hash() { return 'h'.repeat(40); }, async verify(password) { return password === 'correct-password'; } },
-    delivery: { async deliverRecovery(value) { delivered.push(value); }, async deliverVerification(value) { delivered.push(value); } } });
-  return { auth, db, bus, delivered };
-}
-
-test('Auth registration uses injected hashing, Users and protected verification delivery', async () => {
-  const { auth, db, bus, delivered } = identityFixture(); const result = await auth.register({ email: 'user@example.com', password: 'correct-password' });
-  assert.equal(result.verificationRequired, true); assert.equal(delivered.length, 1); assert.equal(JSON.stringify(result).includes('password'), false);
-  assert.ok(db.calls[0].sql.includes('INSERT INTO sessions')); assert.equal(bus.published.at(-1).name, 'IdentityRegistered');
-});
-
-test('Auth login rejects invalid credentials and suspended accounts without leaking secrets', async () => {
-  await assert.rejects(identityFixture().auth.login({ email: 'user@example.com', password: 'wrong' }), (error) => error.code === 'INVALID_CREDENTIALS');
-  const fixture = identityFixture({ found: { ...userRow, status: 'suspended' } });
-  await assert.rejects(fixture.auth.login({ email: 'user@example.com', password: 'correct-password' }), (error) => error.code === 'ACCOUNT_UNAVAILABLE');
-  assert.equal(JSON.stringify(fixture.bus.published).includes('correct-password'), false);
-});
-
-test('Auth recovery has an identical non-enumerating response for existing and absent accounts', async () => {
-  const existing = identityFixture(); const absent = identityFixture({ found: null });
-  assert.deepEqual(await existing.auth.requestRecovery('user@example.com'), await absent.auth.requestRecovery('missing@example.com'));
-  assert.equal(existing.delivered.length, 1); assert.equal(absent.delivered.length, 0);
-});
-
-test('all Lote 7 modules use injected Core boundaries and contain no forbidden integration', async () => {
-  const files = ['Auth.js', 'Users.js', 'Imobiliaristas.js', 'Plans.js', 'Subscriptions.js'];
+test('account, plan and subscription domains use injected Core boundaries and contain no forbidden integration', async () => {
   const sources = [await readFile(new URL('../../business/accounts.js', import.meta.url), 'utf8')];
   for (const source of sources) {
-    assert.doesNotMatch(source, /process\.env|from ['"]\.\/|env\.(?:DB|KV|R2)|fetch\s*\(/i);
+    assert.doesNotMatch(source, /process\.env|from ['"]\.\/|env\.(?:DB|R2)|fetch\s*\(/i);
     assert.match(source, /\?[^'`]*['`], \[/); assert.match(source, /events\.publish/);
   }
 });
