@@ -1,0 +1,8 @@
+{
+  "slug": "anunciante-teste",
+  "displayName": "Perfil de teste",
+  "city": { "name": "Cidade Teste" },
+  "presentation": "Projeção usada apenas em testes locais e automatizados.",
+  "services": ["Serviço teste"],
+  "contacts": { "website": "https://example.com" }
+}
