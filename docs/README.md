@@ -43,4 +43,4 @@ O código existente ainda contém fundações e nomes do protótipo imobiliário
 | Regra arquitetural | Limite obrigatório para a remontagem, ainda que a movimentação física não tenha terminado. |
 | Planejado | Depende de contrato, implementação e testes; não deve ser apresentado como recurso disponível. |
 
-Hoje existem um Worker mínimo, bindings Cloudflare, fundações em `app/`, banco, scripts e testes. A árvore Worker-first e o produto completo ainda estão em transição. `ARCHITECTURE.md` descreve o destino técnico; `PRODUCT.md`, as regras de produto; `OPERATIONS.md`, a operação; e `ROADMAP.md`, o estado de implementação e remontagem.
+Hoje existem um Worker, bindings Cloudflare, fundações consolidadas em `core/` e `business/`, banco, scripts e testes. A árvore física segue a arquitetura Worker-first. `ARCHITECTURE.md` descreve o destino técnico; `PRODUCT.md`, as regras de produto; `OPERATIONS.md`, a operação; e `ROADMAP.md`, o estado de implementação e remontagem.

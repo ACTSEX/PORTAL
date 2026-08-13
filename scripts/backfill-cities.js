@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { canonicalizeCityLocation, createCitySlug } from '../app/modules/Listings.js';
+import { canonicalizeCityLocation, createCitySlug } from '../business/listings.js';
 
 const CONFIG_PATH = 'wrangler.toml';
 const BINDING = 'ACTS_DB';

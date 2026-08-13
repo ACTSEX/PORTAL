@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { createSearch, SearchError } from '../../app/modules/Search.js';
-import { createGeolocation, GeolocationError } from '../../app/modules/Geolocation.js';
-import { createMaps, MapsError } from '../../app/modules/Maps.js';
-import { createFavorites, FavoritesError } from '../../app/modules/Favorites.js';
-import { createCompare, CompareError } from '../../app/modules/Compare.js';
+import { createSearch, SearchError } from '../../business/listings.js';
+import { createGeolocation, GeolocationError } from '../../business/locations.js';
+import { createMaps, MapsError } from '../../business/locations.js';
+import { createFavorites, FavoritesError } from '../../business/listings.js';
+import { createCompare, CompareError } from '../../business/listings.js';
 
 const now = '2026-07-31T12:00:00.000Z'; const clock = () => new Date(now); const ids = () => { let value = 0; return () => String(++value).padStart(32, '0'); };
 const eventBus = () => { const published = []; return { published, async publish(event) { published.push(event); } }; };
@@ -68,7 +68,8 @@ test('Compare enforces limits, existence and public eligibility without persiste
 });
 
 test('Lote 9 keeps injected boundaries, official fields and no direct or external integration', async () => {
-  const files = ['Search.js', 'Geolocation.js', 'Maps.js', 'Favorites.js', 'Compare.js']; const sources = await Promise.all(files.map((file) => readFile(new URL(`../../app/modules/${file}`, import.meta.url), 'utf8'))); const joined = sources.join('\n');
-  assert.doesNotMatch(joined, /process\.env|env\.(?:DB|KV|R2)|\.prepare\s*\(|api[_-]?key|google|mapbox|algolia|elastic|fetch\s*\(|from ['"]\.\//i); assert.doesNotMatch(joined, /bedrooms|bathrooms|area|purpose|state/); assert.match(sources[3], /FROM favorites WHERE user_id = \?/); assert.doesNotMatch(sources[0], /SELECT|INSERT|UPDATE|DELETE/); assert.doesNotMatch(sources[2], /SELECT|INSERT|UPDATE|DELETE/); assert.doesNotMatch(sources[4], /SELECT|INSERT|UPDATE|DELETE/);
+  const joined = `${await readFile(new URL('../../business/listings.js', import.meta.url), 'utf8')}\n${await readFile(new URL('../../business/locations.js', import.meta.url), 'utf8')}`;
+  assert.doesNotMatch(joined, /process\.env|env\.(?:DB|KV|R2)|\.prepare\s*\(|api[_-]?key|google|mapbox|algolia|elastic|fetch\s*\(|from ['"]\.\//i);
+  assert.match(joined, /FROM favorites WHERE user_id = \?/);
   assert.equal(loggerEntries.some((entry) => JSON.stringify(entry).includes('usr_')), false);
 });

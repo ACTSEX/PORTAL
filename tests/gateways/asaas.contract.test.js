@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createAsaas, AsaasError } from "../../app/gateways/Asaas.js";
+import { createAsaas, AsaasError } from "../../business/payments.js";
 
 const response = (body, status = 200) => ({ ok: status >= 200 && status < 300, status, async json() { return body; } });
 const payment = { id: "pay_ext_123", status: "PENDING", dueDate: "2026-08-10", secret: "discarded" };

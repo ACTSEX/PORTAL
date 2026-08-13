@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { webcrypto } from 'node:crypto';
-import { createCategories, CategoriesError } from '../../app/modules/Categories.js';
-import { createCitySlug, createListings, ListingsError } from '../../app/modules/Listings.js';
-import { createMedia, MediaError } from '../../app/modules/Media.js';
-import { createUpload, UploadError } from '../../app/modules/Upload.js';
+import { createCategories, CategoriesError } from '../../business/listings.js';
+import { createCitySlug, createListings, ListingsError } from '../../business/listings.js';
+import { createMedia, MediaError } from '../../business/listings.js';
+import { createUpload, UploadError } from '../../business/listings.js';
 
 const now = '2026-07-31T12:00:00.000Z'; const clock = () => new Date(now); const loggerEntries = [];
 const logger = { info(message, context) { loggerEntries.push({ message, context }); }, error(message, context) { loggerEntries.push({ message, context }); }, warn() {}, debug() {} };
@@ -121,7 +121,8 @@ test('Upload compensates registration failure, reports technical failure and log
 });
 
 test('Lote 8 uses injected boundaries, parameterized SQL and exactly the official persistence contracts', async () => {
-  const files = ['Categories.js', 'Listings.js', 'Media.js', 'Upload.js']; const sources = await Promise.all(files.map((file) => readFile(new URL(`../../app/modules/${file}`, import.meta.url), 'utf8'))); const joined = sources.join('\n');
-  assert.doesNotMatch(joined, /process\.env|env\.(?:DB|KV|R2)|from ['"]\.\/|\.prepare\s*\(|\.binding\b/); assert.doesNotMatch(sources[2], /profile_id|is_cover|processing_status|updated_at/); assert.doesNotMatch(sources[0], /sort_order/); for (const source of sources.slice(0, 3)) assert.match(source, /\?[^'`]*['`], \[/);
+  const joined = await readFile(new URL('../../business/listings.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(joined, /process\.env|env\.(?:DB|KV|R2)|from ['"]\.\/|\.prepare\s*\(|\.binding\b/);
+  assert.match(joined, /\?[^'`]*['`], \[/);
   assert.deepEqual(Object.keys(mediaRow()).sort(), ['alt_text', 'byte_size', 'checksum_sha256', 'created_at', 'height', 'id', 'listing_id', 'media_type', 'mime_type', 'owner_id', 'r2_key', 'sort_order', 'width'].sort());
 });

@@ -2,8 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { createPayments } from "../../app/modules/Payments.js";
-import { createIntegrations } from "../../app/modules/Integrations.js";
+import { createPayments } from "../../business/payments.js";
+import { createIntegrations } from "../../business/payments.js";
 
 const now = "2026-08-04T12:00:00.000Z", clock = () => new Date(now);
 const hash = async (value) => createHash("sha256").update(value).digest("hex");
@@ -202,7 +202,7 @@ test("captured financial logs and events contain no secrets, raw keys, PII or pr
 });
 
 test("financial production boundary uses D1 only and does not start later lots", async () => {
-  const files = ["app/modules/Payments.js", "app/modules/Integrations.js", "app/gateways/Asaas.js"];
+  const files = ["business/payments.js"];
   const source = (await Promise.all(files.map((file) => readFile(file, "utf8")))).join("\n");
   assert.doesNotMatch(source, /process\.env|Publisher|publication_jobs|CityPublication|\bKV\b|\bR2\b|Stripe|Mercado Pago|PagSeguro/);
   assert.match(source, /idempotency_records/);

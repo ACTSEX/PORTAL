@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import { createConfig, ENVIRONMENTS } from '../../app/core/config.js';
-import { deepFreeze, isPlainObject } from '../../app/core/helpers.js';
-import { createLogger, LOG_LEVELS } from '../../app/core/logger.js';
+import { createConfig, ENVIRONMENTS } from '../../core/app.js';
+import { deepFreeze, isPlainObject } from '../../core/app.js';
+import { createLogger, LOG_LEVELS } from '../../core/logger.js';
 
 function binding(...methods) {
   return Object.fromEntries(methods.map((method) => [method, () => undefined]));
@@ -14,8 +14,8 @@ function environment(overrides = {}) {
   return {
     ENVIRONMENT: 'test',
     ACTS_DB: binding('prepare'),
-    ACTS_KV: binding('get', 'put'),
-    ACTS_FILES: binding('get', 'put'),
+    ACTS_DATA: binding('get', 'put'),
+    ACTS_MEDIA: binding('get', 'put'),
     ACTS_QUEUE: binding('send'),
     ...overrides,
   };
@@ -46,11 +46,11 @@ test('config rejects unsupported environments with a safe error', () => {
 
 test('config validates all required bindings', () => {
   const config = createConfig(environment());
-  assert.deepEqual(Object.keys(config.bindings).sort(), ['ACTS_DB', 'ACTS_FILES', 'ACTS_KV', 'ACTS_QUEUE']);
+  assert.deepEqual(Object.keys(config.bindings).sort(), ['ACTS_DATA', 'ACTS_DB', 'ACTS_MEDIA', 'ACTS_QUEUE']);
 });
 
 test('config rejects each absent or malformed binding without printing its value', () => {
-  for (const name of ['ACTS_DB', 'ACTS_KV', 'ACTS_FILES', 'ACTS_QUEUE']) {
+  for (const name of ['ACTS_DB', 'ACTS_DATA', 'ACTS_MEDIA', 'ACTS_QUEUE']) {
     assert.throws(() => createConfig(environment({ [name]: undefined })), new RegExp(`binding ${name}$`));
     assert.throws(() => createConfig(environment({ [name]: { credential: 'not-for-output' } })),
       (error) => !error.message.includes('not-for-output'));
@@ -96,7 +96,7 @@ test('config public view never exposes unrelated environment values or bindings'
 });
 
 test('config source is independent from process.env', async () => {
-  const source = await readFile(new URL('../../app/core/config.js', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../../core/app.js', import.meta.url), 'utf8');
   assert.equal(source.includes('process.env'), false);
 });
 
@@ -241,7 +241,7 @@ test('config public view integrates directly with logger without exposing enviro
 });
 
 test('logger source does not access an environment object or process globals', async () => {
-  const source = await readFile(new URL('../../app/core/logger.js', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../../core/logger.js', import.meta.url), 'utf8');
   assert.equal(source.includes('process.env'), false);
   assert.equal(source.includes('globalThis'), false);
 });

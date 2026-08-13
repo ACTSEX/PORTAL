@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { caseFold } from 'unicode-case-folding';
-import { canonicalizeCityLocation, createCitySlug, ListingsError } from '../../app/modules/Listings.js';
+import { canonicalizeCityLocation, createCitySlug, ListingsError } from '../../business/listings.js';
 import { backfillCities, main, parseArguments, validateConfiguration } from '../../scripts/backfill-cities.js';
 
 const python = String.raw`import json,sqlite3,sys
