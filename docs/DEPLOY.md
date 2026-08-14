@@ -78,3 +78,7 @@ A base mínima por PR é lint + testes afetados + suíte completa quando viável
 Logs estruturados devem incluir ambiente, versão/commit, `requestId`/`correlationId`, operação, duração, resultado e código de erro seguro. Monitorar taxa/latência HTTP, erros, D1, Queue (backlog, retries e falhas definitivas), R2, cache hit ratio, publicação atrasada e webhooks/pagamentos.
 
 Alertas precisam de limiar, responsável e ação. Para incidente: conter, preservar correlação, identificar versão/ambiente, decidir rollback ou correção, reconciliar filas/publicação/pagamentos, validar recuperação e registrar causa e prevenção. Nunca “corrigir” diretamente produção sem trilha auditável.
+
+## Configuração de pagamentos (Etapa 9)
+
+Configure por ambiente, usando secrets do Worker para `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN`, e uma variável segura `ASAAS_BASE_URL` com URL HTTPS do ambiente Asaas escolhido. Não armazene valores desses secrets no repositório e não execute configuração remota como parte de validações locais. Cadastre o webhook Asaas para `POST /api/webhooks/asaas` com o mesmo token de autenticação.

@@ -145,3 +145,11 @@ A integração Blogger é exclusiva do plano PREMIUM e mantém o blog sob propri
 O fluxo canônico é: **Blogger → sync interno pela Queue existente → parser Atom → sanitização allowlist → ProfileProjection → ACTS_DATA (`profiles/{slug}.json`) → Minisite**. A sincronização lê no máximo 10 posts, limita o feed a 512 KiB, usa timeout de 8 segundos e valida cada redirect contra destinos locais, privados, link-local e internos. Domínios personalizados só são aceitos como conteúdo após o feed declarar o gerador Blogger.
 
 O request público do minisite **NÃO consulta Blogger**. Em falha, a mensagem é repetida pela Queue e o objeto válido anterior em ACTS_DATA permanece intacto. A remoção da URL agenda uma nova projeção sem a seção `blog`.
+
+## Pagamentos Asaas — OPERACIONAL (Etapa 9)
+
+O fluxo comercial é `Painel autenticado → checkout → Asaas → webhook autenticado → D1 → ACTS_QUEUE → publisher → ACTS_DATA`. O D1 é a fonte de verdade: o frontend **nunca define o plano ativo** e uma cobrança pendente não habilita PREMIUM. Somente um evento Asaas autenticado e normalizado pode promover a assinatura; cancelamento, estorno ou inadimplência retornam a elegibilidade a STANDARD e solicitam nova publicação pelo Queue, sem escrita direta no R2 e sem apagar a configuração Blogger.
+
+Rotas mínimas: `GET /api/me/billing`, `POST /api/me/billing/checkout` (somente PIX e BOLETO) e `POST /api/webhooks/asaas`. O preço de PREMIUM é lido da tabela `plans`; campos financeiros extras do browser são rejeitados. A criação e a entrega de webhook usam os registros de idempotência existentes em `idempotency_records`, e a ordenação usa `payments.external_updated_at`.
+
+Secrets/variáveis de runtime exigidos, nunca gravados no TOML: `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN` e `ASAAS_BASE_URL` (URL HTTPS adequada ao sandbox ou produção). O webhook valida o header `asaas-access-token`. Cartão não é oferecido no painel nesta etapa para evitar ampliar o escopo PCI.

@@ -15,6 +15,8 @@ import { createPublicationQueue } from '../business/publishing.js';
 import { AuthError, createSessionAuth, sessionCookie, validateOrigin, verifyPassword } from '../core/auth.js';
 import { createUpload, UploadError } from '../business/listings.js';
 import { BloggerError, validateBloggerUrl } from '../business/blogger.js';
+import { createAsaas, AsaasError } from '../business/payments/gateways/asaas.js';
+import { createPayments, PaymentsError } from '../business/payments.js';
 
 const APEX = new Set(['acompanhantesex.com', 'www.acompanhantesex.com', 'localhost', '127.0.0.1']);
 const JSON_CACHE = 'public, max-age=60, s-maxage=300, stale-while-revalidate=86400';
@@ -22,11 +24,41 @@ const HTML_HEADERS = { 'content-type': 'text/html; charset=utf-8', 'cache-contro
 const PROFILE_FIELDS = new Set(['displayName', 'bio', 'phone', 'website', 'instagram', 'whatsapp']);
 const MEDIA_ID = /^med_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MEDIA_CACHE = 'public, max-age=31536000, immutable';
+const BILLING_METHODS = new Set(['PIX', 'BOLETO']);
+
+const digest = async (value) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+const safeEqual = (left, right) => {
+  const a = new TextEncoder().encode(left ?? ''), b = new TextEncoder().encode(right ?? '');
+  let difference = a.length ^ b.length;
+  for (let index = 0; index < Math.max(a.length, b.length); index += 1) difference |= (a[index % (a.length || 1)] ?? 0) ^ (b[index % (b.length || 1)] ?? 0);
+  return difference === 0;
+};
 
 function runtime(env) {
   const logger = createLogger({ config: { logLevel: 'info', environment: env.ENVIRONMENT ?? 'production', service: 'portal', version: '0.1.0' }, sink: (record, serialized) => (record.level === 'error' ? console.error : console.log)(serialized) });
   const db = createDatabase({ binding: env.ACTS_DB, logger });
   return { logger, db, auth: createSessionAuth({ db, logger }), publications: createPublicationQueue({ binding: env.ACTS_QUEUE, logger }) };
+}
+
+function paymentRuntime(app, env) {
+  const gateway = createAsaas({ baseUrl: env.ASAAS_BASE_URL, apiKey: env.ASAAS_API_KEY, fetch: env.ASAAS_FETCH ?? globalThis.fetch });
+  const events = { publish: async (event) => {
+    if (!['PaymentReceived', 'PaymentFailed', 'PaymentCanceled', 'PaymentRefunded'].includes(event.name)) return;
+    const subscription = await app.db.first('SELECT user_id, status FROM subscriptions WHERE id = ?', [event.payload.subscriptionId]);
+    if (!subscription) throw new Error('Payment subscription not found');
+    const premium = event.name === 'PaymentReceived'; const now = new Date().toISOString();
+    if (premium) {
+      await app.db.write("UPDATE subscriptions SET status = 'canceled', canceled_at = ?, updated_at = ? WHERE user_id = ? AND status = 'active' AND id <> ?", [now, now, subscription.user_id, event.payload.subscriptionId]);
+      await app.db.write("UPDATE subscriptions SET status = 'active', starts_at = ?, updated_at = ? WHERE id = ? AND status <> 'active'", [now, now, event.payload.subscriptionId]);
+    } else {
+      await app.db.write("UPDATE subscriptions SET status = ?, canceled_at = CASE WHEN ? = 'canceled' THEN ? ELSE canceled_at END, updated_at = ? WHERE id = ?", [event.name === 'PaymentFailed' ? 'past_due' : 'canceled', event.name === 'PaymentCanceled' ? 'canceled' : '', now, now, event.payload.subscriptionId]);
+      const standard = await app.db.first("SELECT s.id FROM subscriptions s JOIN plans p ON p.id = s.plan_id WHERE s.user_id = ? AND lower(p.code) = 'standard' ORDER BY s.created_at DESC LIMIT 1", [subscription.user_id]);
+      if (standard) await app.db.write("UPDATE subscriptions SET status = 'active', updated_at = ? WHERE id = ? AND status <> 'active'", [now, standard.id]);
+    }
+    const listing = await publicationTarget(app.db, subscription.user_id);
+    if (listing) await app.publications.send({ type: 'PUBLICATION_REQUESTED', entity: 'profile', id: listing.id, slug: listing.slug, reason: premium ? 'plan.upgraded' : 'plan.downgraded', requestedAt: now });
+  } };
+  return { gateway, payments: createPayments({ db: app.db, events, logger: app.logger, gateway, id: () => crypto.randomUUID(), hash: digest }) };
 }
 
 const apiJson = (body, status = 200, headers = {}) => Response.json(body, { status, headers: { 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...headers } });
@@ -54,6 +86,15 @@ async function scheduleMediaPublication(app, listing) {
 async function apiResponse(request, env, url) {
   const app = runtime(env);
   try {
+    if (request.method === 'POST' && url.pathname === '/api/webhooks/asaas') {
+      if (!env.ASAAS_WEBHOOK_TOKEN || !safeEqual(request.headers.get('asaas-access-token'), env.ASAAS_WEBHOOK_TOKEN)) return apiJson({ error: 'unauthorized_webhook' }, 401);
+      const declared = Number(request.headers.get('content-length') ?? 0); if (declared > 65536) return apiJson({ error: 'payload_too_large' }, 413);
+      const raw = await request.text(); if (new TextEncoder().encode(raw).length > 65536) return apiJson({ error: 'payload_too_large' }, 413);
+      let payload; try { payload = JSON.parse(raw); } catch { return apiJson({ error: 'invalid_payload' }, 400); }
+      const billing = paymentRuntime(app, env); const normalized = billing.gateway.normalizeWebhook(payload);
+      const result = await billing.payments.processWebhook(normalized, { internal: true, correlationId: normalized.eventId });
+      return apiJson({ received: true, duplicate: result.duplicate }, 200);
+    }
     if (request.method === 'POST' && url.pathname === '/api/auth/login') {
       validateOrigin(request); const input = await body(request);
       if (typeof input.email !== 'string' || typeof input.password !== 'string' || input.email.length > 254) throw new TypeError('invalid input');
@@ -71,6 +112,37 @@ async function apiResponse(request, env, url) {
     }
     if (request.method === 'GET' && url.pathname === '/api/me') {
       const identity = await app.auth.authenticate(request); return apiJson(await ownData(app.db, identity.user));
+    }
+    if (request.method === 'GET' && url.pathname === '/api/me/billing') {
+      const identity = await app.auth.authenticate(request);
+      const subscription = await app.db.first(`SELECT s.status, s.current_period_ends_at, p.code FROM subscriptions s JOIN plans p ON p.id = s.plan_id
+        WHERE s.user_id = ? ORDER BY CASE WHEN s.status = 'active' THEN 0 ELSE 1 END, s.created_at DESC LIMIT 1`, [identity.user.id]);
+      const payments = await app.db.all(`SELECT py.id, py.amount_minor, py.currency, py.status, py.due_at, py.created_at FROM payments py
+        JOIN subscriptions s ON s.id = py.subscription_id WHERE s.user_id = ? ORDER BY py.created_at DESC LIMIT 10`, [identity.user.id]);
+      return apiJson({ plan: subscription?.status === 'active' ? subscription.code.toUpperCase() : 'STANDARD', subscription: subscription ? { status: subscription.status, currentPeriodEnd: subscription.current_period_ends_at } : null,
+        payments: payments.results.map((item) => ({ id: item.id, amountMinor: item.amount_minor, currency: item.currency, status: item.status, dueAt: item.due_at, createdAt: item.created_at })) });
+    }
+    if (request.method === 'POST' && url.pathname === '/api/me/billing/checkout') {
+      validateOrigin(request); const identity = await app.auth.authenticate(request); const input = await body(request);
+      if (Object.keys(input).some((key) => !['plan', 'billingType'].includes(key)) || input.plan !== 'PREMIUM' || !BILLING_METHODS.has(input.billingType)) return apiJson({ error: 'invalid_input' }, 400);
+      const idempotencyKey = request.headers.get('idempotency-key'); if (!idempotencyKey || idempotencyKey.length < 8 || idempotencyKey.length > 128) return apiJson({ error: 'invalid_idempotency_key' }, 400);
+      const plan = await app.db.first("SELECT id, price_minor, currency, billing_interval FROM plans WHERE upper(code) = 'PREMIUM' AND active = 1", []);
+      if (!plan || plan.price_minor <= 0) return apiJson({ error: 'plan_unavailable' }, 422);
+      let subscription = await app.db.first("SELECT id, external_reference FROM subscriptions WHERE user_id = ? AND plan_id = ? AND status IN ('pending','active','past_due') ORDER BY created_at DESC LIMIT 1", [identity.user.id, plan.id]);
+      const billing = paymentRuntime(app, env); let customerReference = subscription?.external_reference;
+      if (!customerReference) {
+        const profile = await app.db.first('SELECT display_name FROM profiles WHERE user_id = ?', [identity.user.id]);
+        const customer = await billing.gateway.createCustomer({ name: profile?.display_name ?? identity.user.email, externalReference: identity.user.id, idempotencyKey: await digest(`customer:${identity.user.id}`) });
+        customerReference = customer.externalReference; const now = new Date().toISOString();
+        if (!subscription) {
+          subscription = { id: `sub_${crypto.randomUUID()}` };
+          const periodEnd = new Date(Date.now() + (plan.billing_interval === 'year' ? 366 : 31) * 86400000).toISOString();
+          await app.db.write("INSERT INTO subscriptions (id, user_id, plan_id, status, starts_at, current_period_ends_at, external_reference, created_at, updated_at) VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?)", [subscription.id, identity.user.id, plan.id, now, periodEnd, customerReference, now, now]);
+        } else await app.db.write('UPDATE subscriptions SET external_reference = ?, updated_at = ? WHERE id = ?', [customerReference, now, subscription.id]);
+      }
+      const dueDate = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+      const payment = await billing.payments.create({ subscriptionId: subscription.id, billingType: input.billingType, dueDate, customerReference, idempotencyKey }, { userId: identity.user.id, correlationId: idempotencyKey });
+      return apiJson({ payment: { id: payment.id, status: payment.status.toUpperCase(), billingType: input.billingType, amountMinor: payment.amountMinor, currency: payment.currency, dueDate: payment.dueAt } }, 201);
     }
     if (request.method === 'PATCH' && url.pathname === '/api/me/blogger') {
       validateOrigin(request); const identity = await app.auth.authenticate(request); const input = await body(request);
@@ -139,6 +211,11 @@ async function apiResponse(request, env, url) {
     if (error instanceof AuthError) return apiJson({ error: error.status === 403 ? 'forbidden' : 'unauthenticated' }, error.status);
     if (error instanceof BloggerError) return apiJson({ error: 'invalid_blogger_url' }, 400);
     if (error instanceof UploadError) return apiJson({ error: error.code === 'TECHNICAL_FAILURE' ? 'internal_error' : error.code.toLowerCase() }, error.code === 'TECHNICAL_FAILURE' ? 500 : error.code === 'FILE_TOO_LARGE' ? 413 : 400);
+    if (error instanceof AsaasError) return apiJson({ error: error.code === 'INVALID_WEBHOOK' ? 'invalid_payload' : 'provider_error' }, error.code === 'INVALID_WEBHOOK' ? 400 : 502);
+    if (error instanceof PaymentsError) {
+      const status = ({ INVALID_INPUT: 400, FORBIDDEN: 403, NOT_FOUND: 404, IDEMPOTENCY_CONFLICT: 409, STALE_EVENT: 200, AMOUNT_MISMATCH: 422, GATEWAY_ERROR: 502, EXTERNAL_RESULT_UNKNOWN: 502 })[error.code] ?? 500;
+      return apiJson(status === 200 ? { received: true, ignored: true } : { error: error.code.toLowerCase() }, status);
+    }
     if (error instanceof SyntaxError || error instanceof TypeError) return apiJson({ error: 'invalid_input' }, 400);
     app.logger.error('Private API failed', { operation: 'api.private', status: 'failed', route: url.pathname, error });
     return apiJson({ error: 'internal_error' }, 500);
