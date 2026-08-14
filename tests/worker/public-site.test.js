@@ -51,6 +51,20 @@ test('painel HTML and assets exist only on the apex host with private HTML cache
   assert.equal((await request('/assets/painel.js', { ...setup, host: 'anunciante-teste.acompanhantesex.com' })).status, 404);
 });
 
+test('central security headers protect HTML and assets without unsafe script directives', async () => {
+  const setup = environment();
+  for (const path of ['/', '/painel', '/assets/portal.js']) {
+    const response = await request(path, setup);
+    assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+    assert.equal(response.headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
+    assert.match(response.headers.get('permissions-policy'), /camera=\(\)/);
+    assert.match(response.headers.get('strict-transport-security'), /includeSubDomains/);
+    const csp = response.headers.get('content-security-policy');
+    assert.match(csp, /script-src 'self'/); assert.match(csp, /frame-ancestors 'none'/);
+    assert.doesNotMatch(csp, /unsafe-eval|script-src[^;]*\*/);
+  }
+});
+
 test('city endpoint reads the single R2 city projection and is publicly cacheable', async () => {
   const setup = environment({ 'cities/cidade-teste.json': city });
   const response = await request('/data/cities/cidade-teste', setup);
@@ -93,6 +107,15 @@ test('wildcard hostname renders a profile minisite and missing profile is visual
   assert.equal(missing.status, 404);
   assert.match(await missing.text(), /Minisite não encontrado/);
   assert.equal(setup.reads(), 0);
+});
+
+test('minisite hosts cannot reach apex private routes or administrative assets', async () => {
+  const setup = environment(); const host = 'anunciante-teste.acompanhantesex.com';
+  for (const path of ['/admin', '/admin/', '/painel', '/api/me', '/api/admin/accounts', '/assets/admin.css', '/assets/admin.js']) {
+    const response = await request(path, { ...setup, host });
+    assert.equal(response.status, 404, path);
+    assert.equal(response.headers.get('cache-control'), null, path);
+  }
 });
 
 test('invalid projection paths and wildcard hostnames are rejected', async () => {

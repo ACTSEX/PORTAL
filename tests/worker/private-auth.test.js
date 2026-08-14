@@ -151,6 +151,18 @@ test('state-changing private endpoints reject missing and cross-site Origin with
   assert.equal(noOrigin.status, 403); assert.equal(evil.status, 403); assert.equal(evil.headers.has('access-control-allow-origin'), false);
 });
 
+test('private APIs are no-store and login rejects authority fields from the browser', async () => {
+  const setup = environment();
+  const rejected = await request('/api/auth/login', setup.env, mutation('POST', { email: setup.user.email, password: 'correct horse battery staple', role: 'admin' }));
+  assert.equal(rejected.status, 400); assert.equal(rejected.headers.get('cache-control'), 'no-store');
+  assert.equal(rejected.headers.has('access-control-allow-origin'), false);
+  const logged = await login(setup); const cookie = logged.headers.get('set-cookie');
+  for (const path of ['/api/me', '/api/me/billing']) {
+    const response = await request(path, setup.env, { headers: { cookie } });
+    assert.equal(response.headers.get('cache-control'), 'no-store', path);
+  }
+});
+
 test('Asaas webhook is public but fails closed on authentication and malformed payloads', async () => {
   const setup = environment(); setup.env.ASAAS_WEBHOOK_TOKEN = 'webhook-runtime-secret'; setup.env.ASAAS_API_KEY = 'api-runtime-secret'; setup.env.ASAAS_BASE_URL = 'https://sandbox.asaas.com';
   const missing = await request('/api/webhooks/asaas', setup.env, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
