@@ -4,6 +4,10 @@ import { portalCss } from '../frontend/portal/styles.js';
 import { portalDocument } from '../frontend/portal/template.js';
 import { minisiteCss } from '../frontend/minisite/styles.js';
 import { minisiteDocument, minisiteNotFound } from '../frontend/minisite/template.js';
+import { createDatabase } from '../core/db.js';
+import { createLogger } from '../core/logger.js';
+import { createStorage } from '../core/storage.js';
+import { createPublicationConsumer, createPublicationReader, createPublisher } from '../business/publishing.js';
 
 const APEX = new Set(['acompanhantesex.com', 'www.acompanhantesex.com', 'localhost', '127.0.0.1']);
 const JSON_CACHE = 'public, max-age=60, s-maxage=300, stale-while-revalidate=86400';
@@ -74,5 +78,13 @@ export default {
     const slug = hostname.slice(0, -suffix.length);
     if (!isPublicSlug(slug) || slug.includes('.')) return new Response('Invalid minisite hostname', { status: 400 });
     return minisiteResponse(request, env, url, slug);
+  },
+  async queue(batch, env) {
+    const logger = createLogger({ config: { logLevel: 'info', environment: env.ENVIRONMENT ?? 'production', service: 'portal', version: '0.1.0' }, sink: (record, serialized) => (record.level === 'error' ? console.error : console.log)(serialized) });
+    const db = createDatabase({ binding: env.ACTS_DB, logger });
+    const storage = createStorage({ binding: env.ACTS_DATA, logger });
+    const publisher = createPublisher({ storage, logger });
+    const reader = createPublicationReader({ db });
+    return createPublicationConsumer({ publisher, reader, logger })(batch.messages);
   },
 };

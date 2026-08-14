@@ -83,6 +83,38 @@ const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{1,127}$/;
 const encoder = new TextEncoder();
 const CONTRACT_VERSION = 1;
+const PUBLICATION_TYPE = 'PUBLICATION_REQUESTED';
+const ENTITIES = new Set(['city', 'profile']);
+const REASON = /^[a-z][a-z0-9.-]{1,79}$/;
+
+export function validatePublicationRequest(input, { clock = () => new Date() } = {}) {
+  if (!isPlainObject(input)) throw new TypeError('Invalid publication request');
+  const entity = String(input.entity ?? '').trim().toLowerCase();
+  const requestedAt = input.requestedAt ?? clock().toISOString();
+  if (input.type !== PUBLICATION_TYPE || !ENTITIES.has(entity) || !ID.test(input.id ?? '')
+    || !SLUG.test(input.slug ?? '') || !REASON.test(input.reason ?? '')
+    || typeof requestedAt !== 'string' || Number.isNaN(Date.parse(requestedAt))) {
+    throw new TypeError('Invalid publication request');
+  }
+  return deepFreeze({ type: PUBLICATION_TYPE, entity, id: input.id, slug: input.slug, reason: input.reason, requestedAt });
+}
+
+/** Domain producer: validates one rebuild request and lets Queue delivery handle retries. */
+export function createPublicationQueue({ binding, logger, clock } = {}) {
+  if (!binding?.send || !logger?.info || !logger?.error) throw new TypeError('Invalid publication Queue dependencies');
+  async function send(input) {
+    const message = validatePublicationRequest(input, { clock });
+    try {
+      await binding.send(message, { contentType: 'json' });
+      logger.info('Publication requested', { operation: 'queue.send', status: 'enqueued', entity: message.entity, id: message.id, slug: message.slug });
+      return message;
+    } catch (error) {
+      logger.error('Publication request failed', { operation: 'queue.send', status: 'recoverable-failure', entity: message.entity, id: message.id, slug: message.slug, error });
+      throw error;
+    }
+  }
+  return Object.freeze({ send, validate: (input) => validatePublicationRequest(input, { clock }) });
+}
 
 export const PUBLICATION_STATES = deepFreeze(['received', 'validating', 'persisting', 'persisted', 'enqueued', 'awaiting-aggregation', 'compiling', 'projection-written', 'completed', 'recoverable-failure', 'definitive-failure']);
 
@@ -163,21 +195,79 @@ export function createPublisher({ storage, logger, events, crypto: cryptoApi = g
 }
 
 /** Deterministically coalesce a Cloudflare Queue delivery batch by affected city. */
-export async function consumePublicationBatch(messages, { compile, now = Date.now(), aggregationWindowMs = 1_000, maximumWaitMs = 10_000 } = {}) {
-  if (!Array.isArray(messages) || typeof compile !== 'function' || !Number.isFinite(now) || !Number.isSafeInteger(aggregationWindowMs) || !Number.isSafeInteger(maximumWaitMs) || aggregationWindowMs < 0 || maximumWaitMs < aggregationWindowMs) throw new TypeError('Invalid publication aggregation');
+export async function consumePublicationBatch(messages, { publish, logger } = {}) {
+  if (!Array.isArray(messages) || typeof publish !== 'function' || !logger?.info || !logger?.error) throw new TypeError('Invalid publication consumer');
   const groups = new Map();
   for (const message of messages) {
-    const body = message?.body ?? message; if (!isPlainObject(body) || !ID.test(body.cityId ?? '') || !SLUG.test(body.citySlug ?? '') || typeof body.eventId !== 'string') throw new TypeError('Invalid publication message');
-    const key = `${body.cityId}:${body.citySlug}`; const group = groups.get(key) ?? { cityId: body.cityId, citySlug: body.citySlug, eventIds: new Set(), messages: [], firstAt: Date.parse(body.occurredAt) || now };
-    group.eventIds.add(body.eventId); group.messages.push(message); groups.set(key, group);
+    let body;
+    try { body = validatePublicationRequest(message?.body ?? message); }
+    catch (error) { logger.error('Invalid publication message discarded', { operation: 'queue.consume', status: 'definitive-failure', error }); message?.ack?.(); continue; }
+    const key = `${body.entity}:${body.id}:${body.slug}`;
+    const group = groups.get(key) ?? { request: body, messages: [] };
+    group.messages.push(message); groups.set(key, group);
   }
   const results = [];
-  for (const group of [...groups.values()].sort((a, b) => a.citySlug.localeCompare(b.citySlug))) {
-    const waitedMs = Math.max(0, now - group.firstAt); const dueAt = now + Math.min(aggregationWindowMs, Math.max(0, maximumWaitMs - waitedMs));
-    try { results.push(await compile({ cityId: group.cityId, citySlug: group.citySlug, eventIds: Object.freeze([...group.eventIds].sort()), dueAt })); for (const item of group.messages) item.ack?.(); }
-    catch (error) { for (const item of group.messages) item.retry?.(); results.push({ ok: false, cityId: group.cityId, retry: true }); }
+  for (const group of groups.values()) {
+    try {
+      results.push(await publish(group.request));
+      for (const item of group.messages) item.ack?.();
+      logger.info('Publication message completed', { operation: 'queue.consume', status: 'completed', entity: group.request.entity, id: group.request.id, slug: group.request.slug });
+    } catch (error) {
+      for (const item of group.messages) item.retry?.();
+      logger.error('Publication message retrying', { operation: 'queue.consume', status: 'recoverable-failure', entity: group.request.entity, id: group.request.id, slug: group.request.slug, error });
+      results.push({ ok: false, entity: group.request.entity, id: group.request.id, retry: true });
+    }
   }
   return deepFreeze(results);
+}
+
+const parse = (value, fallback) => { try { return JSON.parse(value ?? fallback); } catch { return JSON.parse(fallback); } };
+
+/** Minimal authoritative reads needed by the canonical publisher. */
+export function createPublicationReader({ db } = {}) {
+  if (!db?.first || !db?.all) throw new TypeError('Invalid publication reader database');
+  async function loadCity({ cityId, citySlug }) {
+    const city = await db.first('SELECT id, slug, public_name FROM cities WHERE id = ? AND slug = ? AND active = 1', [cityId, citySlug]);
+    if (!city) throw new Error('Authoritative city not found');
+    const rows = (await db.all(`SELECT l.id, l.slug, l.title, l.description, l.attributes_json, c.slug AS category_slug,
+      p.user_id AS profile_id, p.display_name, p.bio, m.r2_key AS cover_key,
+      CASE WHEN s.id IS NOT NULL AND pl.code = 'premium' AND u.status = 'active' THEN 1 ELSE 0 END AS premium
+      FROM listings l JOIN categories c ON c.id = l.category_id JOIN users u ON u.id = l.owner_id
+      LEFT JOIN profiles p ON p.user_id = l.owner_id
+      LEFT JOIN subscriptions s ON s.user_id = l.owner_id AND s.status = 'active'
+      LEFT JOIN plans pl ON pl.id = s.plan_id AND pl.active = 1
+      LEFT JOIN media m ON m.id = (SELECT id FROM media WHERE listing_id = l.id AND media_type = 'image' ORDER BY sort_order, id LIMIT 1)
+      WHERE l.city_id = ? AND l.status = 'published' ORDER BY l.id`, [cityId])).results;
+    const listings = rows.map((row) => ({ id: row.id, slug: row.slug, profileSlug: row.slug, name: row.display_name || row.title, category: row.category_slug, tags: parse(row.attributes_json, '{}').tags ?? [], coverUrl: row.cover_key ?? undefined, premium: Boolean(row.premium), presentation: row.bio || row.description }));
+    return { slug: city.slug, name: city.public_name, categories: [...new Set(listings.map((item) => item.category))], tags: [...new Set(listings.flatMap((item) => item.tags))], listings };
+  }
+  async function loadProfile({ profileId, profileSlug }) {
+    const row = await db.first(`SELECT l.id, l.slug, l.title, l.description, l.attributes_json, l.city_id,
+      p.display_name, p.bio, p.phone, p.website_url, p.social_links_json, u.status AS user_status,
+      c.slug AS city_slug, c.public_name AS city_name, cat.slug AS category_slug,
+      CASE WHEN s.id IS NOT NULL AND pl.code = 'premium' AND pl.active = 1 THEN 1 ELSE 0 END AS premium
+      FROM listings l JOIN users u ON u.id = l.owner_id LEFT JOIN profiles p ON p.user_id = l.owner_id
+      LEFT JOIN cities c ON c.id = l.city_id JOIN categories cat ON cat.id = l.category_id
+      LEFT JOIN subscriptions s ON s.user_id = l.owner_id AND s.status = 'active'
+      LEFT JOIN plans pl ON pl.id = s.plan_id
+      WHERE l.id = ? AND l.slug = ?`, [profileId, profileSlug]);
+    if (!row) return null;
+    const media = (await db.all("SELECT r2_key FROM media WHERE listing_id = ? AND media_type = 'image' ORDER BY sort_order, id", [profileId])).results.map((item) => item.r2_key);
+    const attributes = parse(row.attributes_json, '{}'); const social = parse(row.social_links_json, '{}');
+    return { slug: row.slug, name: row.display_name || row.title, premium: Boolean(row.premium), active: row.user_status === 'active', suspended: row.user_status === 'suspended', cityId: row.city_id, city: { slug: row.city_slug, name: row.city_name }, presentation: row.bio || row.description, categories: [row.category_slug], services: attributes.services ?? [], tags: attributes.tags ?? [], gallery: media, contacts: { phone: row.phone, website: row.website_url, instagram: social.instagram, whatsapp: social.whatsapp } };
+  }
+  return Object.freeze({ loadCity, loadProfile });
+}
+
+export function createPublicationConsumer({ publisher, reader, logger } = {}) {
+  if (!publisher?.publishCity || !publisher?.publishProfile || !reader?.loadCity || !reader?.loadProfile) throw new TypeError('Invalid publication consumer dependencies');
+  return (messages) => consumePublicationBatch(messages, { logger, async publish(request) {
+    if (request.entity === 'city') return publisher.publishCity({ cityId: request.id, citySlug: request.slug, loadProjection: reader.loadCity });
+    const source = await reader.loadProfile({ profileId: request.id, profileSlug: request.slug });
+    const profile = await publisher.publishProfile({ profileSlug: request.slug, loadProjection: () => source });
+    if (source?.cityId && source.city?.slug) await publisher.publishCity({ cityId: source.cityId, citySlug: source.city.slug, loadProjection: reader.loadCity });
+    return profile;
+  } });
 }
 
 /** Validate one explicit, atomic panel submission and its persisted quota decision. */

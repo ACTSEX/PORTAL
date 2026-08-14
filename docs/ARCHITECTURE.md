@@ -60,14 +60,15 @@ Toda mutação é confirmada no D1 antes de emitir trabalho derivado. Falha de p
 ### Publicação
 
 ```text
-D1/Business → projeção pública allowlisted e determinística
+transação Business confirmada → evento ACTS_QUEUE → consumer `queue()` do Worker
+→ leitura autoritativa D1 → publisher canônico → projeção pública allowlisted e determinística
 → `cities/{citySlug}.json` ou `profiles/{profileSlug}.json` em ACTS_DATA
 → Edge Cache → Worker → Portal ou Minisite
 ```
 
 Cada publicação substitui o objeto canônico. R2 é reconstruível a partir do D1 e
-não é banco transacional. A Queue e a publicação assíncrona ficam para a etapa
-seguinte e não há consumer ativo no Worker.
+não é banco transacional. A Queue apenas transporta pedidos de reconstrução e
+nunca constitui fonte de verdade.
 
 ### Leitura pública
 
@@ -76,7 +77,7 @@ navegador → Worker/rota pública → Edge Cache
           → ACTS_DATA em cache miss → resposta cacheável
 ```
 
-O Worker continua sendo a entrada oficial, mesmo quando a resposta é satisfeita no Edge. A leitura pública normal evita D1 e Queue.
+O Worker continua sendo a entrada oficial, mesmo quando a resposta é satisfeita no Edge. O fluxo é sempre `PUBLIC HTTP → ACTS_DATA`, nunca `PUBLIC HTTP → D1`.
 
 ## Projeções públicas
 
@@ -120,10 +121,10 @@ indicam apenas existência de código:
 | Minisite | **OPERACIONAL** | Wildcard oficial lê projeção pública de perfil. |
 | ACTS_DATA | **OPERACIONAL** | O leitor público usa `cities/{slug}.json` e `profiles/{slug}.json`. |
 | Edge Cache | **OPERACIONAL** | Cache público fail-open no fluxo de projeções de cidade/perfil. |
-| D1 | **MÓDULO ISOLADO** | Schema, migrations e módulos existem; as rotas públicas não consultam D1. |
+| D1 | **OPERACIONAL** | Consumer assíncrono reconstrói projeções; as rotas públicas não consultam D1. |
 | ACTS_MEDIA | **PLANEJADO** | Binding configurado, sem fluxo HTTP de mídia/upload integrado. |
-| Queue | **MÓDULO ISOLADO** | Produtor/agregador têm código e testes, sem consumer no Worker. |
-| Publicação assíncrona | **MÓDULO ISOLADO** | Publisher e agregação são testados, mas não há fluxo runtime completo. |
+| Queue | **OPERACIONAL** | Producer e consumer do Worker transportam pedidos mínimos de city/profile. |
+| Publicação assíncrona | **OPERACIONAL** | Queue → D1 → publisher canônico → ACTS_DATA, com coalescência por batch. |
 | Autenticação | **MÓDULO ISOLADO** | Fundação testada, sem rota HTTP integrada. |
 | Pagamentos/Asaas | **MÓDULO ISOLADO** | Domínio e adapter testados, sem endpoints/webhook integrados. |
 | Painel | **PLANEJADO** | Sem fluxo funcional conectado. |
