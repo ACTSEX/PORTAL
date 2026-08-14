@@ -20,14 +20,20 @@ async function dataResponse(request, env, kind, slug) {
   if (!isPublicSlug(slug)) return new Response('Invalid public projection path', { status: 400 });
   const cache = globalThis.caches?.default;
   const cacheKey = new Request(request.url, { method: 'GET' });
-  if (cache) { const hit = await cache.match(cacheKey); if (hit) return hit; }
+  let hit = null;
+  if (cache) { try { hit = await cache.match(cacheKey); } catch { /* Cache is an optional optimization. */ } }
+  if (hit) {
+    const etag = hit.headers.get('etag');
+    if (etag && request.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers: { etag, 'cache-control': hit.headers.get('cache-control') ?? JSON_CACHE } });
+    return hit;
+  }
   const object = await readPublicProjection(env.ACTS_DATA, kind, slug);
   if (!object) return Response.json({ error: 'not_found' }, { status: 404, headers: { 'cache-control': 'public, max-age=30', 'x-content-type-options': 'nosniff' } });
   if (object.etag && request.headers.get('if-none-match') === object.etag) return new Response(null, { status: 304, headers: { etag: object.etag, 'cache-control': JSON_CACHE } });
   const headers = { 'content-type': object.contentType, 'cache-control': JSON_CACHE, 'x-content-type-options': 'nosniff' };
   if (object.etag) headers.etag = object.etag;
   const response = new Response(object.body, { headers });
-  if (cache) await cache.put(cacheKey, response.clone());
+  if (cache) { try { await cache.put(cacheKey, response.clone()); } catch { /* Keep serving the R2 response. */ } }
   return response;
 }
 
@@ -61,10 +67,7 @@ export default {
   async fetch(request, env) {
     if (!['GET', 'HEAD'].includes(request.method)) return new Response('Method not allowed', { status: 405, headers: { allow: 'GET, HEAD' } });
     const url = new URL(request.url);
-    // Wrangler keeps its loopback host in the URL; the forwarded host also makes
-    // local wildcard smoke tests possible. Both values pass the same strict check.
-    const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0].trim().split(':')[0];
-    const hostname = (forwardedHost || url.hostname).toLowerCase().replace(/\.$/, '');
+    const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
     if (APEX.has(hostname)) return apexResponse(request, env, url);
     const suffix = '.acompanhantesex.com';
     if (!hostname.endsWith(suffix)) return new Response('Unknown host', { status: 400 });
