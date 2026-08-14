@@ -11,6 +11,9 @@ export function publicObjectKey(kind, slug) {
   return `${kind}/${slug}.json`;
 }
 
+export const cityProjectionKey = (slug) => publicObjectKey('cities', slug);
+export const profileProjectionKey = (slug) => publicObjectKey('profiles', slug);
+
 /** Read an already-published public projection. Public reads never use D1. */
 export async function readPublicProjection(bucket, kind, slug) {
   if (!bucket || typeof bucket.get !== 'function') throw new TypeError('ACTS_DATA is unavailable');

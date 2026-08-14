@@ -1,4 +1,5 @@
 import { deepFreeze, isPlainObject } from '../core/app.js';
+import { cityProjectionKey, profileProjectionKey } from './public-content.js';
 
 const NAME = /^[a-z][a-z0-9.-]{0,63}$/;
 const TYPES = new Set(['template', 'layout', 'component']);
@@ -81,9 +82,9 @@ const KEY = /^[a-z0-9][a-z0-9._/-]{0,511}$/;
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{1,127}$/;
 const encoder = new TextEncoder();
-const CONTRACT_VERSION = '2.0';
+const CONTRACT_VERSION = 1;
 
-export const PUBLICATION_STATES = deepFreeze(['received', 'validating', 'persisting', 'persisted', 'enqueued', 'awaiting-aggregation', 'compiling', 'catalog-written', 'manifest-activated', 'completed', 'recoverable-failure', 'definitive-failure']);
+export const PUBLICATION_STATES = deepFreeze(['received', 'validating', 'persisting', 'persisted', 'enqueued', 'awaiting-aggregation', 'compiling', 'projection-written', 'completed', 'recoverable-failure', 'definitive-failure']);
 
 export function normalizePublicationKey(value) {
   const key = String(value ?? '').trim().toLowerCase().replace(/^\/+|\/+$/g, '').replace(/\s+/g, '-');
@@ -107,70 +108,58 @@ function allowed(input, fields) {
   return clean(Object.fromEntries(fields.filter((field) => input[field] !== undefined).map((field) => [field, input[field]])));
 }
 
-export function normalizeCityCatalog(input, generatedAt) {
-  if (!isPlainObject(input) || !ID.test(input.city?.id ?? '') || !SLUG.test(input.city?.slug ?? '')) throw new TypeError('Invalid city catalog');
-  const advertisers = Object.fromEntries((input.advertisers ?? []).map((item) => {
-    const publicItem = allowed(item, ['id', 'name', 'slug', 'displayName', 'biography', 'avatarUrl', 'coverUrl', 'publicPhone', 'website']);
-    if (!ID.test(publicItem.id ?? '')) throw new TypeError('Invalid public advertiser');
-    return [publicItem.id, publicItem];
-  }).sort(([a], [b]) => a.localeCompare(b)));
-  const categories = (input.categories ?? []).map((item) => allowed(item, ['id', 'slug', 'name', 'description', 'parentId'])).sort((a, b) => String(a.id).localeCompare(String(b.id)));
-  const listings = (input.listings ?? []).map((item) => allowed(item, ['id', 'slug', 'title', 'description', 'listingType', 'status', 'priceMinor', 'currency', 'categoryId', 'advertiserId', 'district', 'approximateLocation', 'attributes', 'media', 'publishedAt', 'updatedAt'])).sort((a, b) => String(a.id).localeCompare(String(b.id)));
-  for (const item of listings) if (!ID.test(item.id ?? '') || !advertisers[item.advertiserId]) throw new TypeError('Invalid public listing relationship');
-  return deepFreeze({ schemaVersion: CONTRACT_VERSION, city: allowed(input.city, ['id', 'slug', 'name', 'region', 'countryCode']), categories, advertisers, listings, filters: clean(input.filters ?? {}), metadata: { generatedAt, listingCount: listings.length } });
+export function normalizeCityProjection(input, generatedAt) {
+  if (!isPlainObject(input) || !SLUG.test(input.slug ?? '') || typeof input.name !== 'string' || !Array.isArray(input.listings ?? [])) throw new TypeError('Invalid city projection');
+  const listings = input.listings.map((item) => allowed(item, ['id', 'slug', 'profileSlug', 'name', 'category', 'directory', 'tags', 'coverUrl', 'premium', 'featured', 'publicAge', 'shortCall', 'presentation', 'services', 'gallery', 'contacts'])).sort((a, b) => String(a.id).localeCompare(String(b.id)));
+  for (const item of listings) if (!ID.test(item.id ?? '') || !SLUG.test(item.slug ?? '') || (item.profileSlug !== undefined && !SLUG.test(item.profileSlug))) throw new TypeError('Invalid public listing');
+  return deepFreeze({ schemaVersion: CONTRACT_VERSION, slug: input.slug, name: input.name, generatedAt, directories: clean(input.directories ?? []), categories: clean(input.categories ?? []), tags: clean(input.tags ?? []), listings });
 }
 
-function cityKeys(slug, version) {
-  if (!SLUG.test(slug)) throw new TypeError('Invalid city slug');
-  if (!Number.isSafeInteger(version) || version < 1) throw new TypeError('Invalid catalog version');
-  return { catalog: `cidades/${slug}/catalogo-v${String(version).padStart(6, '0')}.json`, manifest: `cidades/${slug}/manifest.json` };
+export function normalizeProfileProjection(input, generatedAt) {
+  if (!isPlainObject(input) || !SLUG.test(input.slug ?? '') || typeof input.name !== 'string') throw new TypeError('Invalid profile projection');
+  return deepFreeze({ schemaVersion: CONTRACT_VERSION, slug: input.slug, name: input.name, generatedAt, city: allowed(input.city ?? {}, ['slug', 'name']), premium: true, presentation: String(input.presentation ?? ''), categories: clean(input.categories ?? []), services: clean(input.services ?? []), tags: clean(input.tags ?? []), gallery: clean(input.gallery ?? []), contacts: allowed(input.contacts ?? {}, ['phone', 'whatsapp', 'website', 'instagram']) });
 }
 
 /** Technical publisher. Projection loading and business eligibility stay in modules. */
-export function createPublisher({ renderer, storage, logger, events, crypto: cryptoApi = globalThis.crypto, clock = () => new Date(), id = () => crypto.randomUUID() } = {}) {
-  if (!renderer?.render || !storage?.put || !storage?.head || !storage?.get || !logger?.error || !cryptoApi?.subtle || typeof clock !== 'function' || typeof id !== 'function') throw new TypeError('Invalid Publisher dependencies');
+export function createPublisher({ storage, logger, events, crypto: cryptoApi = globalThis.crypto, clock = () => new Date(), id = () => crypto.randomUUID() } = {}) {
+  if (!storage?.put || !storage?.delete || !logger?.error || !cryptoApi?.subtle || typeof clock !== 'function' || typeof id !== 'function') throw new TypeError('Invalid Publisher dependencies');
   if (events && typeof events.publish !== 'function') throw new TypeError('Invalid Publisher Event Bus');
 
   async function publishCity(input) {
-    if (!isPlainObject(input) || !ID.test(input.cityId ?? '') || !SLUG.test(input.citySlug ?? '') || typeof input.loadProjection !== 'function' || !Number.isSafeInteger(input.version)) throw new TypeError('Invalid city publication');
+    if (!isPlainObject(input) || !ID.test(input.cityId ?? '') || !SLUG.test(input.citySlug ?? '') || typeof input.loadProjection !== 'function') throw new TypeError('Invalid city publication');
     const publicationId = input.publicationId ?? `pub_${id()}`; const correlationId = input.correlationId ?? publicationId;
     try {
       const generatedAt = clock().toISOString();
-      const catalog = normalizeCityCatalog(await input.loadProjection({ cityId: input.cityId, citySlug: input.citySlug }), generatedAt);
-      if (catalog.city.id !== input.cityId || catalog.city.slug !== input.citySlug) throw new TypeError('City projection mismatch');
-      const projectionDigest = await sha256(JSON.stringify({ ...catalog, metadata: { ...catalog.metadata, generatedAt: undefined } }, (_key, value) => value === undefined ? undefined : value), cryptoApi);
-      const content = JSON.stringify(catalog); const digest = await sha256(content, cryptoApi); const size = encoder.encode(content).byteLength;
-      const keys = cityKeys(input.citySlug, input.version); const previousObject = await storage.get(keys.manifest);
-      const previous = previousObject?.body ? JSON.parse(typeof previousObject.body === 'string' ? previousObject.body : await new Response(previousObject.body).text()) : null;
-      if (previous?.projectionDigest === projectionDigest) return deepFreeze({ ok: true, changed: false, publicationId, correlationId, manifest: previous });
-      await storage.put(keys.catalog, content, { contentType: 'application/json; charset=utf-8', cacheControl: 'public, max-age=31536000, immutable', metadata: { digest, projectionDigest, size: String(size), version: String(input.version), cityId: input.cityId, schemaVersion: CONTRACT_VERSION } });
-      const confirmed = await storage.head(keys.catalog);
-      if (!confirmed || Number(confirmed.size) !== size || confirmed.metadata?.digest !== digest) throw new Error('Catalog confirmation failed');
-      const manifest = deepFreeze({ city: { id: input.cityId, slug: input.citySlug }, version: input.version, catalogPath: keys.catalog, updatedAt: generatedAt, digest, projectionDigest, size, schemaVersion: CONTRACT_VERSION, previous: previous ? { version: previous.version, catalogPath: previous.catalogPath, digest: previous.digest, size: previous.size } : null });
-      await storage.put(keys.manifest, JSON.stringify(manifest), { contentType: 'application/json; charset=utf-8', cacheControl: 'public, max-age=60, must-revalidate', metadata: { digest, version: String(input.version), cityId: input.cityId, schemaVersion: CONTRACT_VERSION } });
-      await emit('CityPublicationCompleted', { publicationId, cityId: input.cityId, citySlug: input.citySlug, version: input.version }, correlationId);
-      return deepFreeze({ ok: true, changed: true, publicationId, correlationId, catalogKey: keys.catalog, manifest });
+      const projection = normalizeCityProjection(await input.loadProjection({ cityId: input.cityId, citySlug: input.citySlug }), generatedAt);
+      if (projection.slug !== input.citySlug) throw new TypeError('City projection mismatch');
+      const content = JSON.stringify(projection); const digest = await sha256(content, cryptoApi); const key = cityProjectionKey(input.citySlug);
+      await storage.put(key, content, { contentType: 'application/json; charset=utf-8', cacheControl: 'public, max-age=60, must-revalidate', metadata: { digest, cityId: input.cityId, schemaVersion: String(CONTRACT_VERSION) } });
+      await emit('CityPublicationCompleted', { publicationId, cityId: input.cityId, citySlug: input.citySlug }, correlationId);
+      return deepFreeze({ ok: true, changed: true, publicationId, correlationId, key, projection, digest });
     } catch (error) {
       logger.error('City publication failed', { operation: 'publisher.city', status: 'recoverable-failure', publicationId, correlationId, cityId: input.cityId, error });
       await emit('CityPublicationFailed', { publicationId, cityId: input.cityId, citySlug: input.citySlug }, correlationId);
-      return deepFreeze({ ok: false, changed: false, publicationId, correlationId, failure: 'recoverable' });
+      throw error;
     }
   }
 
-  async function rollback({ cityId, citySlug, target, correlationId = `corr_${id()}` }) {
-    if (!ID.test(cityId ?? '') || !SLUG.test(citySlug ?? '') || !isPlainObject(target) || !Number.isSafeInteger(target.version)) throw new TypeError('Invalid publication rollback');
-    const keys = cityKeys(citySlug, target.version); if (target.catalogPath !== keys.catalog) throw new TypeError('Invalid rollback target');
-    const object = await storage.head(keys.catalog); if (!object || object.metadata?.cityId !== cityId || object.metadata?.digest !== target.digest) throw new Error('Rollback target unavailable');
-    const currentObject = await storage.get(keys.manifest); const current = currentObject?.body ? JSON.parse(typeof currentObject.body === 'string' ? currentObject.body : await new Response(currentObject.body).text()) : null;
-    if (current?.version === target.version) return deepFreeze({ ok: true, changed: false, manifest: current });
-    const manifest = deepFreeze({ city: { id: cityId, slug: citySlug }, version: target.version, catalogPath: target.catalogPath, updatedAt: clock().toISOString(), digest: target.digest, size: target.size, schemaVersion: CONTRACT_VERSION, previous: current ? { version: current.version, catalogPath: current.catalogPath, digest: current.digest, size: current.size } : null });
-    await storage.put(keys.manifest, JSON.stringify(manifest), { contentType: 'application/json; charset=utf-8', cacheControl: 'public, max-age=60, must-revalidate', metadata: { digest: target.digest, version: String(target.version), cityId, schemaVersion: CONTRACT_VERSION } });
-    await emit('CityPublicationRolledBack', { cityId, citySlug, version: target.version }, correlationId);
-    return deepFreeze({ ok: true, changed: true, manifest });
+  async function publishProfile(input) {
+    if (!isPlainObject(input) || !SLUG.test(input.profileSlug ?? '') || typeof input.loadProjection !== 'function') throw new TypeError('Invalid profile publication');
+    const key = profileProjectionKey(input.profileSlug); const source = await input.loadProjection({ profileSlug: input.profileSlug });
+    if (!source) { await storage.delete(key); return deepFreeze({ ok: true, changed: true, published: false, key }); }
+    const eligible = source.premium === true && source.active !== false && source.suspended !== true;
+    if (!eligible) { await storage.delete(key); return deepFreeze({ ok: true, changed: true, published: false, key }); }
+    const projection = normalizeProfileProjection(source, clock().toISOString());
+    if (projection.slug !== input.profileSlug) throw new TypeError('Profile projection mismatch');
+    try {
+      const content = JSON.stringify(projection); const digest = await sha256(content, cryptoApi);
+      await storage.put(key, content, { contentType: 'application/json; charset=utf-8', cacheControl: 'public, max-age=60, must-revalidate', metadata: { digest, schemaVersion: String(CONTRACT_VERSION) } });
+      return deepFreeze({ ok: true, changed: true, published: true, key, projection, digest });
+    } catch (error) { logger.error('Profile publication failed', { operation: 'publisher.profile', status: 'recoverable-failure', profileSlug: input.profileSlug, error }); throw error; }
   }
 
   async function emit(name, payload, correlationId) { if (events) await events.publish({ name, version: '1.0', source: 'core.publish', payload }, { correlationId }); }
-  return Object.freeze({ publishCity, rollback, normalizeKey: normalizePublicationKey, sourceOfTruth: false });
+  return Object.freeze({ publishCity, publishProfile, normalizeKey: normalizePublicationKey, sourceOfTruth: false });
 }
 
 /** Deterministically coalesce a Cloudflare Queue delivery batch by affected city. */
