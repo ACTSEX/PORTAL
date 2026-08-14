@@ -125,9 +125,9 @@ indicam apenas existência de código:
 | ACTS_MEDIA | **PLANEJADO** | Binding configurado, sem fluxo HTTP de mídia/upload integrado. |
 | Queue | **OPERACIONAL** | Producer e consumer do Worker transportam pedidos mínimos de city/profile. |
 | Publicação assíncrona | **OPERACIONAL** | Queue → D1 → publisher canônico → ACTS_DATA, com coalescência por batch. |
-| Autenticação | **MÓDULO ISOLADO** | Fundação testada, sem rota HTTP integrada. |
+| Autenticação | **OPERACIONAL** | Sessões D1 via cookie HttpOnly protegem as APIs privadas do anunciante. |
 | Pagamentos/Asaas | **MÓDULO ISOLADO** | Domínio e adapter testados, sem endpoints/webhook integrados. |
-| Painel | **PLANEJADO** | Sem fluxo funcional conectado. |
+| Painel do anunciante | **OPERACIONAL** | `/painel` → APIs privadas → D1 → ACTS_QUEUE → publicação em ACTS_DATA. |
 | Admin | **PLANEJADO** | Sem fluxo funcional conectado. |
 | Blogger | **PLANEJADO** | Sem integração funcional. |
 | Boosts | **PLANEJADO** | Sem implementação de domínio; marcação visual existente não constitui o produto. |
