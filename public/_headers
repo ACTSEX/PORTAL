@@ -1,0 +1,11 @@
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https: data:; media-src 'self' https:; connect-src 'self' https://dados.acompanhantesex.com https://*.blogspot.com; font-src 'self'; upgrade-insecure-requests
+/assets/*
+  Cache-Control: public, max-age=86400
+/painel/*
+  Cache-Control: no-store
+/admin/*
+  Cache-Control: no-store

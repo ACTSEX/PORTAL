@@ -65,25 +65,23 @@ test('profile publisher publishes PREMIUM and removes missing, STANDARD or suspe
   assert.doesNotMatch(JSON.stringify(result.projection), /private|paymentStatus|token|email/);
   for (const source of [profileProjection({ premium: false }), profileProjection({ suspended: true }), null]) {
     await publisher.publishProfile({ profileSlug: 'ana', loadProjection: () => source });
-    assert.equal(storage.values.has('profiles/ana.json'), false);
+    assert.equal(storage.values.has('minisites/ana.json'), false);
   }
   await assert.rejects(createPublisher({ storage: memoryStorage({ failDelete: true }), logger: logger() }).publishProfile({ profileSlug: 'ana', loadProjection: () => null }), /R2 delete failed/);
   await assert.rejects(createPublisher({ storage: memoryStorage({ failPut: true }), logger: logger() }).publishProfile({ profileSlug: 'ana', loadProjection: () => profileProjection() }), /R2 put failed/);
   assert.throws(() => normalizeProfileProjection({ slug: 'bad', name: 2 }, 'x'));
 });
 
-test('published city and profile objects are exactly consumed by reader and Worker', async () => {
+test('published city and profile objects remain edge-readable while Worker refuses pageviews', async () => {
   const storage = memoryStorage(); const publisher = createPublisher({ storage, logger: logger(), clock: () => new Date('2026-08-04T12:00:00Z') });
   const cityResult = await publisher.publishCity({ cityId: 'city_1', citySlug: 'londrina', loadProjection: projection });
   const profileResult = await publisher.publishProfile({ profileSlug: 'ana', loadProjection: () => profileProjection() });
   const cityRead = await readPublicProjection(storage, 'cities', 'londrina');
   assert.deepEqual(JSON.parse(cityRead.body), cityResult.projection);
-  const env = { ACTS_DATA: storage, ACTS_DB: { prepare() { throw new Error('D1 must not be used'); } } };
-  const cityResponse = await worker.fetch(new Request('https://acompanhantesex.com/data/cities/londrina'), env);
-  assert.deepEqual(await cityResponse.json(), cityResult.projection);
-  const miniResponse = await worker.fetch(new Request('https://ana.acompanhantesex.com/'), env);
-  assert.equal(miniResponse.status, 200); assert.match(await miniResponse.text(), /Ana|Apresentação/);
   assert.deepEqual(JSON.parse(storage.values.get(profileResult.key).body), profileResult.projection);
+  const env = { ACTS_DATA: { get() { throw new Error('public Worker must not read R2'); } }, ACTS_DB: { prepare() { throw new Error('public Worker must not read D1'); } } };
+  assert.equal((await worker.fetch(new Request('https://acompanhantesex.com/data/cities/londrina'), env)).status, 404);
+  assert.equal((await worker.fetch(new Request('https://ana.acompanhantesex.com/'), env)).status, 404);
 });
 
 test('explicit package enforces atomic limits, persisted idempotency and safe daily quota', async () => {

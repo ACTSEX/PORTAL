@@ -1,169 +1,46 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import test from 'node:test';
 import worker from '../../worker/index.js';
 import { portalJs } from '../../frontend/portal/app.js';
 
-const city = await readFile(new URL('../fixtures/city-test.json', import.meta.url), 'utf8');
-const profile = await readFile(new URL('../fixtures/profile-test.json', import.meta.url), 'utf8');
+const publicGet = (path='/', host='acompanhantesex.com', env={}) => worker.fetch(new Request(`https://${host}${path}`), env);
+async function files(directory){const output=[];for(const entry of await readdir(directory,{withFileTypes:true})){const path=join(directory,entry.name);if(entry.isDirectory())output.push(...await files(path));else output.push(path)}return output}
 
-function environment(objects = {}) {
-  let d1Reads = 0;
-  return {
-    env: {
-      ACTS_DB: { prepare() { d1Reads += 1; throw new Error('D1 must not be used'); } },
-      ACTS_DATA: { async get(key) { const value = objects[key]; return value == null ? null : { body: value, etag: `etag-${key}`, httpEtag: `"etag-${key}"`, httpMetadata: { contentType: 'application/json; charset=utf-8' } }; } },
-    },
-    reads: () => d1Reads,
-  };
-}
-
-async function request(path = '/', options = {}) {
-  const host = options.host ?? 'acompanhantesex.com';
-  return worker.fetch(new Request(`https://${host}${path}`, { headers: options.headers }), options.env);
-}
-
-test('home and supported portal routes return the real HTML shell', async () => {
-  const setup = environment();
-  for (const path of ['/', '/cidade-teste', '/cidade-teste/dir1', '/cidade-teste/dir2', '/cidade-teste/dir3', '/cidade-teste/anuncio/anunciante-teste']) {
-    const response = await request(path, setup);
-    assert.equal(response.status, 200, path);
-    assert.match(response.headers.get('content-type'), /text\/html/);
-    assert.match(await response.text(), /Portal ACTS|Seu momento começa/);
-  }
-  assert.equal(setup.reads(), 0);
+test('defense in depth rejects every public GET before D1, R2 or Queue', async () => {
+  const calls={d1:0,r2Read:0,r2Write:0,queue:0};
+  const poisonR2={get(){calls.r2Read++;throw new Error('R2 read reached')},head(){calls.r2Read++;throw new Error('R2 read reached')},put(){calls.r2Write++;throw new Error('R2 write reached')},delete(){calls.r2Write++;throw new Error('R2 write reached')}};
+  const env={ACTS_DB:{prepare(){calls.d1++;throw new Error('D1 reached')}},ACTS_DATA:poisonR2,ACTS_MEDIA:poisonR2,ACTS_QUEUE:{send(){calls.queue++;throw new Error('Queue reached')}}};
+  for(const [host,path] of [['acompanhantesex.com','/'],['acompanhantesex.com','/cidade'],['acompanhantesex.com','/assets/portal.js'],['acompanhantesex.com','/data/cities/londrina'],['acompanhantesex.com','/media/id'],['ana.acompanhantesex.com','/'],['www.acompanhantesex.com','/'],['www.acompanhantesex.com','/api/me']]) assert.equal((await publicGet(path,host,env)).status,404,`${host}${path}`);
+  assert.deepEqual(calls,{d1:0,r2Read:0,r2Write:0,queue:0});
 });
 
-test('painel HTML and assets exist only on the apex host with private HTML cache policy', async () => {
-  const setup = environment();
-  for (const path of ['/painel', '/painel/']) {
-    const response = await request(path, setup);
-    assert.equal(response.status, 200);
-    assert.equal(response.headers.get('cache-control'), 'no-store');
-    assert.match(await response.text(), /Entrar no painel/);
-  }
-  const css = await request('/assets/painel.css', setup);
-  const js = await request('/assets/painel.js', setup);
-  assert.match(css.headers.get('content-type'), /text\/css/);
-  assert.match(js.headers.get('content-type'), /javascript/);
-  assert.match(await js.text(), /\/api\/me\/profile/);
-  assert.equal((await request('/painel', { ...setup, host: 'anunciante-teste.acompanhantesex.com' })).status, 404);
-  assert.equal((await request('/assets/painel.js', { ...setup, host: 'anunciante-teste.acompanhantesex.com' })).status, 404);
+test('production Worker route is canonical API-only with no wildcard, www or worker-first', async()=>{
+  const config=await readFile(new URL('../../wrangler.toml',import.meta.url),'utf8');
+  assert.equal((config.match(/pattern = "acompanhantesex\.com\/api\/\*"/g)||[]).length,2);
+  assert.match(config,/workers_dev = false/);
+  assert.doesNotMatch(config,/pattern = "(?:\*\.|www\.)?acompanhantesex\.com\/\*"|www\.acompanhantesex\.com\/api\/\*|custom_domain\s*=\s*true|run_worker_first\s*=\s*true/);
+  const source=await readFile(new URL('../../worker/index.js',import.meta.url),'utf8');
+  assert.doesNotMatch(source,/frontend\/|apexResponse|mediaResponse|minisiteResponse|readPublicProjection/);
 });
 
-test('central security headers protect HTML and assets without unsafe script directives', async () => {
-  const setup = environment();
-  for (const path of ['/', '/painel', '/assets/portal.js']) {
-    const response = await request(path, setup);
-    assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
-    assert.equal(response.headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
-    assert.match(response.headers.get('permissions-policy'), /camera=\(\)/);
-    assert.match(response.headers.get('strict-transport-security'), /includeSubDomains/);
-    const csp = response.headers.get('content-security-policy');
-    assert.match(csp, /script-src 'self'/); assert.match(csp, /frame-ancestors 'none'/);
-    assert.doesNotMatch(csp, /unsafe-eval|script-src[^;]*\*/);
-  }
+test('public artifacts are materialized and browser reads R2 custom domains',async()=>{
+  for(const path of ['public/index.html','public/assets/portal.css','public/assets/portal.js','public/painel/index.html','public/admin/index.html','public/minisite-shell/index.html','public/assets/minisite.js']) assert.ok((await readFile(new URL(`../../${path}`,import.meta.url),'utf8')).length>50,path);
+  assert.match(portalJs,/https:\/\/dados\.acompanhantesex\.com\/cities\//);
+  const mini=await readFile(new URL('../../public/assets/minisite.js',import.meta.url),'utf8');
+  assert.match(mini,/location\.hostname/); assert.match(mini,/dados\.acompanhantesex\.com\/minisites/);
+  assert.doesNotMatch(mini,/innerHTML|\/api\/|ACTS_DB|ACTS_QUEUE/);
 });
 
-test('city endpoint reads the single R2 city projection and is publicly cacheable', async () => {
-  const setup = environment({ 'cities/cidade-teste.json': city });
-  const response = await request('/data/cities/cidade-teste', setup);
-  assert.equal(response.status, 200);
-  assert.equal((await response.json()).listings.length, 3);
-  assert.match(response.headers.get('cache-control'), /s-maxage=300/);
-  assert.match(response.headers.get('etag'), /etag-cities/);
-  assert.equal(setup.reads(), 0);
+test('generated public HTML and code never publish a www canonical URL',async()=>{
+  const paths=[...await files('public'),...await files('frontend'),'business/publishing.js'];
+  for(const path of paths){const source=await readFile(path,'utf8');assert.doesNotMatch(source,/https:\/\/www\.acompanhantesex\.com/i,path)}
+  const home=await readFile('public/index.html','utf8');assert.match(home,/<link rel="canonical" href="https:\/\/acompanhantesex\.com\/">/);
 });
 
-test('missing R2 city is a cacheable empty-state signal without D1 fallback', async () => {
-  const setup = environment();
-  const response = await request('/data/cities/sem-dados', setup);
-  assert.equal(response.status, 404);
-  assert.deepEqual(await response.json(), { error: 'not_found' });
-  assert.equal(setup.reads(), 0);
-});
-
-test('browser bundle keeps one city promise and filters DIR, category and tag locally', () => {
-  assert.match(portalJs, /cityCache\.has\(city\)/);
-  assert.match(portalJs, /directory\(x\)===route\.dir/);
-  assert.match(portalJs, /category\(x\)===cat/);
-  assert.match(portalJs, /tags\(x\)\.includes\(tag\)/);
-  assert.match(portalJs, /sort\.onchange=draw/);
-});
-
-test('browser routing restores the original home and detail galleries remain immutable', () => {
-  assert.match(portalJs, /home=\{title:document\.title,nodes:\[\.\.\.app\.childNodes\]\}/);
-  assert.match(portalJs, /else\{document\.title=home\.title;app\.replaceChildren\(\.\.\.home\.nodes\)\}/);
-  assert.match(portalJs, /first\?\[first,\.\.\.gallery\]:gallery/);
-  assert.doesNotMatch(portalJs, /gallery\.unshift/);
-});
-
-test('wildcard hostname renders a profile minisite and missing profile is visual 404', async () => {
-  const setup = environment({ 'profiles/anunciante-teste.json': profile });
-  const found = await request('/', { ...setup, host: 'anunciante-teste.acompanhantesex.com' });
-  assert.equal(found.status, 200);
-  assert.match(await found.text(), /Perfil de teste/);
-  const missing = await request('/', { ...setup, host: 'inexistente.acompanhantesex.com' });
-  assert.equal(missing.status, 404);
-  assert.match(await missing.text(), /Minisite não encontrado/);
-  assert.equal(setup.reads(), 0);
-});
-
-test('minisite hosts cannot reach apex private routes or administrative assets', async () => {
-  const setup = environment(); const host = 'anunciante-teste.acompanhantesex.com';
-  for (const path of ['/admin', '/admin/', '/painel', '/api/me', '/api/admin/accounts', '/assets/admin.css', '/assets/admin.js']) {
-    const response = await request(path, { ...setup, host });
-    assert.equal(response.status, 404, path);
-    assert.equal(response.headers.get('cache-control'), null, path);
-  }
-});
-
-test('invalid projection paths and wildcard hostnames are rejected', async () => {
-  const setup = environment();
-  assert.equal((await request('/data/cities/../secret', setup)).status, 400);
-  assert.equal((await request('/', { ...setup, host: 'bad.name.acompanhantesex.com' })).status, 400);
-  assert.equal((await request('/cidade-teste/dir4', setup)).status, 404);
-});
-
-test('routing trusts the request URL rather than x-forwarded-host', async () => {
-  const setup = environment();
-  const response = await request('/', { ...setup, headers: { 'x-forwarded-host': 'anunciante-teste.acompanhantesex.com' } });
-  assert.equal(response.status, 200);
-  assert.match(await response.text(), /Portal ACTS/);
-});
-
-test('cache match and put failures are fail-open for public projections', async (t) => {
-  const original = globalThis.caches;
-  t.after(() => { if (original === undefined) delete globalThis.caches; else globalThis.caches = original; });
-  const setup = environment({ 'cities/cidade-teste.json': city });
-  globalThis.caches = { default: { async match() { throw new Error('cache unavailable'); }, async put() {} } };
-  assert.equal((await request('/data/cities/cidade-teste', setup)).status, 200);
-  globalThis.caches = { default: { async match() { return null; }, async put() { throw new Error('cache write unavailable'); } } };
-  const response = await request('/data/cities/cidade-teste', setup);
-  assert.equal(response.status, 200);
-  assert.equal((await response.json()).listings.length, 3);
-});
-
-test('matching If-None-Match on a cache hit returns 304 without reading R2', async (t) => {
-  const original = globalThis.caches;
-  t.after(() => { if (original === undefined) delete globalThis.caches; else globalThis.caches = original; });
-  let r2Reads = 0;
-  const env = { ACTS_DATA: { async get() { r2Reads += 1; throw new Error('R2 must not be read'); } } };
-  globalThis.caches = { default: { async match() { return new Response(city, { headers: { etag: '"cached-etag"', 'cache-control': 'public, max-age=60, s-maxage=300' } }); } } };
-  const response = await request('/data/cities/cidade-teste', { env, headers: { 'if-none-match': '"cached-etag"' } });
-  assert.equal(response.status, 304);
-  assert.equal(response.headers.get('etag'), '"cached-etag"');
-  assert.match(response.headers.get('cache-control'), /s-maxage=300/);
-  assert.equal(r2Reads, 0);
-});
-
-test('minisite links accept only HTTPS, telephone and email schemes', async () => {
-  const unsafeProfile = JSON.stringify({ displayName: 'Teste', gallery: ['https://cdn.example.test/ok.jpg', 'http://cdn.example.test/no.jpg', 'data:text/plain,no'], contacts: { site: 'https://example.test', phone: '+5543999999999', email: 'mailto:test@example.test', http: 'http://example.test', script: 'javascript:alert(1)', data: 'data:text/plain,x', file: 'file:///tmp/x', custom: 'unknown:value' } });
-  const setup = environment({ 'profiles/seguro.json': unsafeProfile });
-  const html = await (await request('/', { ...setup, host: 'seguro.acompanhantesex.com' })).text();
-  assert.match(html, /https:\/\/cdn\.example\.test\/ok\.jpg/);
-  assert.match(html, /href="https:\/\/example\.test\/"/);
-  assert.match(html, /href="tel:\+5543999999999"/);
-  assert.match(html, /href="mailto:test@example\.test"/);
-  assert.doesNotMatch(html, /http:\/\/|javascript:|data:text|file:|unknown:/);
+test('edge WWW redirect is documented as 308 preserving path/query and never simulated by Worker',async()=>{
+  const rules=await readFile(new URL('../../docs/cloudflare/ETAPA-12D-FINAL-RULES.md',import.meta.url),'utf8');
+  assert.match(rules,/http\.host eq "www\.acompanhantesex\.com"/);assert.match(rules,/status: `308`/);assert.match(rules,/http\.request\.uri\.path/);assert.match(rules,/preserve query string: \*\*enabled\*\*/);
+  for(const expected of ['https://acompanhantesex.com/','https://acompanhantesex.com/cidade/sao-paulo','https://acompanhantesex.com/cidade/sao-paulo?x=1','https://acompanhantesex.com/api/me'])assert.match(rules,new RegExp(expected.replace(/[.?]/g,'\\$&')));
 });

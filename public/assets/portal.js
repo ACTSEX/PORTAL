@@ -1,4 +1,4 @@
-export const portalJs = String.raw`
+
 const app=document.querySelector('#app');
 const home={title:document.title,nodes:[...app.childNodes]};
 const cityCache=new Map();
@@ -23,4 +23,3 @@ function renderDetail(data,route){const item=list(data).find(x=>itemSlug(x)===ro
 function navigate(path){history.pushState({},'',path);route()}
 function route(){const r=current();if(r.city)renderCity(r);else{document.title=home.title;app.replaceChildren(...home.nodes)}}
 document.addEventListener('click',e=>{const a=e.target.closest('a[data-nav]');if(!a||a.origin!==location.origin)return;e.preventDefault();navigate(a.pathname)});addEventListener('popstate',route);document.querySelector('#home-search')?.addEventListener('submit',e=>{e.preventDefault();const fd=new FormData(e.currentTarget),city=slugify(fd.get('city')||''),dir=fd.get('directory');if(city)navigate('/'+city+(dir?'/'+dir:''))});route();
-`;

@@ -1,6 +1,5 @@
 import { deepFreeze, isPlainObject } from '../core/app.js';
 import { cityProjectionKey, profileProjectionKey } from './public-content.js';
-import { BloggerError, syncBlogger } from './blogger.js';
 
 const NAME = /^[a-z][a-z0-9.-]{0,63}$/;
 const TYPES = new Set(['template', 'layout', 'component']);
@@ -152,7 +151,7 @@ export function normalizeCityProjection(input, generatedAt) {
 export function normalizeProfileProjection(input, generatedAt) {
   if (!isPlainObject(input) || !SLUG.test(input.slug ?? '') || typeof input.name !== 'string') throw new TypeError('Invalid profile projection');
   const projection = { schemaVersion: CONTRACT_VERSION, slug: input.slug, name: input.name, generatedAt, city: allowed(input.city ?? {}, ['slug', 'name']), premium: true, presentation: String(input.presentation ?? ''), categories: clean(input.categories ?? []), services: clean(input.services ?? []), tags: clean(input.tags ?? []), gallery: clean(input.gallery ?? []), contacts: allowed(input.contacts ?? {}, ['phone', 'whatsapp', 'website', 'instagram']) };
-  if (input.blog?.source === 'blogger' && Array.isArray(input.blog.posts)) projection.blog = allowed(input.blog, ['source', 'url', 'posts']);
+  if (typeof input.bloggerFeedUrl === 'string' && input.bloggerFeedUrl.startsWith('https://')) projection.bloggerFeedUrl = input.bloggerFeedUrl;
   return deepFreeze(projection);
 }
 
@@ -228,13 +227,13 @@ export async function consumePublicationBatch(messages, { publish, logger } = {}
 const parse = (value, fallback) => { try { return JSON.parse(value ?? fallback); } catch { return JSON.parse(fallback); } };
 
 /** Minimal authoritative reads needed by the canonical publisher. */
-export function createPublicationReader({ db, fetcher = globalThis.fetch, clock = () => new Date() } = {}) {
+export function createPublicationReader({ db, clock = () => new Date() } = {}) {
   if (!db?.first || !db?.all) throw new TypeError('Invalid publication reader database');
   async function loadCity({ cityId, citySlug }) {
     const city = await db.first('SELECT id, slug, public_name FROM cities WHERE id = ? AND slug = ? AND active = 1', [cityId, citySlug]);
     if (!city) throw new Error('Authoritative city not found');
     const rows = (await db.all(`SELECT l.id, l.slug, l.title, l.description, l.attributes_json, c.slug AS category_slug,
-      p.user_id AS profile_id, p.display_name, p.bio, m.id AS cover_media_id,
+      p.user_id AS profile_id, p.display_name, p.bio, m.id AS cover_media_id, m.r2_key AS cover_media_key,
       CASE WHEN u.status = 'active' AND ((s.id IS NOT NULL AND lower(pl.code) = 'premium') OR EXISTS(SELECT 1 FROM commercial_conditions cc WHERE cc.user_id=u.id AND cc.status IN ('active','scheduled') AND cc.type IN ('trial','courtesy','promotion','temporary_free') AND cc.starts_at<=? AND (cc.ends_at IS NULL OR cc.ends_at>?))) THEN 1 ELSE 0 END AS premium,
       (SELECT MAX(b.ends_at) FROM boosts b WHERE b.listing_id = l.id AND b.status = 'active' AND b.starts_at <= ? AND b.ends_at > ?) AS boost_ends_at
       FROM listings l JOIN categories c ON c.id = l.category_id JOIN users u ON u.id = l.owner_id
@@ -243,7 +242,7 @@ export function createPublicationReader({ db, fetcher = globalThis.fetch, clock 
       LEFT JOIN plans pl ON pl.id = s.plan_id AND pl.active = 1
       LEFT JOIN media m ON m.id = (SELECT id FROM media WHERE listing_id = l.id AND media_type = 'image' ORDER BY sort_order, id LIMIT 1)
       WHERE l.city_id = ? AND l.status = 'published' ORDER BY boost_ends_at IS NULL, premium DESC, l.id`, [clock().toISOString(), clock().toISOString(), clock().toISOString(), clock().toISOString(), cityId])).results;
-    const listings = rows.map((row) => ({ id: row.id, slug: row.slug, profileSlug: row.slug, name: row.display_name || row.title, category: row.category_slug, tags: parse(row.attributes_json, '{}').tags ?? [], coverUrl: row.cover_media_id ? `/media/${row.cover_media_id}` : undefined, premium: Boolean(row.premium), boosted: Boolean(row.boost_ends_at), boostEndsAt: row.boost_ends_at ?? undefined, presentation: row.bio || row.description }));
+    const listings = rows.map((row) => ({ id: row.id, slug: row.slug, profileSlug: row.slug, name: row.display_name || row.title, category: row.category_slug, tags: parse(row.attributes_json, '{}').tags ?? [], coverUrl: row.cover_media_key ? `https://media.acompanhantesex.com/${row.cover_media_key}` : undefined, premium: Boolean(row.premium), boosted: Boolean(row.boost_ends_at), boostEndsAt: row.boost_ends_at ?? undefined, presentation: row.bio || row.description }));
     return { slug: city.slug, name: city.public_name, categories: [...new Set(listings.map((item) => item.category))], tags: [...new Set(listings.flatMap((item) => item.tags))], listings };
   }
   async function loadProfile({ profileId, profileSlug }) {
@@ -258,21 +257,10 @@ export function createPublicationReader({ db, fetcher = globalThis.fetch, clock 
       LEFT JOIN blogger_integrations bi ON bi.user_id = l.owner_id AND bi.status <> 'disabled'
       WHERE l.id = ? AND l.slug = ?`, [clock().toISOString(), clock().toISOString(), profileId, profileSlug]);
     if (!row) return null;
-    const media = (await db.all("SELECT id FROM media WHERE listing_id = ? AND media_type = 'image' ORDER BY sort_order, id", [profileId])).results.map((item) => ({ id: item.id, url: `/media/${item.id}` }));
+    const media = (await db.all("SELECT id, r2_key FROM media WHERE listing_id = ? AND media_type = 'image' ORDER BY sort_order, id", [profileId])).results.map((item) => ({ id: item.id, url: `https://media.acompanhantesex.com/${item.r2_key}` }));
     const attributes = parse(row.attributes_json, '{}'); const social = parse(row.social_links_json, '{}');
     const source = { slug: row.slug, name: row.display_name || row.title, premium: Boolean(row.premium), active: row.user_status === 'active', suspended: row.user_status === 'suspended', cityId: row.city_id, city: { slug: row.city_slug, name: row.city_name }, presentation: row.bio || row.description, categories: [row.category_slug], services: attributes.services ?? [], tags: attributes.tags ?? [], gallery: media, contacts: { phone: row.phone, website: row.website_url, instagram: social.instagram, whatsapp: social.whatsapp } };
-    if (source.premium) {
-      if (row.blogger_url) {
-        try {
-          source.blog = await syncBlogger({ url: row.blogger_url, fetcher });
-          await db.write('UPDATE blogger_integrations SET status = ?, last_synced_at = ?, last_error_code = NULL, updated_at = ? WHERE user_id = (SELECT owner_id FROM listings WHERE id = ?)', ['active', clock().toISOString(), clock().toISOString(), profileId]);
-        } catch (error) {
-          const code = error instanceof BloggerError ? error.code : 'SYNC_FAILED';
-          await db.write('UPDATE blogger_integrations SET status = ?, last_error_code = ?, updated_at = ? WHERE user_id = (SELECT owner_id FROM listings WHERE id = ?)', ['error', code, clock().toISOString(), profileId]);
-          throw error;
-        }
-      }
-    }
+    if (source.premium && row.blogger_url) source.bloggerFeedUrl = row.blogger_url;
     return source;
   }
   return Object.freeze({ loadCity, loadProfile });
