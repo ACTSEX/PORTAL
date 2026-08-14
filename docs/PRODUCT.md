@@ -60,6 +60,8 @@ Existem somente os planos estruturais abaixo:
 - Boost é produto comercial separado: **PREMIUM não inclui boost**; apenas habilita novas compras.
 - STANDARD não compra novo boost.
 - Cada boost deve ter alvo, produto, período, estado, cobrança e expiração explícitos; ativação depende de pagamento confirmado e elegibilidade.
+- **Impulsionamentos: OPERACIONAL.** O painel PREMIUM contrata `24h`, `7d`, `15d` ou `30d` por PIX/Boleto; o backend define preço e período, o webhook existente ativa em D1 e solicita a republicação municipal pela ACTS_QUEUE. STANDARD não pode contratar novos boosts.
+- Estados: `pending_payment`, `scheduled`, `active`, `expired` e `cancelled`. Cobrança cancelada/reembolsada cancela somente boost ainda pendente; não se inventa reversão temporal para boost que já iniciou.
 - Expiração remove o efeito de ordenação/destaque sem despublicar o anúncio.
 - Preço, duração, ranking e comportamento de campanha ativa após downgrade estão planejados e bloqueados até decisão específica.
 

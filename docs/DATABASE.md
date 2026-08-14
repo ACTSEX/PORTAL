@@ -31,3 +31,6 @@ cidades é executado com `npm run city:backfill`.
 - Não guardar secrets, tokens ou payloads integrais de provedores.
 - Tratar projeções R2 como derivados: falhas de publicação não alteram a verdade
   do negócio e a recuperação deve partir do D1.
+# ETAPA 10
+
+`commercial_conditions` modela condição comercial auditável sem sobrepor `plans`/`subscriptions`. `boosts` liga anúncio e proprietário à cobrança, guarda produto/duração, preço histórico autoritativo e seu próprio ciclo de estado. A migration forward-only é `0005_paid_boosts.sql`; não requer cron e não deve ser aplicada remotamente por este trabalho.

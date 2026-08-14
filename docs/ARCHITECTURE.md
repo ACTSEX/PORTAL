@@ -130,7 +130,11 @@ indicam apenas existência de código:
 | Painel do anunciante | **OPERACIONAL** | `/painel` → APIs privadas → D1 → ACTS_QUEUE → publicação em ACTS_DATA. |
 | Admin | **PLANEJADO** | Sem fluxo funcional conectado. |
 | Blogger no minisite | **OPERACIONAL** | Sync Atom seguro via Queue, projeção em ACTS_DATA e renderização PREMIUM. |
-| Boosts | **PLANEJADO** | Sem implementação de domínio; marcação visual existente não constitui o produto. |
+| Impulsionamentos | **OPERACIONAL** | PREMIUM → checkout PIX/Boleto com preço autoritativo → Asaas → webhook autenticado → D1 → ACTS_QUEUE → CityProjection. |
+
+Boosts são compras avulsas, independentes tanto do plano funcional quanto de `commercial_conditions`. O catálogo autoritativo oferece `24h` (R$ 9,90), `7d` (R$ 39,90), `15d` (R$ 69,90) e `30d` (R$ 119,90). STANDARD não pode contratar novos boosts. A ordenação oficial é boost ativo, PREMIUM, e `id` como desempate estável. A projeção inclui somente `boosted` e `boostEndsAt`; o Portal também compara o término com seu relógio para que um objeto em cache não mantenha destaque expirado. Não há cron.
+
+Condições `normal`, `trial`, `courtesy`, `promotion` e `temporary_free` são registros auditáveis separados. Elas não mudam por si mesmas o código do plano e não podem ser atribuídas pela API do usuário desta etapa.
 
 ### Contrato público R2 canônico
 
