@@ -75,6 +75,24 @@ test('login to own profile update persists first and enqueues canonical profile 
   assert.deepEqual(setup.state.sent[0], { type: 'PUBLICATION_REQUESTED', entity: 'profile', id: 'listing_0000001', slug: 'ana-londrina', reason: 'profile.updated', requestedAt: setup.state.sent[0].requestedAt });
 });
 
+test('integrated painel route, login, me and allowlisted full profile update succeed', async () => {
+  const setup = environment();
+  const shell = await request('/painel', setup.env);
+  assert.equal(shell.status, 200); assert.match(await shell.text(), /id="login-form"/);
+  const logged = await login(setup); const cookie = logged.headers.get('set-cookie');
+  assert.equal((await request('/api/me', setup.env, { headers: { cookie } })).status, 200);
+  const payload = { displayName: 'Ana Atualizada', bio: 'Nova apresentação', phone: '+554300000000', website: 'https://ana.example', instagram: '@ana', whatsapp: '+5543999999999' };
+  assert.deepEqual(Object.keys(payload).sort(), ['bio', 'displayName', 'instagram', 'phone', 'website', 'whatsapp'].sort());
+  const updated = await request('/api/me/profile', setup.env, mutation('PATCH', payload, cookie));
+  assert.equal(updated.status, 200); assert.equal((await updated.json()).profile.displayName, 'Ana Atualizada');
+});
+
+test('expired painel session receives 401 so the browser can return to login', async () => {
+  const setup = environment(); const cookie = (await login(setup)).headers.get('set-cookie');
+  const stored = [...setup.state.sessions.values()][0]; stored.expires = '2000-01-01T00:00:00.000Z';
+  assert.equal((await request('/api/me', setup.env, { headers: { cookie } })).status, 401);
+});
+
 test('private reads require auth and profile ownership never comes from client input', async () => {
   const setup = environment(); assert.equal((await request('/api/me', setup.env)).status, 401);
   const cookie = (await login(setup)).headers.get('set-cookie');

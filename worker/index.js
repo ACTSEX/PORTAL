@@ -4,6 +4,9 @@ import { portalCss } from '../frontend/portal/styles.js';
 import { portalDocument } from '../frontend/portal/template.js';
 import { minisiteCss } from '../frontend/minisite/styles.js';
 import { minisiteDocument, minisiteNotFound } from '../frontend/minisite/template.js';
+import { painelDocument } from '../frontend/painel/template.js';
+import { painelCss } from '../frontend/painel/styles.js';
+import { painelJs } from '../frontend/painel/app.js';
 import { createDatabase } from '../core/db.js';
 import { createLogger } from '../core/logger.js';
 import { createStorage } from '../core/storage.js';
@@ -83,6 +86,8 @@ async function apiResponse(request, env, url) {
 function asset(path, minisite = false) {
   if (path === '/assets/portal.css') return new Response(portalCss, { headers: { 'content-type': 'text/css; charset=utf-8', 'cache-control': 'public, max-age=86400' } });
   if (path === '/assets/portal.js') return new Response(portalJs, { headers: { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'public, max-age=86400' } });
+  if (path === '/assets/painel.css' && !minisite) return new Response(painelCss, { headers: { 'content-type': 'text/css; charset=utf-8', 'cache-control': 'public, max-age=86400' } });
+  if (path === '/assets/painel.js' && !minisite) return new Response(painelJs, { headers: { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'public, max-age=86400' } });
   if (path === '/assets/minisite.css' && minisite) return new Response(minisiteCss, { headers: { 'content-type': 'text/css; charset=utf-8', 'cache-control': 'public, max-age=86400' } });
   return null;
 }
@@ -111,6 +116,7 @@ async function dataResponse(request, env, kind, slug) {
 async function apexResponse(request, env, url) {
   const foundAsset = asset(url.pathname);
   if (foundAsset) return foundAsset;
+  if (url.pathname === '/painel' || url.pathname === '/painel/') return new Response(painelDocument(), { headers: { ...HTML_HEADERS, 'cache-control': 'no-store' } });
   const dataMatch = url.pathname.match(/^\/data\/(cities|profiles)\/([a-z0-9-]+)$/);
   if (dataMatch) return dataResponse(request, env, dataMatch[1], dataMatch[2]);
   if (url.pathname.startsWith('/data/')) return new Response('Invalid public projection path', { status: 400 });

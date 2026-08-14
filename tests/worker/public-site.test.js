@@ -34,6 +34,23 @@ test('home and supported portal routes return the real HTML shell', async () => 
   assert.equal(setup.reads(), 0);
 });
 
+test('painel HTML and assets exist only on the apex host with private HTML cache policy', async () => {
+  const setup = environment();
+  for (const path of ['/painel', '/painel/']) {
+    const response = await request(path, setup);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.match(await response.text(), /Entrar no painel/);
+  }
+  const css = await request('/assets/painel.css', setup);
+  const js = await request('/assets/painel.js', setup);
+  assert.match(css.headers.get('content-type'), /text\/css/);
+  assert.match(js.headers.get('content-type'), /javascript/);
+  assert.match(await js.text(), /\/api\/me\/profile/);
+  assert.equal((await request('/painel', { ...setup, host: 'anunciante-teste.acompanhantesex.com' })).status, 404);
+  assert.equal((await request('/assets/painel.js', { ...setup, host: 'anunciante-teste.acompanhantesex.com' })).status, 404);
+});
+
 test('city endpoint reads the single R2 city projection and is publicly cacheable', async () => {
   const setup = environment({ 'cities/cidade-teste.json': city });
   const response = await request('/data/cities/cidade-teste', setup);
