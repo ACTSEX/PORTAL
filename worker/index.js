@@ -17,6 +17,7 @@ import { createUpload, UploadError } from '../business/listings.js';
 import { BloggerError, validateBloggerUrl } from '../business/blogger.js';
 import { createAsaas, AsaasError } from '../business/payments/gateways/asaas.js';
 import { createPayments, PaymentsError } from '../business/payments.js';
+import { createBoosts, BoostsError } from '../business/boosts.js';
 
 const APEX = new Set(['acompanhantesex.com', 'www.acompanhantesex.com', 'localhost', '127.0.0.1']);
 const JSON_CACHE = 'public, max-age=60, s-maxage=300, stale-while-revalidate=86400';
@@ -42,8 +43,11 @@ function runtime(env) {
 
 function paymentRuntime(app, env) {
   const gateway = createAsaas({ baseUrl: env.ASAAS_BASE_URL, apiKey: env.ASAAS_API_KEY, fetch: env.ASAAS_FETCH ?? globalThis.fetch });
+  const boosts = createBoosts({ db: app.db, gateway, logger: app.logger, publications: app.publications, hash: digest });
   const events = { publish: async (event) => {
     if (!['PaymentReceived', 'PaymentFailed', 'PaymentCanceled', 'PaymentRefunded'].includes(event.name)) return;
+    const paymentStatus = { PaymentReceived: 'paid', PaymentFailed: 'failed', PaymentCanceled: 'canceled', PaymentRefunded: 'refunded' }[event.name];
+    if (await boosts.applyPayment(event.payload.paymentId, paymentStatus)) return;
     const subscription = await app.db.first('SELECT user_id, status FROM subscriptions WHERE id = ?', [event.payload.subscriptionId]);
     if (!subscription) throw new Error('Payment subscription not found');
     const premium = event.name === 'PaymentReceived'; const now = new Date().toISOString();
@@ -58,7 +62,7 @@ function paymentRuntime(app, env) {
     const listing = await publicationTarget(app.db, subscription.user_id);
     if (listing) await app.publications.send({ type: 'PUBLICATION_REQUESTED', entity: 'profile', id: listing.id, slug: listing.slug, reason: premium ? 'plan.upgraded' : 'plan.downgraded', requestedAt: now });
   } };
-  return { gateway, payments: createPayments({ db: app.db, events, logger: app.logger, gateway, id: () => crypto.randomUUID(), hash: digest }) };
+  return { gateway, boosts, payments: createPayments({ db: app.db, events, logger: app.logger, gateway, id: () => crypto.randomUUID(), hash: digest }) };
 }
 
 const apiJson = (body, status = 200, headers = {}) => Response.json(body, { status, headers: { 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...headers } });
@@ -121,6 +125,16 @@ async function apiResponse(request, env, url) {
         JOIN subscriptions s ON s.id = py.subscription_id WHERE s.user_id = ? ORDER BY py.created_at DESC LIMIT 10`, [identity.user.id]);
       return apiJson({ plan: subscription?.status === 'active' ? subscription.code.toUpperCase() : 'STANDARD', subscription: subscription ? { status: subscription.status, currentPeriodEnd: subscription.current_period_ends_at } : null,
         payments: payments.results.map((item) => ({ id: item.id, amountMinor: item.amount_minor, currency: item.currency, status: item.status, dueAt: item.due_at, createdAt: item.created_at })) });
+    }
+    if (request.method === 'GET' && url.pathname === '/api/me/boosts') {
+      const identity = await app.auth.authenticate(request);
+      return apiJson({ boosts: await paymentRuntime(app, env).boosts.list(identity.user.id) });
+    }
+    if (request.method === 'POST' && url.pathname === '/api/me/boosts/checkout') {
+      validateOrigin(request); const identity = await app.auth.authenticate(request); const input = await body(request);
+      const idempotencyKey = request.headers.get('idempotency-key');
+      const result = await paymentRuntime(app, env).boosts.checkout({ ...input, idempotencyKey }, { userId: identity.user.id, correlationId: idempotencyKey });
+      return apiJson(result, 201);
     }
     if (request.method === 'POST' && url.pathname === '/api/me/billing/checkout') {
       validateOrigin(request); const identity = await app.auth.authenticate(request); const input = await body(request);
@@ -215,6 +229,10 @@ async function apiResponse(request, env, url) {
     if (error instanceof PaymentsError) {
       const status = ({ INVALID_INPUT: 400, FORBIDDEN: 403, NOT_FOUND: 404, IDEMPOTENCY_CONFLICT: 409, STALE_EVENT: 200, AMOUNT_MISMATCH: 422, GATEWAY_ERROR: 502, EXTERNAL_RESULT_UNKNOWN: 502 })[error.code] ?? 500;
       return apiJson(status === 200 ? { received: true, ignored: true } : { error: error.code.toLowerCase() }, status);
+    }
+    if (error instanceof BoostsError) {
+      const status = ({ INVALID_INPUT: 400, FORBIDDEN: 403, PREMIUM_REQUIRED: 403, ACCOUNT_INELIGIBLE: 403, LISTING_REQUIRED: 422, BILLING_UNAVAILABLE: 422, IDEMPOTENCY_CONFLICT: 409, OPERATION_IN_PROGRESS: 409, GATEWAY_ERROR: 502, EXTERNAL_RESULT_UNKNOWN: 502 })[error.code] ?? 500;
+      return apiJson({ error: error.code.toLowerCase() }, status);
     }
     if (error instanceof SyntaxError || error instanceof TypeError) return apiJson({ error: 'invalid_input' }, 400);
     app.logger.error('Private API failed', { operation: 'api.private', status: 'failed', route: url.pathname, error });

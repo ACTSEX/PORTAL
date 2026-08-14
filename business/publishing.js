@@ -143,7 +143,8 @@ function allowed(input, fields) {
 
 export function normalizeCityProjection(input, generatedAt) {
   if (!isPlainObject(input) || !SLUG.test(input.slug ?? '') || typeof input.name !== 'string' || !Array.isArray(input.listings ?? [])) throw new TypeError('Invalid city projection');
-  const listings = input.listings.map((item) => allowed(item, ['id', 'slug', 'profileSlug', 'name', 'category', 'directory', 'tags', 'coverUrl', 'premium', 'featured', 'publicAge', 'shortCall', 'presentation', 'services', 'gallery', 'contacts'])).sort((a, b) => String(a.id).localeCompare(String(b.id)));
+  const listings = input.listings.map((item) => allowed(item, ['id', 'slug', 'profileSlug', 'name', 'category', 'directory', 'tags', 'coverUrl', 'premium', 'boosted', 'boostEndsAt', 'publicAge', 'shortCall', 'presentation', 'services', 'gallery', 'contacts']))
+    .sort((a, b) => Number(Boolean(b.boosted)) - Number(Boolean(a.boosted)) || Number(Boolean(b.premium)) - Number(Boolean(a.premium)) || String(a.id).localeCompare(String(b.id)));
   for (const item of listings) if (!ID.test(item.id ?? '') || !SLUG.test(item.slug ?? '') || (item.profileSlug !== undefined && !SLUG.test(item.profileSlug))) throw new TypeError('Invalid public listing');
   return deepFreeze({ schemaVersion: CONTRACT_VERSION, slug: input.slug, name: input.name, generatedAt, directories: clean(input.directories ?? []), categories: clean(input.categories ?? []), tags: clean(input.tags ?? []), listings });
 }
@@ -234,14 +235,15 @@ export function createPublicationReader({ db, fetcher = globalThis.fetch, clock 
     if (!city) throw new Error('Authoritative city not found');
     const rows = (await db.all(`SELECT l.id, l.slug, l.title, l.description, l.attributes_json, c.slug AS category_slug,
       p.user_id AS profile_id, p.display_name, p.bio, m.id AS cover_media_id,
-      CASE WHEN s.id IS NOT NULL AND pl.code = 'premium' AND u.status = 'active' THEN 1 ELSE 0 END AS premium
+      CASE WHEN s.id IS NOT NULL AND lower(pl.code) = 'premium' AND u.status = 'active' THEN 1 ELSE 0 END AS premium,
+      (SELECT MAX(b.ends_at) FROM boosts b WHERE b.listing_id = l.id AND b.status = 'active' AND b.starts_at <= ? AND b.ends_at > ?) AS boost_ends_at
       FROM listings l JOIN categories c ON c.id = l.category_id JOIN users u ON u.id = l.owner_id
       LEFT JOIN profiles p ON p.user_id = l.owner_id
       LEFT JOIN subscriptions s ON s.user_id = l.owner_id AND s.status = 'active'
       LEFT JOIN plans pl ON pl.id = s.plan_id AND pl.active = 1
       LEFT JOIN media m ON m.id = (SELECT id FROM media WHERE listing_id = l.id AND media_type = 'image' ORDER BY sort_order, id LIMIT 1)
-      WHERE l.city_id = ? AND l.status = 'published' ORDER BY l.id`, [cityId])).results;
-    const listings = rows.map((row) => ({ id: row.id, slug: row.slug, profileSlug: row.slug, name: row.display_name || row.title, category: row.category_slug, tags: parse(row.attributes_json, '{}').tags ?? [], coverUrl: row.cover_media_id ? `/media/${row.cover_media_id}` : undefined, premium: Boolean(row.premium), presentation: row.bio || row.description }));
+      WHERE l.city_id = ? AND l.status = 'published' ORDER BY boost_ends_at IS NULL, premium DESC, l.id`, [clock().toISOString(), clock().toISOString(), cityId])).results;
+    const listings = rows.map((row) => ({ id: row.id, slug: row.slug, profileSlug: row.slug, name: row.display_name || row.title, category: row.category_slug, tags: parse(row.attributes_json, '{}').tags ?? [], coverUrl: row.cover_media_id ? `/media/${row.cover_media_id}` : undefined, premium: Boolean(row.premium), boosted: Boolean(row.boost_ends_at), boostEndsAt: row.boost_ends_at ?? undefined, presentation: row.bio || row.description }));
     return { slug: city.slug, name: city.public_name, categories: [...new Set(listings.map((item) => item.category))], tags: [...new Set(listings.flatMap((item) => item.tags))], listings };
   }
   async function loadProfile({ profileId, profileSlug }) {
