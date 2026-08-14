@@ -7,7 +7,7 @@ const origin = 'https://acompanhantesex.com';
 const logger = { debug() {}, info() {}, warn() {}, error() {} };
 
 function environment({ queueFailure = false, writeFailure = false, mediaWriteFailure = false, mediaPutFailure = false } = {}) {
-  const state = { sessions: new Map(), sent: [], media: new Map(), objects: new Map(), storageCalls: [], profile: { display_name: 'Ana', bio: 'Original', phone: null, website_url: null, social_links_json: '{}' } };
+  const state = { sessions: new Map(), sent: [], media: new Map(), objects: new Map(), storageCalls: [], blogger: null, profile: { display_name: 'Ana', bio: 'Original', phone: null, website_url: null, social_links_json: '{}' } };
   const user = { id: 'user-000000000001', email: 'ana@example.test', role: 'professional', status: 'active', password_hash: null };
   function result(sql, args) {
     if (sql.includes('FROM users WHERE email')) return user.email.toLowerCase() === String(args[0]).toLowerCase() ? user : null;
@@ -18,6 +18,7 @@ function environment({ queueFailure = false, writeFailure = false, mediaWriteFai
     if (sql.includes('SELECT social_links_json FROM profiles')) return { social_links_json: state.profile.social_links_json };
     if (sql.includes('SELECT display_name')) return state.profile;
     if (sql.includes('SELECT pl.code')) return { code: 'premium' };
+    if (sql.includes('FROM blogger_integrations WHERE user_id')) return state.blogger;
     if (sql.includes('SELECT id, slug FROM listings')) return { id: 'listing_0000001', slug: 'ana-londrina' };
     return null;
   }
@@ -26,6 +27,8 @@ function environment({ queueFailure = false, writeFailure = false, mediaWriteFai
     if (mediaWriteFailure && sql.includes('INSERT INTO media')) throw new Error('D1 unavailable');
     if (sql.includes('INSERT INTO media')) state.media.set(args[0],{id:args[0],owner_id:args[1],listing_id:args[2],r2_key:args[3],mime_type:args[5],byte_size:args[6],sort_order:args[8]});
     if (sql.includes('DELETE FROM media')) state.media.delete(args[0]);
+    if (sql.includes('INSERT INTO blogger_integrations')) state.blogger={url:args[1],status:'pending',last_synced_at:null,last_error_code:null};
+    if (sql.includes('DELETE FROM blogger_integrations')) state.blogger=null;
     if (sql.includes('INSERT INTO sessions')) state.sessions.set(args[0], { userId: args[1], expires: args[2], revoked: null });
     if (sql.includes('UPDATE sessions')) { const session = state.sessions.get(args[1]); if (session) session.revoked = args[0]; }
     if (sql.includes('UPDATE profiles')) state.profile = { display_name: args[0] ?? state.profile.display_name, bio: args[1] ?? state.profile.bio, phone: args[2] ?? state.profile.phone, website_url: args[3] ?? state.profile.website_url, social_links_json: args[4] };
@@ -93,6 +96,8 @@ test('integrated painel route, login, me and allowlisted full profile update suc
   const updated = await request('/api/me/profile', setup.env, mutation('PATCH', payload, cookie));
   assert.equal(updated.status, 200); assert.equal((await updated.json()).profile.displayName, 'Ana Atualizada');
 });
+
+test('PREMIUM owner configures and removes Blogger through the private allowlisted endpoint',async()=>{const setup=environment();const cookie=(await login(setup)).headers.get('set-cookie');const saved=await request('/api/me/blogger',setup.env,mutation('PATCH',{url:'https://demo.blogspot.com/'},cookie));assert.equal(saved.status,200);assert.equal(setup.state.blogger.url,'https://demo.blogspot.com');assert.equal(setup.state.sent.at(-1).reason,'blogger.updated');assert.deepEqual((await saved.json()).blogger,{url:'https://demo.blogspot.com',status:'pending',lastSyncAt:null,syncError:false});assert.equal((await request('/api/me/blogger',setup.env,mutation('PATCH',{url:null,extra:true},cookie))).status,400);assert.equal((await request('/api/me/blogger',setup.env,mutation('PATCH',{url:null},cookie))).status,200);assert.equal(setup.state.blogger,null)});
 
 test('expired painel session receives 401 so the browser can return to login', async () => {
   const setup = environment(); const cookie = (await login(setup)).headers.get('set-cookie');
