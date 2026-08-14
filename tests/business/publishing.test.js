@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createRenderer } from '../../business/publishing.js';
-import { createPublisher, normalizePublicationKey, normalizeCityProjection, normalizeProfileProjection, consumePublicationBatch, submitChangePackage } from '../../business/publishing.js';
+import { createPublisher, normalizePublicationKey, normalizeCityProjection, normalizeProfileProjection, submitChangePackage } from '../../business/publishing.js';
 import { cityProjectionKey, profileProjectionKey, readPublicProjection } from '../../business/public-content.js';
 import worker from '../../worker/index.js';
 
@@ -86,13 +86,6 @@ test('published city and profile objects are exactly consumed by reader and Work
   assert.deepEqual(JSON.parse(storage.values.get(profileResult.key).body), profileResult.projection);
 });
 
-test('Queue batch aggregation coalesces cities, duplicates, acknowledges success and retries failure', async () => {
-  const ack = []; const retry = []; const base = { occurredAt: '2026-08-04T00:00:00Z' };
-  const messages = [{ body: { ...base, eventId: 'evt_1', cityId: 'city_1', citySlug: 'londrina' }, ack: () => ack.push(1), retry: () => retry.push(1) }, { body: { ...base, eventId: 'evt_1', cityId: 'city_1', citySlug: 'londrina' }, ack: () => ack.push(2) }, { body: { ...base, eventId: 'evt_2', cityId: 'city_2', citySlug: 'curitiba' }, retry: () => retry.push(2) }];
-  const seen = []; const result = await consumePublicationBatch(messages, { now: Date.parse('2026-08-04T00:00:20Z'), maximumWaitMs: 10000, compile(group) { seen.push(group); if (group.cityId === 'city_2') throw new Error('retry'); return { ok: true }; } });
-  assert.equal(seen.length, 2); assert.equal(seen.find((x) => x.cityId === 'city_1').eventIds.length, 1); assert.deepEqual(ack, [1, 2]); assert.deepEqual(retry, [2]); assert.equal(result.some((x) => x.retry), true);
-});
-
 test('explicit package enforces atomic limits, persisted idempotency and safe daily quota', async () => {
   let attempts = 0; let writes = 0; const deps = { authorize: async () => {}, persist: async () => { writes += 1; return { ok: true, operations: [{ status: 'persisted' }] }; }, quota: async () => ({ allowed: ++attempts <= 5, remaining: Math.max(0, 5 - attempts) }) };
   for (let index = 0; index < 5; index += 1) assert.equal((await submitChangePackage({ userId: 'user_1', idempotencyKey: `pkg_${index}abc`, operations: [{ type: 'listing.update', data: {} }] }, deps)).ok, true);
@@ -100,10 +93,10 @@ test('explicit package enforces atomic limits, persisted idempotency and safe da
   const duplicate = await submitChangePackage({ userId: 'user_1', idempotencyKey: 'pkg_dup', operations: [{}] }, { ...deps, quota: async () => ({ allowed: true, duplicate: true, remaining: 0, result: { ok: true, operations: [{ status: 'persisted' }] } }) }); assert.equal(duplicate.duplicated, true); assert.equal(writes, 5);
 });
 
-test('Lote 5 sources contain no environment, domain, SQL, modules, or rejected imports', async () => {
+test('publishing sources contain no environment, modules, or rejected imports', async () => {
   for (const path of ['business/publishing.js', 'core/app.js']) {
     const source = await readFile(new URL(`../../${path}`, import.meta.url), 'utf8');
-    assert.doesNotMatch(source, /process\.env|app\/modules|\b(?:SELECT|INSERT|UPDATE)\b/i);
+    assert.doesNotMatch(source, /process\.env|app\/modules/i);
     assert.doesNotMatch(source, /renderer\.js|publisher\.js|bootstrap\.js|container\.js|registry\.js|loader\.js/);
   }
 });

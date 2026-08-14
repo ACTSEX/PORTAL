@@ -29,6 +29,9 @@ bucket_name = "acts-dados"
 binding = "ACTS_QUEUE"
 queue = "acts-queues"
 
+[[queues.consumers]]
+queue = "acts-queues"
+
 [env.development]
 name = "portal-development"
 routes = []
@@ -51,6 +54,9 @@ bucket_name = "acts-dados"
 binding = "ACTS_QUEUE"
 queue = "acts-queues"
 
+[[env.development.queues.consumers]]
+queue = "acts-queues"
+
 [env.staging]
 name = "portal-staging"
 routes = []
@@ -71,6 +77,9 @@ bucket_name = "acts-dados"
 
 [[env.staging.queues.producers]]
 binding = "ACTS_QUEUE"
+queue = "acts-queues"
+
+[[env.staging.queues.consumers]]
 queue = "acts-queues"
 
 [env.production]
@@ -100,4 +109,7 @@ bucket_name = "acts-dados"
 
 [[env.production.queues.producers]]
 binding = "ACTS_QUEUE"
+queue = "acts-queues"
+
+[[env.production.queues.consumers]]
 queue = "acts-queues"
