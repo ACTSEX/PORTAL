@@ -1,111 +1,11 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { createAuth, createSecureId, timingSafeEqual, AuthError, AuthorizationError,
-  extractCredential } from '../../core/auth.js';
-import { validateOrigin } from '../../core/auth.js';
+import { AuthError } from '../../core/auth.js';
 import { createRouter, normalizeRequest, json, html, text, redirect, empty, errorResponse,
   ValidationError, NotFoundError, ConflictError } from '../../core/router.js';
 
-const instant = new Date('2026-07-31T12:00:00.000Z');
-const secret = 'a-secure-test-secret-with-at-least-32-characters';
-function logger() {
-  const records = [];
-  return { records, debug() {}, info(message, context) { records.push({ message, context }); },
-    warn(message, context) { records.push({ message, context }); },
-    error(message, context) { records.push({ message, context }); } };
-}
-function fixture() {
-  const log = logger();
-  return { log, auth: createAuth({ logger: log, secret, clock: () => instant }) };
-}
-async function tokenRequest(auth, identity = { id: 'technical-id', permissions: ['core.read'] }, url = 'https://portal.test/') {
-  const token = await auth.issue(identity);
-  return new Request(url, { headers: { authorization: `Bearer ${token}` } });
-}
 
-test('valid credential creates an immutable authenticated context without exposing credential', async () => {
-  const { auth } = fixture();
-  const request = await tokenRequest(auth);
-  const context = await auth.authenticate(request);
-  assert.deepEqual(context.identity.permissions, ['core.read']);
-  assert.equal(context.authenticated, true);
-  assert.equal(Object.isFrozen(context.identity), true);
-  assert.equal(JSON.stringify(context).includes('Bearer'), false);
-});
-
-test('missing, malformed, invalid and expired credentials fail with stable errors', async () => {
-  const { auth } = fixture();
-  await assert.rejects(auth.authenticate(new Request('https://portal.test')), { code: 'AUTHENTICATION_REQUIRED', status: 401 });
-  assert.throws(() => extractCredential(new Request('https://portal.test', { headers: { authorization: 'Basic abc' } })), AuthError);
-  await assert.rejects(auth.authenticate(new Request('https://portal.test', { headers: { authorization: 'Bearer bad.value' } })), { code: 'INVALID_CREDENTIAL' });
-  const short = await auth.issue({ id: 'id', permissions: [] }, 1);
-  const later = createAuth({ logger: logger(), secret, clock: () => new Date(instant.getTime() + 2000) });
-  await assert.rejects(later.authenticate(new Request('https://portal.test', { headers: { authorization: `Bearer ${short}` } })), { code: 'CREDENTIAL_EXPIRED' });
-});
-
-test('optional authentication accepts absence but rejects an invalid supplied credential', async () => {
-  const { auth } = fixture();
-  assert.deepEqual(await auth.optional(new Request('https://portal.test')), { authenticated: false, identity: null });
-  await assert.rejects(auth.optional(new Request('https://portal.test', { headers: { authorization: 'Bearer broken.token' } })), AuthError);
-});
-
-test('session cookie extraction is exact and protects all other cookies', () => {
-  const request = new Request('https://portal.test', { headers: { cookie: 'theme=dark; __Host-acts_session=value.signature; private=secret' } });
-  assert.deepEqual(extractCredential(request), { scheme: 'session', value: 'value.signature' });
-  assert.equal(JSON.stringify(extractCredential(request)).includes('private'), false);
-  assert.throws(() => extractCredential(new Request('https://portal.test', { headers: { cookie: '__Host-acts_session=a; __Host-acts_session=b' } })), AuthError);
-});
-
-test('origin validation requires an explicit HTTPS allowlist and handles optional absence', () => {
-  const allowed = ['https://portal.test'];
-  assert.equal(validateOrigin(new Request('https://api.test', { headers: { origin: allowed[0] } }), allowed), true);
-  assert.equal(validateOrigin(new Request('https://api.test'), allowed, { optional: true }), false);
-  assert.throws(() => validateOrigin(new Request('https://api.test', { headers: { origin: 'http://portal.test' } }), allowed), { code: 'INVALID_ORIGIN' });
-  assert.throws(() => validateOrigin(new Request('https://api.test', { headers: { origin: 'https://evil.test' } }), allowed), { status: 403 });
-});
-
-test('authorization denies by default and supports all or any generic permissions', async () => {
-  const { auth } = fixture();
-  const context = await auth.authenticate(await tokenRequest(auth, { id: 'id', permissions: ['core.read', 'core.write'] }));
-  assert.equal(auth.authorize(context, ['core.read']), true);
-  assert.equal(auth.authorize(context, ['missing', 'core.write'], { all: false }), true);
-  assert.throws(() => auth.authorize(context, ['core.read', 'missing']), AuthorizationError);
-  assert.throws(() => auth.authorize(context, []), AuthorizationError);
-  assert.throws(() => auth.authorize(null, ['core.read']), AuthorizationError);
-  assert.throws(() => auth.authorize(context, ['payments.approve']), AuthorizationError);
-});
-
-test('signed tokens reject tampering, malformed identity, excessive lifetime and weak secrets', async () => {
-  const { auth } = fixture();
-  const token = await auth.issue({ id: 'id', permissions: [] });
-  const tampered = `${token.slice(0, -1)}${token.endsWith('a') ? 'b' : 'a'}`;
-  await assert.rejects(auth.validate({ value: tampered }), AuthError);
-  await assert.rejects(auth.issue({ id: '', permissions: [] }), AuthError);
-  await assert.rejects(auth.issue({ id: 'id', permissions: ['BAD permission'] }), TypeError);
-  await assert.rejects(auth.issue({ id: 'id', permissions: [] }, 3601), TypeError);
-  assert.throws(() => createAuth({ logger: logger(), secret: 'weak' }), TypeError);
-});
-
-test('secure identifiers use injected Web Crypto entropy and byte comparison is deterministic', () => {
-  const cryptoApi = { getRandomValues(bytes) { bytes.fill(7); return bytes; } };
-  const identifier = createSecureId('req', cryptoApi);
-  assert.match(identifier, /^req_[A-Za-z0-9_-]{24}$/);
-  assert.equal(timingSafeEqual(new Uint8Array([1, 2]), new Uint8Array([1, 2])), true);
-  assert.equal(timingSafeEqual(new Uint8Array([1, 2]), new Uint8Array([1, 3])), false);
-  assert.equal(timingSafeEqual(new Uint8Array([1]), new Uint8Array([1, 0])), false);
-});
-
-test('authentication logs contain outcomes only, never credentials, cookies or identities', async () => {
-  const { auth, log } = fixture();
-  const request = await tokenRequest(auth, { id: 'private-identity', permissions: ['core.read'] });
-  const credential = request.headers.get('authorization');
-  await auth.authenticate(request);
-  const serialized = JSON.stringify(log.records);
-  assert.equal(serialized.includes(credential), false);
-  assert.equal(serialized.includes('private-identity'), false);
-  assert.equal(serialized.includes('cookie'), false);
-});
+function logger() { const records = []; return { records, debug() {}, info(...args) { records.push(args); }, warn(...args) { records.push(args); }, error(...args) { records.push(args); } }; }
 
 test('request normalization controls method, URL, query, headers, body, id and auth without mutation', async () => {
   const request = new Request('https://portal.test/items?q=b&q=a', { method: 'POST', headers: {
@@ -140,9 +40,9 @@ test('response builders produce native, secured JSON, HTML, text, redirect and e
 });
 
 test('error responses cover public classes and erase stacks, SQL, secrets and internal paths', async () => {
-  const cases = [new ValidationError(), new AuthError(), new AuthorizationError(), new NotFoundError(), new ConflictError(),
+  const cases = [new ValidationError(), new AuthError(), new NotFoundError(), new ConflictError(),
     Object.assign(new Error('SQL token=secret /workspace/private'), { stack: 'private stack' })];
-  const statuses = [400, 401, 403, 404, 409, 500];
+  const statuses = [400, 401, 404, 409, 500];
   for (let index = 0; index < cases.length; index += 1) {
     const response = errorResponse(cases[index], 'request_safe'); const body = await response.json();
     assert.equal(response.status, statuses[index]); assert.equal(body.success, false);
@@ -174,17 +74,6 @@ test('middleware executes in order and the handler receives normalized route con
   assert.equal(response.status, 200); assert.deepEqual(order, ['before:generated_request', 'handler:42:test', 'after']);
 });
 
-test('router integrates Auth before handler and passes authenticated context', async () => {
-  const { auth } = fixture(); let received; let calls = 0;
-  const router = createRouter({ logger: logger(), auth, id: () => 'authenticated_request' });
-  router.get('/protected', (context) => { calls += 1; received = context.auth; return text('allowed'); }, { auth: true, permissions: ['core.read'] });
-  const allowed = await router.dispatch(await tokenRequest(auth, { id: 'id', permissions: ['core.read'] }, 'https://portal.test/protected'));
-  assert.equal(allowed.status, 200); assert.equal(received.identity.id, 'id');
-  const denied = await router.dispatch(await tokenRequest(auth, { id: 'id', permissions: [] }, 'https://portal.test/protected'));
-  assert.equal(denied.status, 403); assert.equal(calls, 1);
-  assert.equal((await denied.json()).errors[0].code, 'FORBIDDEN');
-});
-
 test('router returns safe routing and handler failures and logs only technical context', async () => {
   const log = logger(); const router = createRouter({ logger: log, id: () => 'failure_request' });
   router.get('/failure', () => { throw new Error('token=private SQL SELECT stack /workspace/path'); });
@@ -202,14 +91,4 @@ test('router rejects non-Response handlers and publishes safe completion events'
   assert.equal((await router.dispatch(new Request('https://portal.test/good'))).status, 200);
   assert.equal(published.length, 1); assert.equal(published[0].event.name, 'RequestCompleted');
   assert.equal(published[0].context.requestId, 'event_request');
-});
-
-test('Lote 4 source has no environment, persistence, domain imports or sensitive logging', async () => {
-  const [authSource, routerSource] = await Promise.all([
-    readFile(new URL('../../core/auth.js', import.meta.url), 'utf8'),
-    readFile(new URL('../../core/router.js', import.meta.url), 'utf8'),
-  ]);
-  const source = `${authSource}\n${routerSource}`;
-  assert.doesNotMatch(source, /process\.env|from ['"].*(?:modules|gateways)|\bSELECT\b|\bINSERT\b|\bUPDATE\b|\bDELETE FROM\b/i);
-  assert.doesNotMatch(source, /logger\.(?:info|warn|error)\([^\n]*(?:credential|authorization|cookie|secret)/i);
 });

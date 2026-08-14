@@ -8,10 +8,77 @@ import { createDatabase } from '../core/db.js';
 import { createLogger } from '../core/logger.js';
 import { createStorage } from '../core/storage.js';
 import { createPublicationConsumer, createPublicationReader, createPublisher } from '../business/publishing.js';
+import { createPublicationQueue } from '../business/publishing.js';
+import { AuthError, createSessionAuth, sessionCookie, validateOrigin, verifyPassword } from '../core/auth.js';
 
 const APEX = new Set(['acompanhantesex.com', 'www.acompanhantesex.com', 'localhost', '127.0.0.1']);
 const JSON_CACHE = 'public, max-age=60, s-maxage=300, stale-while-revalidate=86400';
 const HTML_HEADERS = { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=60, s-maxage=300', 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin' };
+const PROFILE_FIELDS = new Set(['displayName', 'bio', 'phone', 'website', 'instagram', 'whatsapp']);
+
+function runtime(env) {
+  const logger = createLogger({ config: { logLevel: 'info', environment: env.ENVIRONMENT ?? 'production', service: 'portal', version: '0.1.0' }, sink: (record, serialized) => (record.level === 'error' ? console.error : console.log)(serialized) });
+  const db = createDatabase({ binding: env.ACTS_DB, logger });
+  return { logger, db, auth: createSessionAuth({ db, logger }), publications: createPublicationQueue({ binding: env.ACTS_QUEUE, logger }) };
+}
+
+const apiJson = (body, status = 200, headers = {}) => Response.json(body, { status, headers: { 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...headers } });
+async function body(request) {
+  if (request.headers.get('content-type')?.split(';')[0] !== 'application/json') throw new TypeError('invalid input');
+  const value = await request.json(); if (!value || Array.isArray(value) || typeof value !== 'object') throw new TypeError('invalid input'); return value;
+}
+async function ownData(db, user) {
+  const profile = await db.first('SELECT display_name, bio, phone, website_url, social_links_json FROM profiles WHERE user_id = ?', [user.id]);
+  const subscription = await db.first(`SELECT pl.code FROM subscriptions s JOIN plans pl ON pl.id = s.plan_id
+    WHERE s.user_id = ? AND s.status = 'active' AND pl.active = 1`, [user.id]);
+  let social = {}; try { social = JSON.parse(profile?.social_links_json ?? '{}'); } catch { /* Invalid legacy JSON is not exposed. */ }
+  return { user: { id: user.id, email: user.email }, profile: profile ? { displayName: profile.display_name, bio: profile.bio, phone: profile.phone, website: profile.website_url, instagram: social.instagram ?? null, whatsapp: social.whatsapp ?? null } : null, plan: subscription?.code?.toUpperCase() ?? 'STANDARD' };
+}
+
+async function apiResponse(request, env, url) {
+  const app = runtime(env);
+  try {
+    if (request.method === 'POST' && url.pathname === '/api/auth/login') {
+      validateOrigin(request); const input = await body(request);
+      if (typeof input.email !== 'string' || typeof input.password !== 'string' || input.email.length > 254) throw new TypeError('invalid input');
+      const user = await app.db.first('SELECT id, email, password_hash, role, status FROM users WHERE email = ? COLLATE NOCASE', [input.email.trim()]);
+      if (!user || user.status !== 'active' || !await verifyPassword(input.password, user.password_hash)) {
+        app.logger.warn('Login denied', { operation: 'auth.login', status: 'denied' });
+        return apiJson({ error: 'invalid_credentials' }, 401);
+      }
+      const session = await app.auth.create(user.id);
+      return apiJson({ authenticated: true, user: { id: user.id, email: user.email } }, 200, { 'set-cookie': sessionCookie(session.token, session.maxAge) });
+    }
+    if (request.method === 'POST' && url.pathname === '/api/auth/logout') {
+      validateOrigin(request); await app.auth.revoke(request);
+      return apiJson({ authenticated: false }, 200, { 'set-cookie': sessionCookie(null, 0) });
+    }
+    if (request.method === 'GET' && url.pathname === '/api/me') {
+      const identity = await app.auth.authenticate(request); return apiJson(await ownData(app.db, identity.user));
+    }
+    if (request.method === 'PATCH' && url.pathname === '/api/me/profile') {
+      validateOrigin(request); const identity = await app.auth.authenticate(request); const input = await body(request);
+      const keys = Object.keys(input); if (!keys.length || keys.some((key) => !PROFILE_FIELDS.has(key))) return apiJson({ error: 'invalid_fields' }, 400);
+      for (const value of Object.values(input)) if (value !== null && typeof value !== 'string') return apiJson({ error: 'invalid_input' }, 400);
+      const current = await app.db.first('SELECT social_links_json FROM profiles WHERE user_id = ?', [identity.user.id]);
+      if (!current) return apiJson({ error: 'not_found' }, 404);
+      let social = {}; try { social = JSON.parse(current.social_links_json); } catch { social = {}; }
+      if ('instagram' in input) social.instagram = input.instagram; if ('whatsapp' in input) social.whatsapp = input.whatsapp;
+      await app.db.write(`UPDATE profiles SET display_name = COALESCE(?, display_name), bio = COALESCE(?, bio), phone = COALESCE(?, phone),
+        website_url = COALESCE(?, website_url), social_links_json = ?, updated_at = ? WHERE user_id = ?`,
+      [input.displayName ?? null, input.bio ?? null, input.phone ?? null, input.website ?? null, JSON.stringify(social), new Date().toISOString(), identity.user.id]);
+      const listing = await app.db.first("SELECT id, slug FROM listings WHERE owner_id = ? AND status = 'published' ORDER BY id LIMIT 1", [identity.user.id]);
+      if (listing) await app.publications.send({ type: 'PUBLICATION_REQUESTED', entity: 'profile', id: listing.id, slug: listing.slug, reason: 'profile.updated', requestedAt: new Date().toISOString() });
+      return apiJson({ updated: true, publicationScheduled: Boolean(listing), ...(await ownData(app.db, identity.user)) });
+    }
+    return apiJson({ error: 'not_found' }, 404);
+  } catch (error) {
+    if (error instanceof AuthError) return apiJson({ error: error.status === 403 ? 'forbidden' : 'unauthenticated' }, error.status);
+    if (error instanceof SyntaxError || error instanceof TypeError) return apiJson({ error: 'invalid_input' }, 400);
+    app.logger.error('Private API failed', { operation: 'api.private', status: 'failed', route: url.pathname, error });
+    return apiJson({ error: 'internal_error' }, 500);
+  }
+}
 
 function asset(path, minisite = false) {
   if (path === '/assets/portal.css') return new Response(portalCss, { headers: { 'content-type': 'text/css; charset=utf-8', 'cache-control': 'public, max-age=86400' } });
@@ -69,9 +136,10 @@ async function minisiteResponse(request, env, url, slug) {
 
 export default {
   async fetch(request, env) {
-    if (!['GET', 'HEAD'].includes(request.method)) return new Response('Method not allowed', { status: 405, headers: { allow: 'GET, HEAD' } });
     const url = new URL(request.url);
     const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
+    if (APEX.has(hostname) && url.pathname.startsWith('/api/')) return apiResponse(request, env, url);
+    if (!['GET', 'HEAD'].includes(request.method)) return new Response('Method not allowed', { status: 405, headers: { allow: 'GET, HEAD' } });
     if (APEX.has(hostname)) return apexResponse(request, env, url);
     const suffix = '.acompanhantesex.com';
     if (!hostname.endsWith(suffix)) return new Response('Unknown host', { status: 400 });
