@@ -1,5 +1,49 @@
 # ACTS — deploy e operações
 
+## Deploy manual de produção pelo GitHub
+
+O workflow **Deploy Production** é o único fluxo automatizado de produção e só responde a disparo manual (`workflow_dispatch`). Ele não roda em push, pull request ou merge. A execução aceita exclusivamente a branch `main`, exige que o operador digite exatamente `DEPLOY`, usa Node 22 e é serializada pelo grupo `production-deploy`. O job usa o GitHub Environment `production`, que pode receber regras de aprovação posteriormente em **Settings → Environments → production**, sem exigir reviewers na configuração inicial.
+
+### Configuração pelo navegador
+
+No repositório GitHub, abra **Settings → Secrets and variables → Actions → New repository secret** e cadastre, sem registrar os valores nesta documentação:
+
+- `CLOUDFLARE_API_TOKEN`: API Token de menor privilégio criado na Cloudflare; não use Global API Key.
+- `CLOUDFLARE_ACCOUNT_ID`: identificador da conta Cloudflare que contém os recursos oficiais.
+
+O workflow passa esses valores somente como variáveis protegidas ao Wrangler. Não os grava em arquivo, não os imprime e não concede permissão de escrita no repositório.
+
+### Permissões mínimas do token Cloudflare
+
+Crie um API Token limitado à conta do ACTS e, quando aplicável, à zone `acompanhantesex.com`. Para as operações presentes no workflow e os bindings declarados pelo deploy, habilite:
+
+- **Account → Workers Scripts → Edit**, para publicar o Worker `portal`;
+- **Account → D1 → Edit**, necessário para listar/aplicar migrations e exportar `portal-db`;
+- **Account → Workers R2 Storage → Edit**, porque o deploy valida/configura os bindings R2 `acts-dados` e `acts-midias` do script;
+- **Account → Workers Queues → Edit**, porque o deploy valida/configura producer e consumer da Queue `acts-queues`;
+- **Zone → Workers Routes → Edit**, restrito à zone `acompanhantesex.com`, porque o `wrangler deploy` reconcilia as rotas de produção declaradas no projeto;
+- **Zone → Zone → Read**, restrito à mesma zone, para que o Wrangler localize a zone usada pela rota wildcard.
+
+Não conceda permissões globais de administração, KV, Pages, DNS ou acesso a outras contas/zones. Se a interface da Cloudflare apresentar nomenclatura diferente, confira a documentação vigente de permissões de API Tokens antes de criar o token; não substitua o token por uma Global API Key.
+
+### Executar sem terminal
+
+1. Abra o GitHub e acesse **ACTSEX/PORTAL**.
+2. Clique em **Actions**.
+3. Selecione **Deploy Production**.
+4. Clique em **Run workflow**.
+5. Escolha a branch **main**.
+6. No campo de confirmação, digite exatamente **DEPLOY**.
+7. Opcionalmente, informe o slug de um minisite real e seguro, sem o domínio.
+8. Clique em **Run workflow**.
+9. Acompanhe todos os gates até o resumo da execução. Um gate vermelho significa que o deploy não foi concluído e exige investigação; não tente contorná-lo.
+
+O fluxo instala o lockfile, executa lint, testes, audit e `git diff --check`, confirma a identidade Cloudflare, lista migrations pendentes e então exporta o D1 para `/tmp`. O export precisa existir e ser não vazio. Ele é enviado como artifact privado da execução, com nome contendo o run ID e retenção de **14 dias**, sem imprimir o SQL. Somente depois desse backup o workflow aplica migrations pelo mecanismo oficial, confirma que nenhuma permanece pendente, gera types, executa dry-run e publica o Worker.
+
+Depois do deploy, o workflow testa HTTPS e resposta não vazia no domínio principal, exige os headers centrais de segurança e confirma `Cache-Control: no-store` em `/admin` e `/painel`. Se um slug for informado, também testa o minisite e exige HTTP 404 para `/admin`, `/painel` e `/api/admin/` naquele hostname. Sem slug, essa parte é explicitamente marcada como `SKIP MINISITE SMOKE`; nenhuma conta ou dado artificial é criado.
+
+O backup artifact contém dados de produção: mantenha o acesso ao repositório e às Actions restrito, baixe-o apenas para recuperação autorizada e remova-o antecipadamente se a política operacional exigir. A retenção no GitHub não substitui um processo de restauração ensaiado. O workflow não cria recursos Cloudflare, usuários, pagamentos, boosts, objetos R2 ou mensagens de Queue; valida os bindings existentes durante dry-run/deploy.
+
 ## Bootstrap manual do primeiro administrador
 
 Não há e-mail, senha ou conta administrativa no código. Depois de validar por canal seguro uma conta ativa existente, um operador autorizado pode executar manualmente, no ambiente correto e sob change management, `UPDATE users SET role = 'admin', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'active'`. Deve haver dupla conferência do ambiente e do ID; a aplicação nunca aceita `role` do frontend. A ETAPA 11 não executa essa alteração nem migrations remotas.
