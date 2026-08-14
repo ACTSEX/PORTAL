@@ -50,6 +50,18 @@ Nenhum deploy de aplicação aplica migration por efeito colateral. Não implant
 - Para falha de aplicação, reimplantar versão conhecida. Para derivados, republicar do D1. Para dados, restaurar somente com procedimento ensaiado e autorização explícita.
 - R2 público é derivado e cada publicação substitui a projeção canônica correspondente.
 
+### Backup e rollback de produção
+
+Antes de consultar ou aplicar migrations, autentique o Wrangler por um token de menor privilégio e registre a lista pendente com `wrangler d1 migrations list ACTS_DB --remote --env production`. Exporte o banco para um caminho seguro, fora do Git, com `wrangler d1 export ACTS_DB --remote --env production --output <caminho-seguro.sql>` e valide que o arquivo existe, não está vazio e tem acesso restrito. Só então use `npm run db:migrate:production`; consulte novamente a lista e faça apenas queries estruturais/read-only de validação.
+
+Migration D1 é forward-only e não oferece rollback automático. Em falha de aplicação, reverta o Worker para a versão previamente registrada, sem desfazer o schema. Recuperação de dados/schema exige autorização, janela de manutenção e restauração ensaiada do export; não improvise `DROP`, reset ou SQL inverso. Projeções públicas em `ACTS_DATA` podem ser reconstruídas pelo publisher canônico a partir do D1.
+
+### Smoke e diagnóstico pós-deploy
+
+Após o deploy, registre status, headers e comportamento sem gravar dados reais: `GET /`, uma cidade pública conhecida, `/painel`, `/admin`, `/api/me`, assets e um minisite autorizado. Repita `/admin`, `/painel`, `/api/me` e `/api/admin/...` no hostname do minisite e confirme bloqueio. Verifique `no-store` nas áreas privadas, CSP/headers centrais e ausência de CORS aberto. D1/R2/Queue devem ser verificados por bindings, logs e fluxos normais; não envie publicação artificial nem crie objetos de teste em conta de cliente.
+
+Use `wrangler tail portal --env production` para logs HTTP e do consumer. No dashboard, acompanhe falhas/exceções do Worker, backlog/retries da Queue, erros `publisher.*`/`queue.consume` para publicação e operações de webhook/pagamento. Logs devem permanecer estruturados e sanitizados; nunca copie cookies, tokens, payload financeiro ou dados de clientes para o registro do incidente.
+
 ## Queue e cache
 
 Consumers devem validar versão e tamanho, deduplicar, limitar tentativas, usar backoff e registrar falhas definitivas. Ack só após efeito confirmado; reentrega não pode duplicar cobrança nem corromper publicação. Uma rotina de reconciliação pode recuperar diferenças D1/publicação quando necessária, sem substituir o fluxo normal.

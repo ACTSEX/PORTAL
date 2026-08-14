@@ -26,11 +26,24 @@ import { adminJs } from '../frontend/admin/app.js';
 
 const APEX = new Set(['acompanhantesex.com', 'www.acompanhantesex.com', 'localhost', '127.0.0.1']);
 const JSON_CACHE = 'public, max-age=60, s-maxage=300, stale-while-revalidate=86400';
-const HTML_HEADERS = { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=60, s-maxage=300', 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin' };
+const HTML_HEADERS = { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=60, s-maxage=300' };
+const CONTENT_SECURITY_POLICY = "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https: data:; media-src 'self' https:; connect-src 'self'; font-src 'self'; upgrade-insecure-requests";
 const PROFILE_FIELDS = new Set(['displayName', 'bio', 'phone', 'website', 'instagram', 'whatsapp']);
 const MEDIA_ID = /^med_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MEDIA_CACHE = 'public, max-age=31536000, immutable';
 const BILLING_METHODS = new Set(['PIX', 'BOLETO']);
+
+function hardened(response, url) {
+  const headers = new Headers(response.headers);
+  headers.set('x-content-type-options', 'nosniff');
+  headers.set('referrer-policy', 'strict-origin-when-cross-origin');
+  headers.set('permissions-policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+  headers.set('content-security-policy', CONTENT_SECURITY_POLICY);
+  if (url.protocol === 'https:' && (url.hostname === 'acompanhantesex.com' || url.hostname.endsWith('.acompanhantesex.com'))) {
+    headers.set('strict-transport-security', 'max-age=31536000; includeSubDomains');
+  }
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
 
 const digest = async (value) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 const safeEqual = (left, right) => {
@@ -122,7 +135,7 @@ async function apiResponse(request, env, url) {
     }
     if (request.method === 'POST' && url.pathname === '/api/auth/login') {
       validateOrigin(request); const input = await body(request);
-      if (typeof input.email !== 'string' || typeof input.password !== 'string' || input.email.length > 254) throw new TypeError('invalid input');
+      if (Object.keys(input).some((key) => !['email', 'password'].includes(key)) || typeof input.email !== 'string' || typeof input.password !== 'string' || input.email.length > 254) throw new TypeError('invalid input');
       const user = await app.db.first('SELECT id, email, password_hash, role, status FROM users WHERE email = ? COLLATE NOCASE', [input.email.trim()]);
       if (!user || user.status !== 'active' || !await verifyPassword(input.password, user.password_hash)) {
         app.logger.warn('Login denied', { operation: 'auth.login', status: 'denied' });
@@ -333,10 +346,7 @@ async function minisiteResponse(request, env, url, slug) {
   }
 }
 
-export default {
-  async fetch(request, env) {
-    const url = new URL(request.url);
-    const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
+async function routeRequest(request, env, url, hostname) {
     if (APEX.has(hostname) && url.pathname.startsWith('/api/')) return apiResponse(request, env, url);
     if (!['GET', 'HEAD'].includes(request.method)) return new Response('Method not allowed', { status: 405, headers: { allow: 'GET, HEAD' } });
     const publicMedia = url.pathname.match(/^\/media\/(med_[0-9a-f-]+)$/i); if (publicMedia && (APEX.has(hostname) || hostname.endsWith('.acompanhantesex.com'))) return mediaResponse(request, env, publicMedia[1]);
@@ -346,6 +356,13 @@ export default {
     const slug = hostname.slice(0, -suffix.length);
     if (!isPublicSlug(slug) || slug.includes('.')) return new Response('Invalid minisite hostname', { status: 400 });
     return minisiteResponse(request, env, url, slug);
+}
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
+    return hardened(await routeRequest(request, env, url, hostname), url);
   },
   async queue(batch, env) {
     const logger = createLogger({ config: { logLevel: 'info', environment: env.ENVIRONMENT ?? 'production', service: 'portal', version: '0.1.0' }, sink: (record, serialized) => (record.level === 'error' ? console.error : console.log)(serialized) });
