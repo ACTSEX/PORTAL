@@ -9,6 +9,8 @@ o HTTP/Cloudflare Edge Cache distribui conteúdo público.
 
 Leia primeiro [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). A documentação
 consolidada em [`docs/`](docs/) cobre arquitetura, banco, deploy e produto.
+Consulte a seção **Estado atual** da arquitetura como fonte oficial para distinguir
+capacidades operacionais, módulos isolados e itens planejados.
 
 ## Requisitos e instalação
 
@@ -39,7 +41,7 @@ npm ci
 
 - `core/`: infraestrutura técnica independente do produto;
 - `business/`: sete domínios consolidados e adapters externos estritamente necessários;
-- `worker/`: entrada HTTP e consumers Cloudflare;
+- `worker/`: entrada HTTP única (o consumer Cloudflare ainda não está conectado);
 - `frontend/`: interfaces compartilhadas atualmente implementadas (portal e minisite);
 - `database/`: schema e migrations D1;
 - `tests/`: testes organizados por responsabilidade;

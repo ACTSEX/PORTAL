@@ -1,5 +1,5 @@
 function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]); }
-function safeUrl(value) { try { const url = new URL(String(value)); return ['https:', 'http:', 'tel:', 'mailto:'].includes(url.protocol) ? escapeHtml(url.href) : ''; } catch { return ''; } }
+function safeUrl(value) { try { const url = new URL(String(value)); return ['https:', 'tel:', 'mailto:'].includes(url.protocol) ? escapeHtml(url.href) : ''; } catch { return ''; } }
 function values(profile, ...keys) { for (const key of keys) if (profile?.[key] != null) return profile[key]; return undefined; }
 
 export function minisiteDocument(profile, slug) {

@@ -21,7 +21,7 @@ docs/       arquitetura, banco, deploy e produto
 |---|---|---|
 | `core/` | configuração, contratos técnicos, roteamento genérico, auth, logging, persistência, publicação e utilitários | conhecer plano, anúncio, cidade, pagamento ou outra regra ACTS |
 | `business/` | contas, perfis, anúncios, cidades, categorias, planos, assinaturas, pagamentos, boosts, publicação de domínio e SEO | depender do protocolo HTTP ou de internals de outro módulo |
-| `worker/` | `fetch`, validação da fronteira HTTP, composição, bindings, Queue consumers e respostas | concentrar regra de negócio |
+| `worker/` | `fetch`, validação da fronteira HTTP, composição, bindings e respostas | concentrar regra de negócio |
 | `frontend/` | portal, painel e minisite compartilhados; apresentação e consumo de projeções públicas | consultar D1 ou confiar em conteúdo externo bruto |
 | `database/` | snapshot de referência e migrations forward-only | servir como API pública |
 | `tests/` | unidade, integração, contrato, segurança e fluxos críticos | espelhar a árvore sem necessidade |
@@ -57,7 +57,7 @@ cliente → Worker → autenticação/autorização/validação
 
 Toda mutação é confirmada no D1 antes de emitir trabalho derivado. Falha de publicação não desfaz o negócio confirmado.
 
-### Publicação
+### Publicação (arquitetura planejada, ainda não integrada)
 
 ```text
 D1 confirmado → evento/pedido mínimo → ACTS_QUEUE
@@ -105,9 +105,39 @@ O artefato implantável é o Worker configurado por `wrangler.toml`. Deploy prom
 
 ## Estado atual
 
-Estão implementados o Worker público, portal e minisite compartilhados, bindings
-Cloudflare, fundações em `core/` e `business/`, migrations, publicação assíncrona,
-gateway Asaas, backfill de cidades e testes correspondentes. O domínio imobiliário
-remanescente nessas fundações é legado técnico em migração, não uma regra do
-produto ACTS. Funcionalidades planejadas são identificadas em `PRODUCT.md` e não
-devem ser apresentadas como disponíveis.
+Esta seção é a **única fonte oficial** para o estado de integração. Os termos não
+indicam apenas existência de código:
+
+- **OPERACIONAL:** capacidade conectada ao Worker/runtime e utilizável.
+- **MÓDULO ISOLADO:** código existente e testado, mas ainda não conectado ao runtime.
+- **PLANEJADO:** não implementado ou ainda sem fluxo funcional.
+
+| Capacidade | Estado | Evidência/limite atual |
+|---|---|---|
+| Worker único | **OPERACIONAL** | `worker/index.js` é a única entrada HTTP. |
+| Portal | **OPERACIONAL** | Shell e projeções públicas de cidade são servidos pelo Worker. |
+| Minisite | **OPERACIONAL** | Wildcard oficial lê projeção pública de perfil. |
+| ACTS_DATA | **OPERACIONAL** | O leitor público usa `cities/{slug}.json` e `profiles/{slug}.json`. |
+| Edge Cache | **OPERACIONAL** | Cache público fail-open no fluxo de projeções de cidade/perfil. |
+| D1 | **MÓDULO ISOLADO** | Schema, migrations e módulos existem; as rotas públicas não consultam D1. |
+| ACTS_MEDIA | **PLANEJADO** | Binding configurado, sem fluxo HTTP de mídia/upload integrado. |
+| Queue | **MÓDULO ISOLADO** | Produtor/agregador têm código e testes, sem consumer no Worker. |
+| Publicação assíncrona | **MÓDULO ISOLADO** | Publisher e agregação são testados, mas não há fluxo runtime completo. |
+| Autenticação | **MÓDULO ISOLADO** | Fundação testada, sem rota HTTP integrada. |
+| Pagamentos/Asaas | **MÓDULO ISOLADO** | Domínio e adapter testados, sem endpoints/webhook integrados. |
+| Painel | **PLANEJADO** | Sem fluxo funcional conectado. |
+| Admin | **PLANEJADO** | Sem fluxo funcional conectado. |
+| Blogger | **PLANEJADO** | Sem integração funcional. |
+| Boosts | **PLANEJADO** | Sem implementação de domínio; marcação visual existente não constitui o produto. |
+
+### Incompatibilidade conhecida do contrato R2
+
+O contrato **não será conciliado nesta etapa**. O leitor em
+`business/public-content.js`, chamado por `worker/index.js` e coberto por
+`tests/worker/public-site.test.js`, procura `cities/{slug}.json` e
+`profiles/{slug}.json`. Já o publisher em `business/publishing.js`, coberto por
+`tests/business/publishing.test.js`, grava
+`cidades/{slug}/catalogo-vNNNNNN.json` e `cidades/{slug}/manifest.json` e ainda
+não publica projeção de perfil. Portanto, o publisher isolado não abastece o
+leitor operacional. Keys, formatos, compatibilidade e migração deverão ser
+decididos juntos antes de conectar o consumer da Queue.
