@@ -171,7 +171,7 @@ jobs:
             --connect-timeout 15 --max-time 45 \
             --dump-header "$work_dir/apex.headers" \
             --output "$work_dir/apex.body" \
-            https://acompanhantesex.com/
+            https://imobiliarista.net/
           test -s "$work_dir/apex.body"
 
           for header in x-content-type-options referrer-policy permissions-policy content-security-policy strict-transport-security; do
@@ -187,7 +187,7 @@ jobs:
               --dump-header "$work_dir/${path}.headers" \
               --output "$work_dir/${path}.body" \
               --write-out '%{http_code}' \
-              "https://acompanhantesex.com/${path}")
+              "https://imobiliarista.net/${path}")
             if [[ "$status" -ge 500 ]]; then
               echo "DEPLOY NÃO CONCLUÍDO: /${path} respondeu HTTP $status." >&2
               exit 1
@@ -203,7 +203,7 @@ jobs:
             --dump-header "$work_dir/admin-api.headers" \
             --output "$work_dir/admin-api.body" \
             --write-out '%{http_code}' \
-            https://acompanhantesex.com/api/admin/)
+            https://imobiliarista.net/api/admin/)
           if [[ "$api_status" != "401" && "$api_status" != "403" ]]; then
             echo "DEPLOY NÃO CONCLUÍDO: API administrativa sem sessão respondeu HTTP $api_status." >&2
             exit 1
@@ -221,7 +221,7 @@ jobs:
           MINISITE_SLUG: ${{ inputs.minisite_slug }}
         run: |
           set -euo pipefail
-          origin="https://${MINISITE_SLUG}.acompanhantesex.com"
+          origin="https://${MINISITE_SLUG}.imobiliarista.net"
           body=$(mktemp)
           trap 'rm -f "$body"' EXIT
           curl --fail-with-body --silent --show-error --location \

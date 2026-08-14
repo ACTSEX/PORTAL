@@ -1,6 +1,6 @@
 # Portal ACTS
 
-O Portal ACTS é a aplicação Worker-first de `acompanhantesex.com`. O Worker
+O Portal ACTS é a aplicação Worker-first de `imobiliarista.net`. O Worker
 `portal` é a entrada HTTP; D1 mantém o estado autoritativo, R2 armazena mídia e
 projeções reconstruíveis, Cloudflare Queues transporta publicação assíncrona e
 o HTTP/Cloudflare Edge Cache distribui conteúdo público.

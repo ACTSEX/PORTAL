@@ -5,14 +5,14 @@ export function isPublicSlug(value) {
 }
 
 export function publicObjectKey(kind, slug) {
-  if (!['cities', 'minisites'].includes(kind) || !isPublicSlug(slug)) {
+  if (!['cities', 'tenants'].includes(kind) || !isPublicSlug(slug)) {
     throw new TypeError('Invalid public projection path');
   }
   return `${kind}/${slug}.json`;
 }
 
 export const cityProjectionKey = (slug) => publicObjectKey('cities', slug);
-export const profileProjectionKey = (slug) => publicObjectKey('minisites', slug);
+export const profileProjectionKey = (slug) => `tenants/${slug}/profile.json`;
 
 /** Read an already-published public projection. Public reads never use D1. */
 export async function readPublicProjection(bucket, kind, slug) {

@@ -242,7 +242,7 @@ export function createPublicationReader({ db, clock = () => new Date() } = {}) {
       LEFT JOIN plans pl ON pl.id = s.plan_id AND pl.active = 1
       LEFT JOIN media m ON m.id = (SELECT id FROM media WHERE listing_id = l.id AND media_type = 'image' ORDER BY sort_order, id LIMIT 1)
       WHERE l.city_id = ? AND l.status = 'published' ORDER BY boost_ends_at IS NULL, premium DESC, l.id`, [clock().toISOString(), clock().toISOString(), clock().toISOString(), clock().toISOString(), cityId])).results;
-    const listings = rows.map((row) => ({ id: row.id, slug: row.slug, profileSlug: row.slug, name: row.display_name || row.title, category: row.category_slug, tags: parse(row.attributes_json, '{}').tags ?? [], coverUrl: row.cover_media_key ? `https://media.acompanhantesex.com/${row.cover_media_key}` : undefined, premium: Boolean(row.premium), boosted: Boolean(row.boost_ends_at), boostEndsAt: row.boost_ends_at ?? undefined, presentation: row.bio || row.description }));
+    const listings = rows.map((row) => ({ id: row.id, slug: row.slug, profileSlug: row.slug, name: row.display_name || row.title, category: row.category_slug, tags: parse(row.attributes_json, '{}').tags ?? [], coverUrl: row.cover_media_key ? `https://media.imobiliarista.net/${row.cover_media_key}` : undefined, premium: Boolean(row.premium), boosted: Boolean(row.boost_ends_at), boostEndsAt: row.boost_ends_at ?? undefined, presentation: row.bio || row.description }));
     return { slug: city.slug, name: city.public_name, categories: [...new Set(listings.map((item) => item.category))], tags: [...new Set(listings.flatMap((item) => item.tags))], listings };
   }
   async function loadProfile({ profileId, profileSlug }) {
@@ -257,7 +257,7 @@ export function createPublicationReader({ db, clock = () => new Date() } = {}) {
       LEFT JOIN blogger_integrations bi ON bi.user_id = l.owner_id AND bi.status <> 'disabled'
       WHERE l.id = ? AND l.slug = ?`, [clock().toISOString(), clock().toISOString(), profileId, profileSlug]);
     if (!row) return null;
-    const media = (await db.all("SELECT id, r2_key FROM media WHERE listing_id = ? AND media_type = 'image' ORDER BY sort_order, id", [profileId])).results.map((item) => ({ id: item.id, url: `https://media.acompanhantesex.com/${item.r2_key}` }));
+    const media = (await db.all("SELECT id, r2_key FROM media WHERE listing_id = ? AND media_type = 'image' ORDER BY sort_order, id", [profileId])).results.map((item) => ({ id: item.id, url: `https://media.imobiliarista.net/${item.r2_key}` }));
     const attributes = parse(row.attributes_json, '{}'); const social = parse(row.social_links_json, '{}');
     const source = { slug: row.slug, name: row.display_name || row.title, premium: Boolean(row.premium), active: row.user_status === 'active', suspended: row.user_status === 'suspended', cityId: row.city_id, city: { slug: row.city_slug, name: row.city_name }, presentation: row.bio || row.description, categories: [row.category_slug], services: attributes.services ?? [], tags: attributes.tags ?? [], gallery: media, contacts: { phone: row.phone, website: row.website_url, instagram: social.instagram, whatsapp: social.whatsapp } };
     if (source.premium && row.blogger_url) source.bloggerFeedUrl = row.blogger_url;

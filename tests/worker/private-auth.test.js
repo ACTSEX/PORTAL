@@ -3,7 +3,7 @@ import test from 'node:test';
 import worker from '../../worker/index.js';
 import { createSessionAuth, extractSessionToken, hashPassword, sessionCookie, verifyPassword } from '../../core/auth.js';
 
-const origin = 'https://acompanhantesex.com';
+const origin = 'https://imobiliarista.net';
 const logger = { debug() {}, info() {}, warn() {}, error() {} };
 
 function environment({ queueFailure = false, writeFailure = false, mediaWriteFailure = false, mediaPutFailure = false } = {}) {
@@ -134,7 +134,7 @@ test('authenticated image upload validates, persists, lists, serves, publishes a
   assert.match(setup.state.storageCalls[0].key,/^profiles\/user-000000000001\/media\/[0-9a-f-]+\.jpg$/);assert.equal(setup.state.storageCalls[0].options.httpMetadata.contentType,'image/jpeg');assert.equal(setup.state.sent.at(-1).reason,'media.updated');
   setup.state.media.set('med_11111111-1111-4111-8111-111111111111',{id:'med_11111111-1111-4111-8111-111111111111',owner_id:'other-user',r2_key:'profiles/other/media/x.jpg',mime_type:'image/jpeg',byte_size:3,sort_order:0});
   const listed=await request('/api/me/media',setup.env,{headers:{cookie}});assert.deepEqual((await listed.json()).media,[saved]);assert.equal((await request('/api/me/media/med_11111111-1111-4111-8111-111111111111',setup.env,{method:'DELETE',headers:{origin,cookie}})).status,404);
-  assert.match(saved.url, /^https:\/\/media\.acompanhantesex\.com\//);
+  assert.match(saved.url, /^https:\/\/media\.imobiliarista\.net\//);
   const removed=await request('/api/me/media/'+saved.id,setup.env,{method:'DELETE',headers:{origin,cookie}});assert.equal(removed.status,200);assert.equal(setup.state.media.has(saved.id),false);assert.equal(setup.state.media.size,1);assert.equal(setup.state.sent.at(-1).reason,'media.updated');
 });
 

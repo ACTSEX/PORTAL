@@ -65,7 +65,7 @@ test('profile publisher publishes PREMIUM and removes missing, STANDARD or suspe
   assert.doesNotMatch(JSON.stringify(result.projection), /private|paymentStatus|token|email/);
   for (const source of [profileProjection({ premium: false }), profileProjection({ suspended: true }), null]) {
     await publisher.publishProfile({ profileSlug: 'ana', loadProjection: () => source });
-    assert.equal(storage.values.has('minisites/ana.json'), false);
+    assert.equal(storage.values.has('tenants/ana/profile.json'), false);
   }
   await assert.rejects(createPublisher({ storage: memoryStorage({ failDelete: true }), logger: logger() }).publishProfile({ profileSlug: 'ana', loadProjection: () => null }), /R2 delete failed/);
   await assert.rejects(createPublisher({ storage: memoryStorage({ failPut: true }), logger: logger() }).publishProfile({ profileSlug: 'ana', loadProjection: () => profileProjection() }), /R2 put failed/);
@@ -80,8 +80,8 @@ test('published city and profile objects remain edge-readable while Worker refus
   assert.deepEqual(JSON.parse(cityRead.body), cityResult.projection);
   assert.deepEqual(JSON.parse(storage.values.get(profileResult.key).body), profileResult.projection);
   const env = { ACTS_DATA: { get() { throw new Error('public Worker must not read R2'); } }, ACTS_DB: { prepare() { throw new Error('public Worker must not read D1'); } } };
-  assert.equal((await worker.fetch(new Request('https://acompanhantesex.com/data/cities/londrina'), env)).status, 404);
-  assert.equal((await worker.fetch(new Request('https://ana.acompanhantesex.com/'), env)).status, 404);
+  assert.equal((await worker.fetch(new Request('https://imobiliarista.net/data/cities/londrina'), env)).status, 404);
+  assert.equal((await worker.fetch(new Request('https://ana.imobiliarista.net/'), env)).status, 404);
 });
 
 test('explicit package enforces atomic limits, persisted idempotency and safe daily quota', async () => {

@@ -4,9 +4,9 @@ Data da auditoria: 2026-08-14. Escopo: estado versionado; nenhum deploy, altera�
 
 ## A. Diagnóstico
 
-**ERRO ARQUITETURAL encontrado.** As duas rotas de produção cobriam o apex e todo `*.acompanhantesex.com/*`. Assim, HTML, CSS, JS, JSON e mídia públicos entravam em `worker/index.js`. O próprio script construía os assets com `Response`, buscava projeções em R2 e, para mídia, consultava D1 antes de R2. Não há binding KV.
+**ERRO ARQUITETURAL encontrado.** As duas rotas de produção cobriam o apex e todo `*.imobiliarista.net/*`. Assim, HTML, CSS, JS, JSON e mídia públicos entravam em `worker/index.js`. O próprio script construía os assets com `Response`, buscava projeções em R2 e, para mídia, consultava D1 antes de R2. Não há binding KV.
 
-A correção local separa código e audiência: Pages recebe `public/`; `dados.acompanhantesex.com` e `media.acompanhantesex.com` devem ser Custom Domains de R2; o Worker fica roteado somente em `acompanhantesex.com/api/*` e `www.../api/*`. O wildcard deixa de corresponder ao Worker. A ativação remota está deliberadamente pendente do plano de migração.
+A correção local separa código e audiência: Pages recebe `public/`; `dados.imobiliarista.net` e `media.imobiliarista.net` devem ser Custom Domains de R2; o Worker fica roteado somente em `imobiliarista.net/api/*` e `www.../api/*`. O wildcard deixa de corresponder ao Worker. A ativação remota está deliberadamente pendente do plano de migração.
 
 ## B. Requests atuais
 
@@ -69,11 +69,11 @@ Pages é adequado ao apex: static assets, SPA/CSR, apex custom domain e GitHub b
 
 ## I. R2 Custom Domain
 
-Associar `dados.acompanhantesex.com` a `acts-dados` e `media.acompanhantesex.com` a `acts-midias`. Apenas artefatos intencionalmente públicos podem estar nesses buckets/domínios. Custom Domain permite cache; `r2.dev` não é produção. Cache Rules: cachear GET/HEAD; respeitar ETag; dados `Edge TTL` moderado e browser revalidável; mídia com nome imutável e TTL longo; habilitar Tiered Cache. Referência: [R2 custom domains and caching](https://developers.cloudflare.com/r2/buckets/public-buckets/).
+Associar `dados.imobiliarista.net` a `acts-dados` e `media.imobiliarista.net` a `acts-midias`. Apenas artefatos intencionalmente públicos podem estar nesses buckets/domínios. Custom Domain permite cache; `r2.dev` não é produção. Cache Rules: cachear GET/HEAD; respeitar ETag; dados `Edge TTL` moderado e browser revalidável; mídia com nome imutável e TTL longo; habilitar Tiered Cache. Referência: [R2 custom domains and caching](https://developers.cloudflare.com/r2/buckets/public-buckets/).
 
 ## J. Wildcard DNS
 
-Um registro proxied `*.acompanhantesex.com` cobre os clientes sem 10.000 entradas. Reservar explicitamente apex, `www`, `dados`, `media` e `api`, pois registros exatos têm precedência. DNS só resolve hostname; não escolhe objeto por slug.
+Um registro proxied `*.imobiliarista.net` cobre os clientes sem 10.000 entradas. Reservar explicitamente apex, `www`, `dados`, `media` e `api`, pois registros exatos têm precedência. DNS só resolve hostname; não escolhe objeto por slug.
 
 ## K. Origin/Rewrite Rules
 
@@ -197,7 +197,7 @@ CSR pode atrasar indexação e não personaliza title, description, canonical, O
 
 ## Z. Segurança
 
-JSON público usa allowlist e nunca contém email, hash, sessão, segredo de pagamento, admin ou auditoria. CORS recomendado em dados: permitir `https://acompanhantesex.com`, `https://www...` e `https://*.acompanhantesex.com` se a configuração R2 aceitar origem wildcard; caso contrário, dados deliberadamente públicos podem usar `Access-Control-Allow-Origin: *` **sem credentials**, documentando que confidencialidade não depende de CORS. Mídia pública pode ser legível publicamente. APIs usam same-origin path `/api` no apex e conteúdo privado nunca é cacheado. CSP limita connect ao domínio de dados e Blogger; sanitização DOM evita `innerHTML` externo.
+JSON público usa allowlist e nunca contém email, hash, sessão, segredo de pagamento, admin ou auditoria. CORS recomendado em dados: permitir `https://imobiliarista.net`, `https://www...` e `https://*.imobiliarista.net` se a configuração R2 aceitar origem wildcard; caso contrário, dados deliberadamente públicos podem usar `Access-Control-Allow-Origin: *` **sem credentials**, documentando que confidencialidade não depende de CORS. Mídia pública pode ser legível publicamente. APIs usam same-origin path `/api` no apex e conteúdo privado nunca é cacheado. CSP limita connect ao domínio de dados e Blogger; sanitização DOM evita `innerHTML` externo.
 
 ## AA. Mudanças de código
 

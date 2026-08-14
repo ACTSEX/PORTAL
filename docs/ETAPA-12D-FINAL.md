@@ -4,11 +4,11 @@ Data: 2026-08-14. Auditoria e mudanças locais; nenhum deploy, DNS, Rule, Custom
 
 ## A. Estado inicial
 
-Antes da 12D, o apex e `*.acompanhantesex.com/*` casavam com Worker. HTML/CSS/JS eram `Response` de código, JSON passava pelo Worker/R2, minisite fazia parse/render server-side e cada mídia fazia D1→R2. A primeira consolidação removeu o wildcard, mas deixou indevidamente `www.../api/*`, código público morto no bundle e testes privados esperando painel/mídia pelo Worker. Esta finalização corrige esses pontos.
+Antes da 12D, o apex e `*.imobiliarista.net/*` casavam com Worker. HTML/CSS/JS eram `Response` de código, JSON passava pelo Worker/R2, minisite fazia parse/render server-side e cada mídia fazia D1→R2. A primeira consolidação removeu o wildcard, mas deixou indevidamente `www.../api/*`, código público morto no bundle e testes privados esperando painel/mídia pelo Worker. Esta finalização corrige esses pontos.
 
 ## B. Causa atual das Worker invocations
 
-A causa histórica era a abrangência das Worker Routes somada ao handler universal. A configuração final tem somente `acompanhantesex.com/api/*`; `workers_dev=false`; o handler aceita apenas host canônico/API e não importa frontend nem handlers públicos. Invocações remanescentes são operações reais, não pageviews.
+A causa histórica era a abrangência das Worker Routes somada ao handler universal. A configuração final tem somente `imobiliarista.net/api/*`; `workers_dev=false`; o handler aceita apenas host canônico/API e não importa frontend nem handlers públicos. Invocações remanescentes são operações reais, não pageviews.
 
 ## C. Rotas públicas atuais
 
@@ -19,14 +19,14 @@ A causa histórica era a abrangência das Worker Routes somada ao handler univer
 | JSON cidade | `dados`/R2/cache | 0 | 0 | 0 | 0 |
 | JSON minisite | `dados`/R2/cache | 0 | 0 | 0 | 0 |
 | mídia | `media`/R2/cache | 0 | 0 | 0 | 0 |
-| `<slug>.acompanhantesex.com` | origem estática do shell | 0 | 0 | 0 | 0 |
+| `<slug>.imobiliarista.net` | origem estática do shell | 0 | 0 | 0 | 0 |
 | `/api/*` canônico | Worker | 1 | conforme operação | conforme alteração | conforme operação |
 
 Ausência de objeto público resulta em 404/estado seguro; não há fallback D1.
 
 ## D. Worker Routes atuais
 
-Somente `acompanhantesex.com/api/*` em root/production. Não existem `acompanhantesex.com/*`, wildcard, Custom Domain, `www.../api/*`, `run_worker_first=true` ou `workers.dev`. O host www é tratado antes por Redirect Rule.
+Somente `imobiliarista.net/api/*` em root/production. Não existem `imobiliarista.net/*`, wildcard, Custom Domain, `www.../api/*`, `run_worker_first=true` ou `workers.dev`. O host www é tratado antes por Redirect Rule.
 
 ## E. D1 público atual
 
@@ -37,12 +37,12 @@ Anteriormente havia um lookup por mídia pública (`M` imagens → `M` reads). A
 **Decisão única: Pages + R2 Custom Domains/Cache + origem estática wildcard + Worker API-only.**
 
 - Portal e assets: Pages, build GitHub de `public/`.
-- JSONs: `acts-dados` em `dados.acompanhantesex.com`.
-- Mídias: `acts-midias` em `media.acompanhantesex.com`.
-- Wildcard: DNS/Origin/Rewrite Rules servem o mesmo shell, sem Worker; browser lê hostname e `/minisites/<slug>.json`.
+- JSONs: `acts-dados` em `dados.imobiliarista.net`.
+- Mídias: `acts-midias` em `media.imobiliarista.net`.
+- Wildcard: DNS/Origin/Rewrite Rules servem o mesmo shell, sem Worker; browser lê hostname e `/tenants/<slug>/profile.json`.
 - WWW: Redirect Rule 308 ao apex, preservando path/query; nunca serve conteúdo.
 - Blogger: browser fetch, parse e DOM seguro; falha de CORS omite seção, sem proxy.
-- Worker: somente `https://acompanhantesex.com/api/*` e Queue consumer.
+- Worker: somente `https://imobiliarista.net/api/*` e Queue consumer.
 
 ## G. Pages
 
@@ -58,11 +58,11 @@ Planejar `dados`→`acts-dados` e `media`→`acts-midias`; nunca `r2.dev`. GET/H
 
 ## J. Wildcard
 
-`*.acompanhantesex.com` cobre exatamente um label. Não cobre automaticamente `www.<slug>`, que exigiria `*.*`, certificado/origem adicionais e não faz parte do produto. Hosts oficiais são somente `<slug>.acompanhantesex.com`.
+`*.imobiliarista.net` cobre exatamente um label. Não cobre automaticamente `www.<slug>`, que exigiria `*.*`, certificado/origem adicionais e não faz parte do produto. Hosts oficiais são somente `<slug>.imobiliarista.net`.
 
 ## K. Shell minisite
 
-Um HTML, um JS e um CSS atendem todos os clientes. JS valida o primeiro label e busca `https://dados.acompanhantesex.com/minisites/<slug>.json`. Rules só escolhem shell constante; não derivam key por hostname.
+Um HTML, um JS e um CSS atendem todos os clientes. JS valida o primeiro label e busca `https://dados.imobiliarista.net/tenants/<slug>/profile.json`. Rules só escolhem shell constante; não derivam key por hostname.
 
 ## L. Blogger client-side
 
@@ -70,11 +70,11 @@ Publisher expõe apenas `bloggerFeedUrl`; não faz fetch externo. Browser tenta 
 
 ## M. Regra WWW
 
-`www.acompanhantesex.com` é entrada de Redirect Rule, nunca host canônico/origem/API. Regra 308 e testes operacionais exatos estão no roteiro Dashboard. `www/api/me` redireciona primeiro e só a nova requisição ao apex pode casar Worker.
+`www.imobiliarista.net` é entrada de Redirect Rule, nunca host canônico/origem/API. Regra 308 e testes operacionais exatos estão no roteiro Dashboard. `www/api/me` redireciona primeiro e só a nova requisição ao apex pode casar Worker.
 
 ## N. Canonical SEO
 
-Home usa canonical apex sem www; minisite materializado usa `<slug>.acompanhantesex.com`. Código, HTML e projeções geradas são testados contra `https://www.acompanhantesex.com`. Estratégia: home estática; cidade/perfil e minisites SEO prioritários recebem HTML materializado incremental pelo publisher. Shell+JSON permanece fallback. Nunca SSR por request.
+Home usa canonical apex sem www; minisite materializado usa `<slug>.imobiliarista.net`. Código, HTML e projeções geradas são testados contra `https://www.imobiliarista.net`. Estratégia: home estática; cidade/perfil e minisites SEO prioritários recebem HTML materializado incremental pelo publisher. Shell+JSON permanece fallback. Nunca SSR por request.
 
 ## O. Antes × Depois
 

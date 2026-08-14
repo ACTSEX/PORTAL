@@ -12,7 +12,7 @@ import { createBoosts, BoostsError } from '../business/boosts.js';
 import { resolvePremiumEligibility } from '../business/plans.js';
 import { AdminError, createAdminOperations, requireAdmin } from '../business/admin.js';
 
-const API_HOSTS = new Set(['acompanhantesex.com', 'localhost', '127.0.0.1']);
+const API_HOSTS = new Set(['imobiliarista.net', 'localhost', '127.0.0.1']);
 const CONTENT_SECURITY_POLICY = "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https: data:; media-src 'self' https:; connect-src 'self'; font-src 'self'; upgrade-insecure-requests";
 const PROFILE_FIELDS = new Set(['displayName', 'bio', 'phone', 'website', 'instagram', 'whatsapp']);
 const MEDIA_ID = /^med_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -24,7 +24,7 @@ function hardened(response, url) {
   headers.set('referrer-policy', 'strict-origin-when-cross-origin');
   headers.set('permissions-policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
   headers.set('content-security-policy', CONTENT_SECURITY_POLICY);
-  if (url.protocol === 'https:' && (url.hostname === 'acompanhantesex.com' || url.hostname.endsWith('.acompanhantesex.com'))) {
+  if (url.protocol === 'https:' && (url.hostname === 'imobiliarista.net' || url.hostname.endsWith('.imobiliarista.net'))) {
     headers.set('strict-transport-security', 'max-age=31536000; includeSubDomains');
   }
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
@@ -83,7 +83,7 @@ async function ownData(db, user) {
   return { user: { id: user.id, email: user.email }, profile: profile ? { displayName: profile.display_name, bio: profile.bio, phone: profile.phone, website: profile.website_url, instagram: social.instagram ?? null, whatsapp: social.whatsapp ?? null } : null, plan: eligibility.premium || subscription?.code?.toLowerCase() === 'premium' ? 'PREMIUM' : (subscription?.code?.toUpperCase() ?? 'STANDARD'), blogger: blogger ? { url: blogger.url, status: blogger.status, lastSyncAt: blogger.last_synced_at, syncError: Boolean(blogger.last_error_code) } : null };
 }
 
-const mediaView = (row) => ({ id: row.id, url: `https://media.acompanhantesex.com/${row.r2_key}`, mimeType: row.mime_type, size: row.byte_size, position: row.sort_order });
+const mediaView = (row) => ({ id: row.id, url: `https://media.imobiliarista.net/${row.r2_key}`, mimeType: row.mime_type, size: row.byte_size, position: row.sort_order });
 async function publicationTarget(db, userId) {
   return db.first("SELECT id, slug FROM listings WHERE owner_id = ? AND status = 'published' ORDER BY id LIMIT 1", [userId]);
 }
@@ -212,7 +212,7 @@ async function apiResponse(request, env, url) {
       } });
       const result = await upload.upload({ mimeType: file.type, file }, { userId: identity.user.id });
       await scheduleMediaPublication(app, listing);
-      return apiJson({ media: { id: result.media.id, url: `https://media.acompanhantesex.com/${result.media.r2Key}`, mimeType: result.mimeType, size: result.byteSize, position: 0 }, publicationScheduled: Boolean(listing) }, 201);
+      return apiJson({ media: { id: result.media.id, url: `https://media.imobiliarista.net/${result.media.r2Key}`, mimeType: result.mimeType, size: result.byteSize, position: 0 }, publicationScheduled: Boolean(listing) }, 201);
     }
     const deleteMedia = url.pathname.match(/^\/api\/me\/media\/(med_[0-9a-f-]+)$/i);
     if (deleteMedia && request.method === 'DELETE') {

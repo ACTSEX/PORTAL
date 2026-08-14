@@ -15,13 +15,13 @@ O workflow passa esses valores somente como variáveis protegidas ao Wrangler. N
 
 ### Permissões mínimas do token Cloudflare
 
-Crie um API Token limitado à conta do ACTS e, quando aplicável, à zone `acompanhantesex.com`. Para as operações presentes no workflow e os bindings declarados pelo deploy, habilite:
+Crie um API Token limitado à conta do ACTS e, quando aplicável, à zone `imobiliarista.net`. Para as operações presentes no workflow e os bindings declarados pelo deploy, habilite:
 
 - **Account → Workers Scripts → Edit**, para publicar o Worker `portal`;
 - **Account → D1 → Edit**, necessário para listar/aplicar migrations e exportar `portal-db`;
 - **Account → Workers R2 Storage → Edit**, porque o deploy valida/configura os bindings R2 `acts-dados` e `acts-midias` do script;
 - **Account → Workers Queues → Edit**, porque o deploy valida/configura producer e consumer da Queue `acts-queues`;
-- **Zone → Workers Routes → Edit**, restrito à zone `acompanhantesex.com`, porque o `wrangler deploy` reconcilia as rotas de produção declaradas no projeto;
+- **Zone → Workers Routes → Edit**, restrito à zone `imobiliarista.net`, porque o `wrangler deploy` reconcilia as rotas de produção declaradas no projeto;
 - **Zone → Zone → Read**, restrito à mesma zone, para que o Wrangler localize a zone usada pela rota wildcard.
 
 Não conceda permissões globais de administração, KV, Pages, DNS ou acesso a outras contas/zones. Se a interface da Cloudflare apresentar nomenclatura diferente, confira a documentação vigente de permissões de API Tokens antes de criar o token; não substitua o token por uma Global API Key.

@@ -32,7 +32,7 @@ test('consumer handles city, profile, mixed batches and coalesces each aggregate
   await app.consume(messages);
   assert.equal(app.calls.profile, 1); assert.equal(app.calls.city, 2); // explicit city plus profile's affected city
   assert.equal(app.bucket.writes.filter((key) => key === 'cities/londrina.json').length, 2);
-  assert.equal(app.bucket.writes.filter((key) => key === 'minisites/ana.json').length, 1);
+  assert.equal(app.bucket.writes.filter((key) => key === 'tenants/ana/profile.json').length, 1);
   assert.equal(messages.every((item) => item.state.ack === 1 && item.state.retry === 0), true);
 });
 
@@ -45,7 +45,7 @@ test('invalid messages are acknowledged while D1 and R2 transient failures retry
 });
 
 test('PREMIUM publishes while STANDARD, suspended and missing profiles remove the canonical key', async () => {
-  for (const [source, expected] of [[profile(), 'minisites/ana.json'], [profile({ premium: false }), 'DELETE:minisites/ana.json'], [profile({ suspended: true }), 'DELETE:minisites/ana.json'], [null, 'DELETE:minisites/ana.json']]) {
+  for (const [source, expected] of [[profile(), 'tenants/ana/profile.json'], [profile({ premium: false }), 'DELETE:tenants/ana/profile.json'], [profile({ suspended: true }), 'DELETE:tenants/ana/profile.json'], [null, 'DELETE:tenants/ana/profile.json']]) {
     const app = setup({ source }); await app.consume([message(request('profile', 'listing_1', 'ana'))]); assert.equal(app.bucket.writes.includes(expected), true);
   }
 });
@@ -54,9 +54,9 @@ test('redelivery overwrites the same canonical resources without structural dupl
   const app = setup();
   await app.consume([message(request('city', 'city_1', 'londrina')), message(request('profile', 'listing_1', 'ana'))]);
   await app.consume([message(request('city', 'city_1', 'londrina')), message(request('profile', 'listing_1', 'ana'))]);
-  assert.deepEqual([...app.bucket.values.keys()].sort(), ['cities/londrina.json', 'minisites/ana.json']);
+  assert.deepEqual([...app.bucket.values.keys()].sort(), ['cities/londrina.json', 'tenants/ana/profile.json']);
   assert.equal(JSON.parse(app.bucket.values.get('cities/londrina.json')).slug, 'londrina');
-  assert.equal(JSON.parse(app.bucket.values.get('minisites/ana.json')).slug, 'ana');
+  assert.equal(JSON.parse(app.bucket.values.get('tenants/ana/profile.json')).slug, 'ana');
 });
 
 test('Worker Queue integration reads a D1 fake and writes city/profile through the canonical publisher', async () => {
@@ -72,9 +72,9 @@ test('Worker Queue integration reads a D1 fake and writes city/profile through t
   const ACTS_DATA = { async put(key, body) { objects.set(key, body); return { key }; }, async delete(key) { objects.delete(key); }, async get() { return null; }, async head() { return null; } };
   const messages = [message(request('city', 'city_1', 'londrina')), message(request('profile', 'listing_1', 'ana'))];
   await worker.queue({ messages }, { ACTS_DB, ACTS_DATA, ENVIRONMENT: 'test' });
-  assert.deepEqual([...objects.keys()].sort(), ['cities/londrina.json', 'minisites/ana.json']);
+  assert.deepEqual([...objects.keys()].sort(), ['cities/londrina.json', 'tenants/ana/profile.json']);
   assert.equal(JSON.parse(objects.get('cities/londrina.json')).slug, 'londrina');
-  assert.equal(JSON.parse(objects.get('minisites/ana.json')).premium, true);
-  assert.deepEqual(JSON.parse(objects.get('minisites/ana.json')).gallery, [{ id: 'med_123', url: 'https://media.acompanhantesex.com/users/u/listings/l/images/key.webp' }]);
+  assert.equal(JSON.parse(objects.get('tenants/ana/profile.json')).premium, true);
+  assert.deepEqual(JSON.parse(objects.get('tenants/ana/profile.json')).gallery, [{ id: 'med_123', url: 'https://media.imobiliarista.net/users/u/listings/l/images/key.webp' }]);
   assert.equal(messages.every((item) => item.state.ack === 1), true);
 });

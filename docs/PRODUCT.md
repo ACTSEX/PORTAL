@@ -67,7 +67,7 @@ Existem somente os planos estruturais abaixo:
 
 ## Minisites e Blogger
 
-- Minisite é vitrine ACTS virtual e compartilhada em `{slug}.acompanhantesex.com`, exclusiva do PREMIUM. Não existe aplicação, pasta ou assets por anunciante.
+- Minisite é vitrine ACTS virtual e compartilhada em `{slug}.imobiliarista.net`, exclusiva do PREMIUM. Não existe aplicação, pasta ou assets por anunciante.
 - O minisite usa a projeção pública ACTS. STANDARD não publica minisite/subdomínio nem configuração Blogger.
 - Blogger e Conta Google pertencem à anunciante. Posts, fotos, vídeos e histórico permanecem no provedor; ACTS não é CMS, proprietário, backup ou repositório desse acervo.
 - Integração Blogger é planejada como `feed público → navegador → parsing/sanitização/normalização → DOM seguro`. Não há proxy, import, sync, D1, R2, Queue, Cron ou evento editorial no backend.

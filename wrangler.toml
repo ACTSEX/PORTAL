@@ -4,8 +4,8 @@ compatibility_date = "2026-07-31"
 workers_dev = false
 
 [[routes]]
-pattern = "acompanhantesex.com/api/*"
-zone_name = "acompanhantesex.com"
+pattern = "imobiliarista.net/api/*"
+zone_name = "imobiliarista.net"
 
 [[d1_databases]]
 binding = "ACTS_DB"
@@ -82,8 +82,8 @@ queue = "acts-queues"
 name = "portal"
 
 [[env.production.routes]]
-pattern = "acompanhantesex.com/api/*"
-zone_name = "acompanhantesex.com"
+pattern = "imobiliarista.net/api/*"
+zone_name = "imobiliarista.net"
 
 [[env.production.d1_databases]]
 binding = "ACTS_DB"

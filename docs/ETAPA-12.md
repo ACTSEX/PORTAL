@@ -29,8 +29,8 @@ Data da execução: 2026-08-14 (UTC).
 
 ## D. Host routing
 
-- Apex reconhecido: `acompanhantesex.com`; `www` permanece reconhecido pelo código, mas não há rota `www` declarada no Wrangler.
-- Wildcard declarado: `*.acompanhantesex.com/*`.
+- Apex reconhecido: `imobiliarista.net`; `www` permanece reconhecido pelo código, mas não há rota `www` declarada no Wrangler.
+- Wildcard declarado: `*.imobiliarista.net/*`.
 - Host de minisite aceita somente `/`, asset próprio de minisite e mídia pública necessária. `/admin`, `/painel`, `/api/me`, `/api/admin/*` e assets administrativos retornam 404 no backend.
 
 ## E. Bindings
@@ -67,8 +67,8 @@ Executado com Node 22 e Wrangler 4.123.0: aprovado. Bundle de 744,72 KiB (184,33
 
 ## K. Rotas de produção
 
-- `acompanhantesex.com`: não validado deste ambiente; o proxy de saída recusou o túnel HTTPS com 403 antes de alcançar o domínio.
-- `*.acompanhantesex.com`: não validado pelo mesmo bloqueio.
+- `imobiliarista.net`: não validado deste ambiente; o proxy de saída recusou o túnel HTTPS com 403 antes de alcançar o domínio.
+- `*.imobiliarista.net`: não validado pelo mesmo bloqueio.
 - A configuração e os testes locais são evidência de intenção, não prova de roteamento operacional.
 
 ## L. Smoke tests
@@ -100,7 +100,7 @@ Foram verificados: isolamento de host no backend; cache privado; CSP/headers; co
 
 - Configurar autenticação Cloudflare de menor privilégio; listar migrations; exportar backup; confirmar recursos/secrets; aplicar apenas migrations oficiais pendentes; executar queries estruturais read-only; refazer gates; deploy; validar rotas e smoke completo.
 - Configurar/verificar remote GitHub e autenticação, publicar a branch e abrir PR pelo fluxo oficial.
-- Confirmar se `www.acompanhantesex.com` deve ter rota Cloudflare; o runtime reconhece o host, mas `wrangler.toml` não declara essa rota.
+- Confirmar se `www.imobiliarista.net` deve ter rota Cloudflare; o runtime reconhece o host, mas `wrangler.toml` não declara essa rota.
 - Confirmar isolamento físico: os ambientes nomeados ainda apontam para os mesmos IDs/nomes no arquivo, portanto staging não deve receber escrita até validação externa.
 
 ## Q. Estado do projeto

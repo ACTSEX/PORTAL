@@ -1,4 +1,4 @@
-# ACTS — arquitetura
+# IMOBILIARISTA.NET — arquitetura
 
 ## Admin operacional — OPERACIONAL
 
@@ -8,7 +8,11 @@ Condição comercial, suspensão, reativação e republicação exigem Origin sa
 
 ## Estado oficial
 
-ACTS adota arquitetura **Worker-first**. O Worker `portal` é a entrada HTTP e o ponto de composição do runtime. Pages e Pages Functions não são componentes principais. A implementação mantém as fundações em `core/` e os domínios consolidados em `business/`, com `worker/` como entrada única.
+O IMOBILIARISTA.NET adota arquitetura **edge-first** para audiência e mantém o
+Worker `portal` isolado em `imobiliarista.net/api/*`. Portal, shell compartilhado
+e assets são estáticos; projeções públicas previamente materializadas são lidas
+diretamente dos Custom Domains R2. O Worker continua sendo a entrada das APIs
+privadas e o consumer de publicação, mas nunca a entrada de um pageview público.
 
 ```text
 core/       infraestrutura independente do negócio
@@ -68,8 +72,8 @@ Toda mutação é confirmada no D1 antes de emitir trabalho derivado. Falha de p
 ```text
 transação Business confirmada → evento ACTS_QUEUE → consumer `queue()` do Worker
 → leitura autoritativa D1 → publisher canônico → projeção pública allowlisted e determinística
-→ `cities/{citySlug}.json` ou `profiles/{profileSlug}.json` em ACTS_DATA
-→ Edge Cache → Worker → Portal ou Minisite
+→ `cities/{citySlug}.json` ou `tenants/{profileSlug}/profile.json` em ACTS_DATA
+→ Edge Cache → navegador → Portal ou Minisite
 ```
 
 Cada publicação substitui o objeto canônico. R2 é reconstruível a partir do D1 e
@@ -79,15 +83,19 @@ nunca constitui fonte de verdade.
 ### Leitura pública
 
 ```text
-navegador → Worker/rota pública → Edge Cache
-          → ACTS_DATA em cache miss → resposta cacheável
+navegador → Cloudflare Edge → shell/asset estático
+          → dados.imobiliarista.net → ACTS_DATA em cache miss
+          → renderização/filtro/paginação no navegador
 ```
 
-O Worker continua sendo a entrada oficial, mesmo quando a resposta é satisfeita no Edge. O fluxo é sempre `PUBLIC HTTP → ACTS_DATA`, nunca `PUBLIC HTTP → D1`.
+O fluxo é sempre `PUBLIC HTTP → Edge/R2`, nunca `PUBLIC HTTP → Worker → D1`.
+Objeto ausente responde 404/estado público seguro e jamais dispara publicação.
+
+> Nenhuma feature pública nova pode introduzir banco, Queue ou SSR no pageview sem revisão arquitetural.
 
 ## Projeções públicas
 
-- `profiles/{profileSlug}.json` contém somente o estado público aprovado de um perfil PREMIUM ativo; perda de elegibilidade remove o objeto.
+- `tenants/{profileSlug}/profile.json` contém somente o estado público aprovado de um tenant PREMIUM ativo; perda de elegibilidade remove o objeto.
 - `cities/{citySlug}.json` contém o necessário para cards, descoberta, filtros e ordenação.
 - As keys são estáveis, o conteúdo é substituído e usa TTL curto com revalidação.
 - Dados privados, linhas D1 completas, segredos, auditoria, pagamentos e moderação interna são proibidos nas projeções.
@@ -125,7 +133,7 @@ indicam apenas existência de código:
 | Worker único | **OPERACIONAL** | `worker/index.js` é a única entrada HTTP. |
 | Portal | **OPERACIONAL** | Shell e projeções públicas de cidade são servidos pelo Worker. |
 | Minisite | **OPERACIONAL** | Wildcard oficial lê projeção pública de perfil. |
-| ACTS_DATA | **OPERACIONAL** | O leitor público usa `cities/{slug}.json` e `profiles/{slug}.json`. |
+| ACTS_DATA | **OPERACIONAL** | O leitor público usa `cities/{slug}.json` e `tenants/{slug}/profile.json`. |
 | Edge Cache | **OPERACIONAL** | Cache público fail-open no fluxo de projeções de cidade/perfil. |
 | D1 | **OPERACIONAL** | Consumer assíncrono reconstrói projeções; as rotas públicas não consultam D1. |
 | ACTS_MEDIA / upload de imagens | **OPERACIONAL** | Painel → API autenticada → validação JPEG/PNG/WEBP (10 MB) → ACTS_MEDIA + D1 → ACTS_QUEUE → projeção pública. As imagens são armazenadas como recebidas, inclusive metadados EXIF; não há processamento nesta etapa. |
@@ -145,14 +153,14 @@ Condições `normal`, `trial`, `courtesy`, `promotion` e `temporary_free` são r
 ### Contrato público R2 canônico
 
 Publisher e leitor compartilham as keys centralizadas em
-`business/public-content.js`: `cities/{slug}.json` e `profiles/{slug}.json`.
+`business/public-content.js`: `cities/{slug}.json` e `tenants/{slug}/profile.json`.
 Não há leitura dupla, fallback legado ou consulta D1 no request público.
 
 ## Blogger no minisite — OPERACIONAL
 
 A integração Blogger é exclusiva do plano PREMIUM e mantém o blog sob propriedade do anunciante. O painel persiste somente URL e estado operacional em `blogger_integrations`; posts não são armazenados no D1.
 
-O fluxo canônico é: **Blogger → sync interno pela Queue existente → parser Atom → sanitização allowlist → ProfileProjection → ACTS_DATA (`profiles/{slug}.json`) → Minisite**. A sincronização lê no máximo 10 posts, limita o feed a 512 KiB, usa timeout de 8 segundos e valida cada redirect contra destinos locais, privados, link-local e internos. Domínios personalizados só são aceitos como conteúdo após o feed declarar o gerador Blogger.
+O fluxo canônico é: **Blogger → sync interno pela Queue existente → parser Atom → sanitização allowlist → ProfileProjection → ACTS_DATA (`tenants/{slug}/profile.json`) → Minisite**. A sincronização lê no máximo 10 posts, limita o feed a 512 KiB, usa timeout de 8 segundos e valida cada redirect contra destinos locais, privados, link-local e internos. Domínios personalizados só são aceitos como conteúdo após o feed declarar o gerador Blogger.
 
 O request público do minisite **NÃO consulta Blogger**. Em falha, a mensagem é repetida pela Queue e o objeto válido anterior em ACTS_DATA permanece intacto. A remoção da URL agenda uma nova projeção sem a seção `blog`.
 
