@@ -41,3 +41,10 @@ test('401 clears private state and logout returns to login', () => {
 test('photo flow uploads multipart through the private API, refreshes thumbnails and supports delete', () => {
   assert.match(painelJs, /new FormData/); assert.match(painelJs, /json\('\/api\/me\/media'/); assert.match(painelJs, /method:'POST',body:data/); assert.match(painelJs, /method:'DELETE'/); assert.match(painelJs, /mediaSend.disabled=true/); assert.match(painelJs, /Sua sessão expirou/); assert.doesNotMatch(painelJs, /base64|ACTS_MEDIA/);
 });
+
+test('billing UI supports only PIX and boleto and cannot assert commercial state', () => {
+  const html = painelDocument();
+  assert.match(html, /Plano e pagamento/); assert.match(html, /value="PIX"/); assert.match(html, /value="BOLETO"/); assert.doesNotMatch(html, /CREDIT_CARD|CVV|PAN/);
+  assert.match(painelJs, /json\('\/api\/me\/billing'/); assert.match(painelJs, /json\('\/api\/me\/billing\/checkout'/);
+  assert.match(painelJs, /idempotency-key/); assert.match(painelJs, /plan:'PREMIUM'/); assert.doesNotMatch(painelJs, /premium=true|subscriptionStatus|paymentStatus|ASAAS_API_KEY|ASAAS_WEBHOOK_TOKEN/);
+});

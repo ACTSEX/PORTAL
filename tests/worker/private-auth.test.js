@@ -150,3 +150,12 @@ test('state-changing private endpoints reject missing and cross-site Origin with
   const evil = await request('/api/auth/login', setup.env, { ...mutation('POST', { email: setup.user.email, password: 'correct horse battery staple' }), headers: { origin: 'https://evil.test', 'content-type': 'application/json' } });
   assert.equal(noOrigin.status, 403); assert.equal(evil.status, 403); assert.equal(evil.headers.has('access-control-allow-origin'), false);
 });
+
+test('Asaas webhook is public but fails closed on authentication and malformed payloads', async () => {
+  const setup = environment(); setup.env.ASAAS_WEBHOOK_TOKEN = 'webhook-runtime-secret'; setup.env.ASAAS_API_KEY = 'api-runtime-secret'; setup.env.ASAAS_BASE_URL = 'https://sandbox.asaas.com';
+  const missing = await request('/api/webhooks/asaas', setup.env, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+  const invalid = await request('/api/webhooks/asaas', setup.env, { method: 'POST', headers: { 'content-type': 'application/json', 'asaas-access-token': 'wrong-secret' }, body: '{}' });
+  const malformed = await request('/api/webhooks/asaas', setup.env, { method: 'POST', headers: { 'content-type': 'application/json', 'asaas-access-token': 'webhook-runtime-secret' }, body: '{' });
+  assert.deepEqual([missing.status, invalid.status, malformed.status], [401, 401, 400]);
+  assert.equal(missing.headers.has('access-control-allow-origin'), false);
+});
