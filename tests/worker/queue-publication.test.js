@@ -65,7 +65,7 @@ test('Worker Queue integration reads a D1 fake and writes city/profile through t
     if (sql.includes('FROM cities WHERE')) return { id: 'city_1', slug: 'londrina', public_name: 'Londrina' };
     if (sql.includes('FROM listings l JOIN categories') && sql.includes('WHERE l.city_id')) return [{ id: 'listing_1', slug: 'ana', title: 'Ana', description: 'Apresentação pública longa', attributes_json: '{"tags":["centro"]}', category_slug: 'massagem', display_name: 'Ana', premium: 1 }];
     if (sql.includes('WHERE l.id = ?')) return { id: 'listing_1', slug: 'ana', title: 'Ana', description: 'Apresentação pública longa', attributes_json: '{}', city_id: 'city_1', display_name: 'Ana', bio: 'Perfil público', social_links_json: '{}', user_status: 'active', city_slug: 'londrina', city_name: 'Londrina', category_slug: 'massagem', premium: 1 };
-    if (sql.includes('SELECT r2_key FROM media')) return [];
+    if (sql.includes('SELECT id FROM media')) return [{ id: 'med_123' }];
     throw new Error(`Unexpected SQL: ${sql}`);
   };
   const ACTS_DB = { batch: async () => [], prepare(sql) { return { bind() { return { async first() { const value = rows(sql); return Array.isArray(value) ? value[0] : value; }, async all() { const value = rows(sql); return { success: true, results: Array.isArray(value) ? value : value ? [value] : [] }; } }; } }; } };
@@ -75,5 +75,6 @@ test('Worker Queue integration reads a D1 fake and writes city/profile through t
   assert.deepEqual([...objects.keys()].sort(), ['cities/londrina.json', 'profiles/ana.json']);
   assert.equal(JSON.parse(objects.get('cities/londrina.json')).slug, 'londrina');
   assert.equal(JSON.parse(objects.get('profiles/ana.json')).premium, true);
+  assert.deepEqual(JSON.parse(objects.get('profiles/ana.json')).gallery, [{ id: 'med_123', url: '/media/med_123' }]);
   assert.equal(messages.every((item) => item.state.ack === 1), true);
 });

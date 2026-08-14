@@ -122,7 +122,7 @@ indicam apenas existência de código:
 | ACTS_DATA | **OPERACIONAL** | O leitor público usa `cities/{slug}.json` e `profiles/{slug}.json`. |
 | Edge Cache | **OPERACIONAL** | Cache público fail-open no fluxo de projeções de cidade/perfil. |
 | D1 | **OPERACIONAL** | Consumer assíncrono reconstrói projeções; as rotas públicas não consultam D1. |
-| ACTS_MEDIA | **PLANEJADO** | Binding configurado, sem fluxo HTTP de mídia/upload integrado. |
+| ACTS_MEDIA / upload de imagens | **OPERACIONAL** | Painel → API autenticada → validação JPEG/PNG/WEBP (10 MB) → ACTS_MEDIA + D1 → ACTS_QUEUE → projeção pública. As imagens são armazenadas como recebidas, inclusive metadados EXIF; não há processamento nesta etapa. |
 | Queue | **OPERACIONAL** | Producer e consumer do Worker transportam pedidos mínimos de city/profile. |
 | Publicação assíncrona | **OPERACIONAL** | Queue → D1 → publisher canônico → ACTS_DATA, com coalescência por batch. |
 | Autenticação | **OPERACIONAL** | Sessões D1 via cookie HttpOnly protegem as APIs privadas do anunciante. |
