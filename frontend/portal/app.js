@@ -4,14 +4,14 @@ const home={title:document.title,nodes:[...app.childNodes]};
 const cityCache=new Map();
 const slugify=value=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const label=value=>String(value||'').replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
-const list=data=>Array.isArray(data?.listings)?data.listings:Array.isArray(data?.ads)?data.ads:Array.isArray(data?.anuncios)?data.anuncios:[];
+const list=data=>Array.isArray(data?.listings)?data.listings:[];
 const field=(item,...names)=>names.map(n=>item?.[n]).find(v=>v!==undefined&&v!==null);
 const array=(item,...names)=>{const value=field(item,...names);return Array.isArray(value)?value:[]};
-const directory=item=>String(field(item,'directory','dir','diretorio','listingType')||'').toLowerCase();
-const category=item=>String(field(item,'category','categoria','categorySlug','categoryId')||'');
+const directory=item=>String(item?.directory||'').toLowerCase();
+const category=item=>String(item?.category||'');
 const tags=item=>array(item,'tags').map(String);
 const itemSlug=item=>String(field(item,'slug')||'');
-const cityName=data=>field(data?.city||{},'name','nome')||field(data,'cityName','cidade')||label(current().city);
+const cityName=data=>data?.name||label(current().city);
 const current=()=>{const p=location.pathname.split('/').filter(Boolean);return{city:p[0]||'',dir:/^dir[123]$/.test(p[1])?p[1]:'',detail:p[1]==='anuncio'?p[2]:''}};
 async function loadCity(city){if(cityCache.has(city))return cityCache.get(city);const promise=fetch('/data/cities/'+encodeURIComponent(city)).then(async r=>{if(r.status===404)return{city:{slug:city,name:label(city)},listings:[],missing:true};if(!r.ok)throw new Error('Não foi possível carregar os anúncios.');return r.json()});cityCache.set(city,promise);try{return await promise}catch(e){cityCache.delete(city);throw e}}
 function el(tag,attrs={},children=[]){const node=document.createElement(tag);for(const[k,v]of Object.entries(attrs)){if(k==='class')node.className=v;else if(k==='text')node.textContent=v;else if(k.startsWith('data-'))node.setAttribute(k,v);else if(k==='href')node.href=v;else node[k]=v}for(const child of children)node.append(child);return node}

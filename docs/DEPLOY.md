@@ -43,14 +43,14 @@ Nenhum deploy de aplicação aplica migration por efeito colateral. Não implant
 - Testar instalação limpa e evolução a partir do estado anterior.
 - Antes de migration/backfill remoto: confirmar conta, ambiente, database ID sem expô-lo, backup exportável e restauração ensaiada.
 - Backfills são dry-run por padrão, paginados, retomáveis, idempotentes, sem PII no relatório e executados primeiro em staging.
-- Para falha de aplicação, reimplantar versão conhecida. Para derivados, republicar do D1 ou voltar o manifest para objeto íntegro anterior. Para dados, restaurar somente com procedimento ensaiado e autorização explícita.
-- R2 público é derivado; manter retenção suficiente para rollback e remover versões antigas por política, nunca durante a ativação.
+- Para falha de aplicação, reimplantar versão conhecida. Para derivados, republicar do D1. Para dados, restaurar somente com procedimento ensaiado e autorização explícita.
+- R2 público é derivado e cada publicação substitui a projeção canônica correspondente.
 
 ## Queue e cache
 
 Consumers devem validar versão e tamanho, deduplicar, limitar tentativas, usar backoff e registrar falhas definitivas. Ack só após efeito confirmado; reentrega não pode duplicar cobrança nem corromper publicação. Uma rotina de reconciliação pode recuperar diferenças D1/publicação quando necessária, sem substituir o fluxo normal.
 
-Conteúdo de `ACTS_DATA` usa cabeçalhos HTTP e Cloudflare Edge Cache. Objetos versionados admitem cache longo/imutável; manifests/pointers usam cache curto. Validar `HIT`/`MISS`, `ETag`, `Cache-Control`, invalidação e ausência de dados privados. **Não provisionar ou documentar KV como dependência.**
+Conteúdo de `ACTS_DATA` usa cabeçalhos HTTP e Cloudflare Edge Cache. As projeções em keys estáveis usam cache curto e revalidação. Validar `HIT`/`MISS`, `ETag`, `Cache-Control` e ausência de dados privados. **Não provisionar ou documentar KV como dependência.**
 
 ## Segurança operacional
 
@@ -71,7 +71,7 @@ A base mínima por PR é lint + testes afetados + suíte completa quando viável
 - allowlist das projeções e ausência de acesso público ao D1;
 - headers, XSS, SQLi, CSRF, uploads, webhooks e rate limits;
 - upgrade/downgrade, cobrança e smoke das jornadas implementadas;
-- rollback do Worker e de manifests.
+- rollback do Worker e republicação das projeções.
 
 ## Observabilidade e resposta
 

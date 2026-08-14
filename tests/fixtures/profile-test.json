@@ -1,8 +1,14 @@
 {
+  "schemaVersion": 1,
   "slug": "anunciante-teste",
-  "displayName": "Perfil de teste",
-  "city": { "name": "Cidade Teste" },
+  "name": "Perfil de teste",
+  "generatedAt": "2026-08-04T12:00:00.000Z",
+  "city": { "slug": "cidade-teste", "name": "Cidade Teste" },
+  "premium": true,
   "presentation": "Projeção usada apenas em testes locais e automatizados.",
+  "categories": [],
   "services": ["Serviço teste"],
+  "tags": [],
+  "gallery": [],
   "contacts": { "website": "https://example.com" }
 }

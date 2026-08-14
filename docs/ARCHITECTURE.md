@@ -39,7 +39,7 @@ Worker portal
 
 - **D1** contém o estado relacional autoritativo por ambiente.
 - **ACTS_MEDIA** contém mídia oficial e seus derivados autorizados.
-- **ACTS_DATA** contém projeções públicas, catálogos leves, manifests e outros artefatos ACTS reconstruíveis.
+- **ACTS_DATA** contém somente projeções públicas ACTS reconstruíveis, prontas para leitura.
 - **ACTS_QUEUE** transporta trabalho assíncrono que realmente precise de retry ou desacoplamento, sobretudo publicação.
 - **HTTP/Cloudflare Edge Cache** distribui o conteúdo público originado em `acts-dados`; não há duplicação em KV.
 - **KV não faz parte da arquitetura inicial.** Introduzi-lo exige nova decisão arquitetural e caso comprovado.
@@ -57,16 +57,17 @@ cliente → Worker → autenticação/autorização/validação
 
 Toda mutação é confirmada no D1 antes de emitir trabalho derivado. Falha de publicação não desfaz o negócio confirmado.
 
-### Publicação (arquitetura planejada, ainda não integrada)
+### Publicação
 
 ```text
-D1 confirmado → evento/pedido mínimo → ACTS_QUEUE
-→ consumer no Worker → projeção allowlisted e determinística
-→ objeto versionado em ACTS_DATA → confirmação
-→ ativação de manifest/pointer → Edge Cache
+D1/Business → projeção pública allowlisted e determinística
+→ `cities/{citySlug}.json` ou `profiles/{profileSlug}.json` em ACTS_DATA
+→ Edge Cache → Worker → Portal ou Minisite
 ```
 
-Processamento deve ser idempotente, tolerar reentrega, preservar correlação e nunca ativar objeto parcial. Republicação reconstrói derivados a partir do D1. Mudança de cidade em anúncio público atualiza de forma coordenada os catálogos antigo e novo.
+Cada publicação substitui o objeto canônico. R2 é reconstruível a partir do D1 e
+não é banco transacional. A Queue e a publicação assíncrona ficam para a etapa
+seguinte e não há consumer ativo no Worker.
 
 ### Leitura pública
 
@@ -79,11 +80,11 @@ O Worker continua sendo a entrada oficial, mesmo quando a resposta é satisfeita
 
 ## Projeções públicas
 
-- Uma projeção JSON pequena por anunciante contém apenas estado público ACTS aprovado.
-- Um catálogo municipal leve contém o necessário para cards, descoberta, filtros, ordenação e localização da projeção individual.
-- Objetos de conteúdo são imutáveis/versionados; manifest ou pointer estável só muda após verificação do novo objeto.
+- `profiles/{profileSlug}.json` contém somente o estado público aprovado de um perfil PREMIUM ativo; perda de elegibilidade remove o objeto.
+- `cities/{citySlug}.json` contém o necessário para cards, descoberta, filtros e ordenação.
+- As keys são estáveis, o conteúdo é substituído e usa TTL curto com revalidação.
 - Dados privados, linhas D1 completas, segredos, auditoria, pagamentos e moderação interna são proibidos nas projeções.
-- Cache HTTP longo pode ser usado para objetos imutáveis; pointers usam TTL curto e revalidação. TTLs exatos dependem de medição operacional.
+- O cache HTTP usa TTL curto; TTLs exatos podem ser ajustados por medição operacional.
 
 ## Modularização e integração
 
@@ -130,14 +131,8 @@ indicam apenas existência de código:
 | Blogger | **PLANEJADO** | Sem integração funcional. |
 | Boosts | **PLANEJADO** | Sem implementação de domínio; marcação visual existente não constitui o produto. |
 
-### Incompatibilidade conhecida do contrato R2
+### Contrato público R2 canônico
 
-O contrato **não será conciliado nesta etapa**. O leitor em
-`business/public-content.js`, chamado por `worker/index.js` e coberto por
-`tests/worker/public-site.test.js`, procura `cities/{slug}.json` e
-`profiles/{slug}.json`. Já o publisher em `business/publishing.js`, coberto por
-`tests/business/publishing.test.js`, grava
-`cidades/{slug}/catalogo-vNNNNNN.json` e `cidades/{slug}/manifest.json` e ainda
-não publica projeção de perfil. Portanto, o publisher isolado não abastece o
-leitor operacional. Keys, formatos, compatibilidade e migração deverão ser
-decididos juntos antes de conectar o consumer da Queue.
+Publisher e leitor compartilham as keys centralizadas em
+`business/public-content.js`: `cities/{slug}.json` e `profiles/{slug}.json`.
+Não há leitura dupla, fallback legado ou consulta D1 no request público.

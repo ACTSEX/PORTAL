@@ -1,9 +1,14 @@
 {
-  "schemaVersion": "1.0",
-  "city": { "slug": "cidade-teste", "name": "Cidade Teste" },
+  "schemaVersion": 1,
+  "slug": "cidade-teste",
+  "name": "Cidade Teste",
+  "generatedAt": "2026-08-04T12:00:00.000Z",
+  "directories": ["dir1", "dir2", "dir3"],
+  "categories": ["cat1", "cat3", "cat8"],
+  "tags": ["massagem", "centro"],
   "listings": [
-    { "slug": "anunciante-teste", "displayName": "Perfil de teste", "directory": "dir1", "category": "cat1", "tags": ["massagem", "centro"], "publicAge": 25, "shortCall": "Fixture automatizada", "premium": true, "featured": true },
-    { "slug": "perfil-dir2", "displayName": "Perfil DIR2", "directory": "dir2", "category": "cat3", "tags": ["centro"] },
-    { "slug": "perfil-dir3", "displayName": "Perfil DIR3", "directory": "dir3", "category": "cat8", "tags": ["massagem"] }
+    { "id": "listing_1", "slug": "anunciante-teste", "profileSlug": "anunciante-teste", "name": "Perfil de teste", "directory": "dir1", "category": "cat1", "tags": ["massagem", "centro"], "publicAge": 25, "shortCall": "Fixture automatizada", "premium": true, "featured": true },
+    { "id": "listing_2", "slug": "perfil-dir2", "profileSlug": "perfil-dir2", "name": "Perfil DIR2", "directory": "dir2", "category": "cat3", "tags": ["centro"] },
+    { "id": "listing_3", "slug": "perfil-dir3", "profileSlug": "perfil-dir3", "name": "Perfil DIR3", "directory": "dir3", "category": "cat8", "tags": ["massagem"] }
   ]
 }
