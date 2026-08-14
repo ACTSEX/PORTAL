@@ -47,3 +47,18 @@ export function createPlans(options) {
   async function listPublic() { const result = await db.all('SELECT * FROM plans WHERE active = ? ORDER BY price_minor, code', [1]); return Object.freeze(result.results.map(view)); }
   return Object.freeze({ create, getById, update, activate: (idValue, ctx) => setActive(idValue, true, ctx), deactivate: (idValue, ctx) => setActive(idValue, false, ctx), listPublic, toPublic: view });
 }
+
+/** One authoritative decision for paid and time-bound commercial PREMIUM access. */
+export async function resolvePremiumEligibility(db, userId, { clock = () => new Date() } = {}) {
+  if (!db?.first || typeof userId !== 'string' || !userId) throw new TypeError('Invalid eligibility input');
+  const now = clock().toISOString();
+  const row = await db.first(`SELECT u.status,
+    EXISTS(SELECT 1 FROM subscriptions s JOIN plans p ON p.id = s.plan_id
+      WHERE s.user_id = u.id AND s.status = 'active' AND p.active = 1 AND lower(p.code) = 'premium') AS paid_premium,
+    EXISTS(SELECT 1 FROM commercial_conditions cc WHERE cc.user_id = u.id
+      AND cc.status IN ('active','scheduled') AND cc.type IN ('trial','courtesy','promotion','temporary_free')
+      AND cc.starts_at <= ? AND (cc.ends_at IS NULL OR cc.ends_at > ?)) AS commercial_premium
+    FROM users u WHERE u.id = ?`, [now, now, userId]);
+  return Object.freeze({ premium: row?.status === 'active' && (Boolean(row.paid_premium) || Boolean(row.commercial_premium)),
+    paid: Boolean(row?.paid_premium), commercial: Boolean(row?.commercial_premium), accountStatus: row?.status ?? null });
+}

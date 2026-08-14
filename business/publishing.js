@@ -235,14 +235,14 @@ export function createPublicationReader({ db, fetcher = globalThis.fetch, clock 
     if (!city) throw new Error('Authoritative city not found');
     const rows = (await db.all(`SELECT l.id, l.slug, l.title, l.description, l.attributes_json, c.slug AS category_slug,
       p.user_id AS profile_id, p.display_name, p.bio, m.id AS cover_media_id,
-      CASE WHEN s.id IS NOT NULL AND lower(pl.code) = 'premium' AND u.status = 'active' THEN 1 ELSE 0 END AS premium,
+      CASE WHEN u.status = 'active' AND ((s.id IS NOT NULL AND lower(pl.code) = 'premium') OR EXISTS(SELECT 1 FROM commercial_conditions cc WHERE cc.user_id=u.id AND cc.status IN ('active','scheduled') AND cc.type IN ('trial','courtesy','promotion','temporary_free') AND cc.starts_at<=? AND (cc.ends_at IS NULL OR cc.ends_at>?))) THEN 1 ELSE 0 END AS premium,
       (SELECT MAX(b.ends_at) FROM boosts b WHERE b.listing_id = l.id AND b.status = 'active' AND b.starts_at <= ? AND b.ends_at > ?) AS boost_ends_at
       FROM listings l JOIN categories c ON c.id = l.category_id JOIN users u ON u.id = l.owner_id
       LEFT JOIN profiles p ON p.user_id = l.owner_id
       LEFT JOIN subscriptions s ON s.user_id = l.owner_id AND s.status = 'active'
       LEFT JOIN plans pl ON pl.id = s.plan_id AND pl.active = 1
       LEFT JOIN media m ON m.id = (SELECT id FROM media WHERE listing_id = l.id AND media_type = 'image' ORDER BY sort_order, id LIMIT 1)
-      WHERE l.city_id = ? AND l.status = 'published' ORDER BY boost_ends_at IS NULL, premium DESC, l.id`, [clock().toISOString(), clock().toISOString(), cityId])).results;
+      WHERE l.city_id = ? AND l.status = 'published' ORDER BY boost_ends_at IS NULL, premium DESC, l.id`, [clock().toISOString(), clock().toISOString(), clock().toISOString(), clock().toISOString(), cityId])).results;
     const listings = rows.map((row) => ({ id: row.id, slug: row.slug, profileSlug: row.slug, name: row.display_name || row.title, category: row.category_slug, tags: parse(row.attributes_json, '{}').tags ?? [], coverUrl: row.cover_media_id ? `/media/${row.cover_media_id}` : undefined, premium: Boolean(row.premium), boosted: Boolean(row.boost_ends_at), boostEndsAt: row.boost_ends_at ?? undefined, presentation: row.bio || row.description }));
     return { slug: city.slug, name: city.public_name, categories: [...new Set(listings.map((item) => item.category))], tags: [...new Set(listings.flatMap((item) => item.tags))], listings };
   }
@@ -250,13 +250,13 @@ export function createPublicationReader({ db, fetcher = globalThis.fetch, clock 
     const row = await db.first(`SELECT l.id, l.slug, l.title, l.description, l.attributes_json, l.city_id,
       p.display_name, p.bio, p.phone, p.website_url, p.social_links_json, u.status AS user_status, bi.url AS blogger_url,
       c.slug AS city_slug, c.public_name AS city_name, cat.slug AS category_slug,
-      CASE WHEN s.id IS NOT NULL AND pl.code = 'premium' AND pl.active = 1 THEN 1 ELSE 0 END AS premium
+      CASE WHEN (s.id IS NOT NULL AND pl.code = 'premium' AND pl.active = 1) OR EXISTS(SELECT 1 FROM commercial_conditions cc WHERE cc.user_id=u.id AND cc.status IN ('active','scheduled') AND cc.type IN ('trial','courtesy','promotion','temporary_free') AND cc.starts_at<=? AND (cc.ends_at IS NULL OR cc.ends_at>?)) THEN 1 ELSE 0 END AS premium
       FROM listings l JOIN users u ON u.id = l.owner_id LEFT JOIN profiles p ON p.user_id = l.owner_id
       LEFT JOIN cities c ON c.id = l.city_id JOIN categories cat ON cat.id = l.category_id
       LEFT JOIN subscriptions s ON s.user_id = l.owner_id AND s.status = 'active'
       LEFT JOIN plans pl ON pl.id = s.plan_id
       LEFT JOIN blogger_integrations bi ON bi.user_id = l.owner_id AND bi.status <> 'disabled'
-      WHERE l.id = ? AND l.slug = ?`, [profileId, profileSlug]);
+      WHERE l.id = ? AND l.slug = ?`, [clock().toISOString(), clock().toISOString(), profileId, profileSlug]);
     if (!row) return null;
     const media = (await db.all("SELECT id FROM media WHERE listing_id = ? AND media_type = 'image' ORDER BY sort_order, id", [profileId])).results.map((item) => ({ id: item.id, url: `/media/${item.id}` }));
     const attributes = parse(row.attributes_json, '{}'); const social = parse(row.social_links_json, '{}');

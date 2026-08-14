@@ -11,19 +11,21 @@ const paymentMigrationPath = 'database/migrations/0002_payment_event_ordering.sq
 const cityMigrationPath = 'database/migrations/0003_city_publication_state.sql';
 const bloggerMigrationPath = 'database/migrations/0004_blogger_integrations.sql';
 const boostMigrationPath = 'database/migrations/0005_paid_boosts.sql';
+const adminMigrationPath = 'database/migrations/0006_admin_audit.sql';
 const schema = readFileSync(schemaPath, 'utf8');
 const migration = readFileSync(migrationPath, 'utf8');
 const paymentMigration = readFileSync(paymentMigrationPath, 'utf8');
 const cityMigration = readFileSync(cityMigrationPath, 'utf8');
 const bloggerMigration = readFileSync(bloggerMigrationPath, 'utf8');
 const boostMigration = readFileSync(boostMigrationPath, 'utf8');
+const adminMigration = readFileSync(adminMigrationPath, 'utf8');
 const expectedTables = [
-  'blogger_integrations', 'boosts', 'commercial_conditions', 'categories', 'cities', 'city_publication_state', 'comparisons', 'contacts', 'favorites', 'idempotency_records',
+  'admin_audit', 'blogger_integrations', 'boosts', 'commercial_conditions', 'categories', 'cities', 'city_publication_state', 'comparisons', 'contacts', 'favorites', 'idempotency_records',
   'integrations', 'leads', 'listings', 'media', 'notifications', 'payments',
   'plans', 'profiles', 'publication_jobs', 'real_estate_professionals', 'reviews',
   'sessions', 'settings', 'subscriptions', 'users'
 ];
-const initialTables = expectedTables.filter(table => !['cities', 'city_publication_state', 'blogger_integrations', 'boosts', 'commercial_conditions'].includes(table));
+const initialTables = expectedTables.filter(table => !['admin_audit', 'cities', 'city_publication_state', 'blogger_integrations', 'boosts', 'commercial_conditions'].includes(table));
 
 function sqlite(database, sql) {
   return execFileSync('sqlite3', ['-batch', '-bail', database], {
@@ -53,7 +55,7 @@ test('canonical schema and versioned migrations are present and complete', () =>
   assert.equal((schema.match(/CREATE TABLE /g) ?? []).length, expectedTables.length);
 });
 
-const evolvedSchema = `${migration}\n${paymentMigration}\n${cityMigration}\n${bloggerMigration}\n${boostMigration}`;
+const evolvedSchema = `${migration}\n${paymentMigration}\n${cityMigration}\n${bloggerMigration}\n${boostMigration}\n${adminMigration}`;
 const cityInsert = `INSERT INTO cities (
   id,country_code,region_key,city_key,canonical_key,public_name,slug,canonicalization_version
 ) VALUES ('city-opaque-00000001','BR','parana','londrina','BR|parana|londrina','Londrina','br-parana-londrina','unicode-17.0.0-v1');`;
@@ -81,7 +83,7 @@ test('snapshot applies cleanly to real SQLite', () => withDatabase(schema, datab
   assert.equal(lines(database, "SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")[0], String(expectedTables.length));
 }));
 
-test('0001 through 0005 evolve on real SQLite', () => withDatabase(evolvedSchema, database => {
+test('0001 through 0006 evolve on real SQLite', () => withDatabase(evolvedSchema, database => {
   assert.deepEqual(lines(database, "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('blogger_integrations','boosts','commercial_conditions','cities','city_publication_state') ORDER BY name;"), ['blogger_integrations', 'boosts', 'cities', 'city_publication_state', 'commercial_conditions']);
 }));
 
@@ -208,13 +210,13 @@ test('Wrangler uses the official migration directory and applies it idempotently
   const config = readFileSync('wrangler.toml', 'utf8');
   assert.equal((config.match(/^migrations_dir = "database\/migrations"$/gm) ?? []).length, 4);
   assert.deepEqual(execFileSync('find', ['database/migrations', '-maxdepth', '1', '-type', 'f', '-printf', '%f\n'], { encoding: 'utf8' }).trim().split('\n').sort(), [
-    '0001_initial_schema.sql', '0002_payment_event_ordering.sql', '0003_city_publication_state.sql', '0004_blogger_integrations.sql', '0005_paid_boosts.sql'
+    '0001_initial_schema.sql', '0002_payment_event_ordering.sql', '0003_city_publication_state.sql', '0004_blogger_integrations.sql', '0005_paid_boosts.sql', '0006_admin_audit.sql'
   ]);
   const persistence = mkdtempSync(join(tmpdir(), 'acts-wrangler-migrations-'));
   try {
     const command = ['run', 'db:migrate:local', '--', '--persist-to', persistence];
     const first = execFileSync('npm', command, { encoding: 'utf8' });
-    assert.match(first, /0001_initial_schema\.sql/); assert.match(first, /0002_payment_event_ordering\.sql/); assert.match(first, /0003_city_publication_state\.sql/); assert.match(first, /0004_blogger_integrations\.sql/); assert.match(first, /0005_paid_boosts\.sql/);
+    assert.match(first, /0001_initial_schema\.sql/); assert.match(first, /0002_payment_event_ordering\.sql/); assert.match(first, /0003_city_publication_state\.sql/); assert.match(first, /0004_blogger_integrations\.sql/); assert.match(first, /0005_paid_boosts\.sql/); assert.match(first, /0006_admin_audit\.sql/);
     const retry = execFileSync('npm', command, { encoding: 'utf8' }); assert.match(retry, /No migrations to apply/);
     const status = execFileSync('wrangler', ['d1', 'migrations', 'list', 'ACTS_DB', '--local', '--env', 'development', '--persist-to', persistence], { encoding: 'utf8' });
     assert.match(status, /No migrations to apply/); assert.doesNotMatch(status, /ignored/i);

@@ -422,6 +422,16 @@ CREATE TABLE commercial_conditions (
 );
 CREATE INDEX idx_commercial_conditions_user_period ON commercial_conditions(user_id, status, starts_at, ends_at);
 
+CREATE TABLE admin_audit (
+  id TEXT PRIMARY KEY NOT NULL, actor_user_id TEXT NOT NULL, target_user_id TEXT NOT NULL,
+  action TEXT NOT NULL, reason TEXT NOT NULL, before_json TEXT, after_json TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE RESTRICT,
+  FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE RESTRICT,
+  CHECK (json_valid(before_json) OR before_json IS NULL), CHECK (json_valid(after_json))
+);
+CREATE INDEX idx_admin_audit_target_created ON admin_audit(target_user_id, created_at DESC);
+
 CREATE TABLE boosts (
   id TEXT PRIMARY KEY NOT NULL, listing_id TEXT NOT NULL, owner_id TEXT NOT NULL, payment_id TEXT UNIQUE,
   status TEXT NOT NULL CHECK (status IN ('pending_payment','scheduled','active','expired','cancelled')),
