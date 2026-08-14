@@ -6,12 +6,15 @@ import { createSessionAuth, extractSessionToken, hashPassword, sessionCookie, ve
 const origin = 'https://acompanhantesex.com';
 const logger = { debug() {}, info() {}, warn() {}, error() {} };
 
-function environment({ queueFailure = false, writeFailure = false } = {}) {
-  const state = { sessions: new Map(), sent: [], profile: { display_name: 'Ana', bio: 'Original', phone: null, website_url: null, social_links_json: '{}' } };
+function environment({ queueFailure = false, writeFailure = false, mediaWriteFailure = false, mediaPutFailure = false } = {}) {
+  const state = { sessions: new Map(), sent: [], media: new Map(), objects: new Map(), storageCalls: [], profile: { display_name: 'Ana', bio: 'Original', phone: null, website_url: null, social_links_json: '{}' } };
   const user = { id: 'user-000000000001', email: 'ana@example.test', role: 'professional', status: 'active', password_hash: null };
   function result(sql, args) {
     if (sql.includes('FROM users WHERE email')) return user.email.toLowerCase() === String(args[0]).toLowerCase() ? user : null;
     if (sql.includes('FROM sessions s JOIN users')) { const session = state.sessions.get(args[0]); return session ? { session_id: args[0], user_id: user.id, expires_at: session.expires, revoked_at: session.revoked, email: user.email, role: user.role, status: user.status } : null; }
+    if (sql.includes('SELECT user_id FROM profiles')) return { user_id: user.id };
+    if (sql.includes('SELECT r2_key, mime_type FROM media')) { const item=state.media.get(args[0]); return item ? { r2_key:item.r2_key, mime_type:item.mime_type } : null; }
+    if (sql.includes('SELECT id, r2_key FROM media')) { const item=state.media.get(args[0]); return item?.owner_id===args[1] ? item : null; }
     if (sql.includes('SELECT social_links_json FROM profiles')) return { social_links_json: state.profile.social_links_json };
     if (sql.includes('SELECT display_name')) return state.profile;
     if (sql.includes('SELECT pl.code')) return { code: 'premium' };
@@ -20,14 +23,18 @@ function environment({ queueFailure = false, writeFailure = false } = {}) {
   }
   function run(sql, args) {
     if (writeFailure && sql.includes('UPDATE profiles')) throw new Error('D1 unavailable');
+    if (mediaWriteFailure && sql.includes('INSERT INTO media')) throw new Error('D1 unavailable');
+    if (sql.includes('INSERT INTO media')) state.media.set(args[0],{id:args[0],owner_id:args[1],listing_id:args[2],r2_key:args[3],mime_type:args[5],byte_size:args[6],sort_order:args[8]});
+    if (sql.includes('DELETE FROM media')) state.media.delete(args[0]);
     if (sql.includes('INSERT INTO sessions')) state.sessions.set(args[0], { userId: args[1], expires: args[2], revoked: null });
     if (sql.includes('UPDATE sessions')) { const session = state.sessions.get(args[1]); if (session) session.revoked = args[0]; }
     if (sql.includes('UPDATE profiles')) state.profile = { display_name: args[0] ?? state.profile.display_name, bio: args[1] ?? state.profile.bio, phone: args[2] ?? state.profile.phone, website_url: args[3] ?? state.profile.website_url, social_links_json: args[4] };
     return { success: true, meta: { changes: 1 } };
   }
-  const ACTS_DB = { prepare(sql) { return { bind(...args) { return { async first() { return result(sql, args); }, async run() { return run(sql, args); }, async all() { return { success: true, results: [], meta: {} }; } }; } }; }, async batch() { return []; } };
+  const ACTS_DB = { prepare(sql) { return { bind(...args) { return { async first() { return result(sql, args); }, async run() { return run(sql, args); }, async all() { const results=sql.includes('FROM media WHERE owner_id')?[...state.media.values()].filter(item=>item.owner_id===args[0]):[]; return { success: true, results, meta: {} }; } }; } }; }, async batch() { return []; } };
   const ACTS_QUEUE = { async send(message) { if (queueFailure) throw new Error('Queue unavailable'); state.sent.push(message); } };
-  return { env: { ACTS_DB, ACTS_QUEUE, ENVIRONMENT: 'test' }, state, user };
+  const ACTS_MEDIA={async put(key,value,options){state.storageCalls.push({operation:'put',key,value,options});if(mediaPutFailure)throw new Error('R2 unavailable');state.objects.set(key,{key,size:value.byteLength,httpMetadata:options.httpMetadata,customMetadata:options.customMetadata,body:value,etag:'etag'});return state.objects.get(key)},async get(key){return state.objects.get(key)||null},async head(key){return state.objects.get(key)||null},async delete(key){state.storageCalls.push({operation:'delete',key});state.objects.delete(key)}};
+  return { env: { ACTS_DB, ACTS_QUEUE, ACTS_MEDIA, ENVIRONMENT: 'test' }, state, user };
 }
 
 const request = (path, env, options = {}) => worker.fetch(new Request(`${origin}${path}`, options), env);
@@ -115,6 +122,21 @@ test('D1 update failure sends nothing; post-commit Queue failure is reported as 
   assert.equal((await request('/api/me/profile', failedDb.env, mutation('PATCH', { bio: 'Novo' }, dbCookie))).status, 500); assert.equal(failedDb.state.sent.length, 0);
   const failedQueue = environment({ queueFailure: true }); const queueCookie = (await login(failedQueue)).headers.get('set-cookie');
   assert.equal((await request('/api/me/profile', failedQueue.env, mutation('PATCH', { bio: 'Salvo' }, queueCookie))).status, 500); assert.equal(failedQueue.state.profile.bio, 'Salvo');
+});
+
+test('authenticated image upload validates, persists, lists, serves, publishes and deletes owned media', async () => {
+  const setup=environment();const cookie=(await login(setup)).headers.get('set-cookie');const data=new FormData();data.append('file',new File([new Uint8Array([0xff,0xd8,0xff,1])],'ignored.jpg',{type:'image/jpeg'}));
+  const uploaded=await request('/api/me/media',setup.env,{method:'POST',headers:{origin,cookie},body:data});assert.equal(uploaded.status,201);const saved=(await uploaded.json()).media;
+  assert.match(setup.state.storageCalls[0].key,/^profiles\/user-000000000001\/media\/[0-9a-f-]+\.jpg$/);assert.equal(setup.state.storageCalls[0].options.httpMetadata.contentType,'image/jpeg');assert.equal(setup.state.sent.at(-1).reason,'media.updated');
+  setup.state.media.set('med_11111111-1111-4111-8111-111111111111',{id:'med_11111111-1111-4111-8111-111111111111',owner_id:'other-user',r2_key:'profiles/other/media/x.jpg',mime_type:'image/jpeg',byte_size:3,sort_order:0});
+  const listed=await request('/api/me/media',setup.env,{headers:{cookie}});assert.deepEqual((await listed.json()).media,[saved]);assert.equal((await request('/api/me/media/med_11111111-1111-4111-8111-111111111111',setup.env,{method:'DELETE',headers:{origin,cookie}})).status,404);
+  const publicImage=await request(saved.url,setup.env);assert.equal(publicImage.status,200);assert.equal(publicImage.headers.get('x-content-type-options'),'nosniff');assert.match(publicImage.headers.get('cache-control'),/immutable/);
+  const removed=await request('/api/me/media/'+saved.id,setup.env,{method:'DELETE',headers:{origin,cookie}});assert.equal(removed.status,200);assert.equal(setup.state.media.has(saved.id),false);assert.equal(setup.state.media.size,1);assert.equal(setup.state.sent.at(-1).reason,'media.updated');
+});
+
+test('media upload rejects invalid bytes and compensates D1 failure without Queue publication', async()=>{
+  const invalid=environment();const invalidCookie=(await login(invalid)).headers.get('set-cookie');const fake=new FormData();fake.append('file',new File([new Uint8Array([1,2,3])],'fake.jpg',{type:'image/jpeg'}));assert.equal((await request('/api/me/media',invalid.env,{method:'POST',headers:{origin,cookie:invalidCookie},body:fake})).status,400);assert.equal(invalid.state.storageCalls.length,0);
+  const failed=environment({mediaWriteFailure:true});const cookie=(await login(failed)).headers.get('set-cookie');const valid=new FormData();valid.append('file',new File([new Uint8Array([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a])],'x.png',{type:'image/png'}));assert.equal((await request('/api/me/media',failed.env,{method:'POST',headers:{origin,cookie},body:valid})).status,500);assert.deepEqual(failed.state.storageCalls.map(x=>x.operation),['put','delete']);assert.equal(failed.state.sent.length,0);
 });
 
 test('state-changing private endpoints reject missing and cross-site Origin without CORS', async () => {

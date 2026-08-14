@@ -13,11 +13,14 @@ import { createStorage } from '../core/storage.js';
 import { createPublicationConsumer, createPublicationReader, createPublisher } from '../business/publishing.js';
 import { createPublicationQueue } from '../business/publishing.js';
 import { AuthError, createSessionAuth, sessionCookie, validateOrigin, verifyPassword } from '../core/auth.js';
+import { createUpload, UploadError } from '../business/listings.js';
 
 const APEX = new Set(['acompanhantesex.com', 'www.acompanhantesex.com', 'localhost', '127.0.0.1']);
 const JSON_CACHE = 'public, max-age=60, s-maxage=300, stale-while-revalidate=86400';
 const HTML_HEADERS = { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=60, s-maxage=300', 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin' };
 const PROFILE_FIELDS = new Set(['displayName', 'bio', 'phone', 'website', 'instagram', 'whatsapp']);
+const MEDIA_ID = /^med_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const MEDIA_CACHE = 'public, max-age=31536000, immutable';
 
 function runtime(env) {
   const logger = createLogger({ config: { logLevel: 'info', environment: env.ENVIRONMENT ?? 'production', service: 'portal', version: '0.1.0' }, sink: (record, serialized) => (record.level === 'error' ? console.error : console.log)(serialized) });
@@ -36,6 +39,14 @@ async function ownData(db, user) {
     WHERE s.user_id = ? AND s.status = 'active' AND pl.active = 1`, [user.id]);
   let social = {}; try { social = JSON.parse(profile?.social_links_json ?? '{}'); } catch { /* Invalid legacy JSON is not exposed. */ }
   return { user: { id: user.id, email: user.email }, profile: profile ? { displayName: profile.display_name, bio: profile.bio, phone: profile.phone, website: profile.website_url, instagram: social.instagram ?? null, whatsapp: social.whatsapp ?? null } : null, plan: subscription?.code?.toUpperCase() ?? 'STANDARD' };
+}
+
+const mediaView = (row) => ({ id: row.id, url: `/media/${row.id}`, mimeType: row.mime_type, size: row.byte_size, position: row.sort_order });
+async function publicationTarget(db, userId) {
+  return db.first("SELECT id, slug FROM listings WHERE owner_id = ? AND status = 'published' ORDER BY id LIMIT 1", [userId]);
+}
+async function scheduleMediaPublication(app, listing) {
+  if (listing) await app.publications.send({ type: 'PUBLICATION_REQUESTED', entity: 'profile', id: listing.id, slug: listing.slug, reason: 'media.updated', requestedAt: new Date().toISOString() });
 }
 
 async function apiResponse(request, env, url) {
@@ -59,6 +70,38 @@ async function apiResponse(request, env, url) {
     if (request.method === 'GET' && url.pathname === '/api/me') {
       const identity = await app.auth.authenticate(request); return apiJson(await ownData(app.db, identity.user));
     }
+    if (url.pathname === '/api/me/media' && request.method === 'GET') {
+      const identity = await app.auth.authenticate(request);
+      const rows = await app.db.all("SELECT id, mime_type, byte_size, sort_order FROM media WHERE owner_id = ? AND media_type = 'image' ORDER BY sort_order, created_at, id", [identity.user.id]);
+      return apiJson({ media: rows.results.map(mediaView) });
+    }
+    if (url.pathname === '/api/me/media' && request.method === 'POST') {
+      validateOrigin(request); const identity = await app.auth.authenticate(request);
+      if (!request.headers.get('content-type')?.toLowerCase().startsWith('multipart/form-data;')) return apiJson({ error: 'invalid_multipart' }, 400);
+      const form = await request.formData(); if ([...form.keys()].some((key) => key !== 'file') || form.getAll('file').length !== 1) return apiJson({ error: 'invalid_multipart' }, 400);
+      const file = form.get('file'); if (!file || typeof file.arrayBuffer !== 'function') return apiJson({ error: 'invalid_file' }, 400);
+      if (file.size > 10 * 1024 * 1024) return apiJson({ error: 'file_too_large' }, 413);
+      const profile = await app.db.first('SELECT user_id FROM profiles WHERE user_id = ?', [identity.user.id]); if (!profile) return apiJson({ error: 'not_found' }, 404);
+      const listing = await publicationTarget(app.db, identity.user.id); const storage = createStorage({ binding: env.ACTS_MEDIA, logger: app.logger });
+      const upload = createUpload({ storage, logger: app.logger, crypto, events: { async publish() {} }, registerMedia: async (input) => {
+        const mediaId = `med_${crypto.randomUUID()}`; const createdAt = new Date().toISOString();
+        await app.db.write('INSERT INTO media (id, owner_id, listing_id, r2_key, media_type, mime_type, byte_size, checksum_sha256, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [mediaId, identity.user.id, listing?.id ?? null, input.r2Key, 'image', input.mimeType, input.byteSize, input.checksumSha256, 0, createdAt]);
+        return { id: mediaId, mimeType: input.mimeType, byteSize: input.byteSize, sortOrder: 0 };
+      } });
+      const result = await upload.upload({ mimeType: file.type, file }, { userId: identity.user.id });
+      await scheduleMediaPublication(app, listing);
+      return apiJson({ media: { id: result.media.id, url: `/media/${result.media.id}`, mimeType: result.mimeType, size: result.byteSize, position: 0 }, publicationScheduled: Boolean(listing) }, 201);
+    }
+    const deleteMedia = url.pathname.match(/^\/api\/me\/media\/(med_[0-9a-f-]+)$/i);
+    if (deleteMedia && request.method === 'DELETE') {
+      validateOrigin(request); const identity = await app.auth.authenticate(request); if (!MEDIA_ID.test(deleteMedia[1])) return apiJson({ error: 'not_found' }, 404);
+      const media = await app.db.first("SELECT id, r2_key FROM media WHERE id = ? AND owner_id = ? AND media_type = 'image'", [deleteMedia[1], identity.user.id]);
+      if (!media) return apiJson({ error: 'not_found' }, 404);
+      const listing = await publicationTarget(app.db, identity.user.id);
+      await app.db.write('DELETE FROM media WHERE id = ? AND owner_id = ?', [media.id, identity.user.id]);
+      await createStorage({ binding: env.ACTS_MEDIA, logger: app.logger }).delete(media.r2_key);
+      await scheduleMediaPublication(app, listing); return apiJson({ deleted: true, publicationScheduled: Boolean(listing) });
+    }
     if (request.method === 'PATCH' && url.pathname === '/api/me/profile') {
       validateOrigin(request); const identity = await app.auth.authenticate(request); const input = await body(request);
       const keys = Object.keys(input); if (!keys.length || keys.some((key) => !PROFILE_FIELDS.has(key))) return apiJson({ error: 'invalid_fields' }, 400);
@@ -77,10 +120,21 @@ async function apiResponse(request, env, url) {
     return apiJson({ error: 'not_found' }, 404);
   } catch (error) {
     if (error instanceof AuthError) return apiJson({ error: error.status === 403 ? 'forbidden' : 'unauthenticated' }, error.status);
+    if (error instanceof UploadError) return apiJson({ error: error.code === 'TECHNICAL_FAILURE' ? 'internal_error' : error.code.toLowerCase() }, error.code === 'TECHNICAL_FAILURE' ? 500 : error.code === 'FILE_TOO_LARGE' ? 413 : 400);
     if (error instanceof SyntaxError || error instanceof TypeError) return apiJson({ error: 'invalid_input' }, 400);
     app.logger.error('Private API failed', { operation: 'api.private', status: 'failed', route: url.pathname, error });
     return apiJson({ error: 'internal_error' }, 500);
   }
+}
+
+async function mediaResponse(request, env, mediaId) {
+  if (!MEDIA_ID.test(mediaId)) return new Response('Not found', { status: 404 });
+  const { db, logger } = runtime(env); const row = await db.first("SELECT r2_key, mime_type FROM media WHERE id = ? AND media_type = 'image'", [mediaId]);
+  if (!row) return new Response('Not found', { status: 404 });
+  const object = await createStorage({ binding: env.ACTS_MEDIA, logger })[request.method === 'HEAD' ? 'head' : 'get'](row.r2_key);
+  if (!object) return new Response('Not found', { status: 404 });
+  const headers = { 'content-type': row.mime_type, 'cache-control': MEDIA_CACHE, 'x-content-type-options': 'nosniff' }; if (object.etag) headers.etag = object.etag;
+  return new Response(request.method === 'HEAD' ? null : object.body, { headers });
 }
 
 function asset(path, minisite = false) {
@@ -117,6 +171,7 @@ async function apexResponse(request, env, url) {
   const foundAsset = asset(url.pathname);
   if (foundAsset) return foundAsset;
   if (url.pathname === '/painel' || url.pathname === '/painel/') return new Response(painelDocument(), { headers: { ...HTML_HEADERS, 'cache-control': 'no-store' } });
+  const mediaMatch = url.pathname.match(/^\/media\/(med_[0-9a-f-]+)$/i); if (mediaMatch) return mediaResponse(request, env, mediaMatch[1]);
   const dataMatch = url.pathname.match(/^\/data\/(cities|profiles)\/([a-z0-9-]+)$/);
   if (dataMatch) return dataResponse(request, env, dataMatch[1], dataMatch[2]);
   if (url.pathname.startsWith('/data/')) return new Response('Invalid public projection path', { status: 400 });
@@ -146,6 +201,7 @@ export default {
     const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
     if (APEX.has(hostname) && url.pathname.startsWith('/api/')) return apiResponse(request, env, url);
     if (!['GET', 'HEAD'].includes(request.method)) return new Response('Method not allowed', { status: 405, headers: { allow: 'GET, HEAD' } });
+    const publicMedia = url.pathname.match(/^\/media\/(med_[0-9a-f-]+)$/i); if (publicMedia && (APEX.has(hostname) || hostname.endsWith('.acompanhantesex.com'))) return mediaResponse(request, env, publicMedia[1]);
     if (APEX.has(hostname)) return apexResponse(request, env, url);
     const suffix = '.acompanhantesex.com';
     if (!hostname.endsWith(suffix)) return new Response('Unknown host', { status: 400 });

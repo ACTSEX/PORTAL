@@ -106,15 +106,28 @@ test('Media validates ownership, technical metadata, ordering and listing owners
 });
 
 const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0x01, 0x02]);
-function uploadFixture({ failPut = false, failRegister = false } = {}) { const calls = []; const bus = eventBus(); const storage = { async put(key, value, options) { calls.push({ operation: 'put', key, value, options }); if (failPut) throw new Error('storage secret'); return { key }; }, async delete(key) { calls.push({ operation: 'delete', key }); } }; const service = createUpload({ storage, events: bus, logger, registerMedia: async (input) => { calls.push({ operation: 'register', input }); if (failRegister) throw new Error('database secret'); return { id: 'med_1', ...input }; }, crypto: webcrypto, clock, id: ids(), maxBytes: 10 }); return { service, calls, bus }; }
+function uploadFixture({ failPut = false, failRegister = false } = {}) { const calls = []; const bus = eventBus(); const storage = { async put(key, value, options) { calls.push({ operation: 'put', key, value, options }); if (failPut) throw new Error('storage secret'); return { key }; }, async delete(key) { calls.push({ operation: 'delete', key }); } }; const service = createUpload({ storage, events: bus, logger, registerMedia: async (input) => { calls.push({ operation: 'register', input }); if (failRegister) throw new Error('database secret'); return { id: 'med_1', ...input }; }, crypto: webcrypto, clock, id: ids(), maxBytes: 20 }); return { service, calls, bus }; }
 
 test('Upload validates content, creates an unpredictable safe key, checksum and idempotent media registration', async () => {
   const { service, calls, bus } = uploadFixture(); const input = { name: 'house.jpg', mimeType: 'image/jpeg', file: jpeg, idempotencyKey: 'request-1' }; const first = await service.upload(input, { userId: 'usr_1' }); const second = await service.upload(input, { userId: 'usr_1' });
-  assert.equal(first, second); assert.match(calls[0].key, /^uploads\/image\/[0-9a-f-]+\.jpg$/); assert.equal(first.checksumSha256.length, 64); assert.equal(calls.filter((call) => call.operation === 'put').length, 1); assert.deepEqual(bus.published.map((event) => event.name), ['UploadStarted', 'UploadCompleted']);
+  assert.equal(first, second); assert.match(calls[0].key, /^profiles\/usr_1\/media\/[0-9a-f-]+\.jpg$/); assert.equal(first.checksumSha256.length, 64); assert.equal(calls.filter((call) => call.operation === 'put').length, 1); assert.deepEqual(bus.published.map((event) => event.name), ['UploadStarted', 'UploadCompleted']);
 });
 
 test('Upload rejects traversal, unsupported or mismatched files and excessive size', async () => {
-  const { service } = uploadFixture(); await assert.rejects(service.upload({ name: '../x.jpg', mimeType: 'image/jpeg', file: jpeg }, { userId: 'usr_1' }), (error) => error.code === 'INVALID_NAME'); await assert.rejects(service.upload({ name: 'x.exe', mimeType: 'application/x-msdownload', file: jpeg }, { userId: 'usr_1' }), (error) => error.code === 'UNSUPPORTED_TYPE'); await assert.rejects(service.upload({ name: 'x.png', mimeType: 'image/png', file: jpeg }, { userId: 'usr_1' }), (error) => error.code === 'CONTENT_MISMATCH'); await assert.rejects(service.upload({ name: 'x.jpg', mimeType: 'image/jpeg', file: new Uint8Array(11) }, { userId: 'usr_1' }), (error) => error.code === 'FILE_TOO_LARGE');
+  const { service } = uploadFixture(); await assert.rejects(service.upload({ name: 'x.exe', mimeType: 'application/x-msdownload', file: jpeg }, { userId: 'usr_1' }), (error) => error.code === 'UNSUPPORTED_TYPE'); await assert.rejects(service.upload({ name: 'x.png', mimeType: 'image/png', file: jpeg }, { userId: 'usr_1' }), (error) => error.code === 'CONTENT_MISMATCH'); await assert.rejects(service.upload({ name: 'x.jpg', mimeType: 'image/jpeg', file: new Uint8Array(21) }, { userId: 'usr_1' }), (error) => error.code === 'FILE_TOO_LARGE');
+});
+
+test('Upload accepts JPEG, PNG and WEBP signatures and rejects empty, fake MIME and unsupported content', async () => {
+  const fixtures = [
+    ['image/jpeg', jpeg, 'jpg'],
+    ['image/png', new Uint8Array([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]), 'png'],
+    ['image/webp', new Uint8Array([0x52,0x49,0x46,0x46,0,0,0,0,0x57,0x45,0x42,0x50]), 'webp'],
+  ];
+  for (const [mimeType,file,extension] of fixtures) { const { service, calls } = uploadFixture(); await service.upload({ mimeType, file }, { userId: 'usr_1' }); assert.match(calls[0].key, new RegExp('\\.'+extension+'$')); }
+  const { service } = uploadFixture();
+  await assert.rejects(service.upload({ mimeType: 'image/jpeg', file: new Uint8Array() }, { userId: 'usr_1' }), (error) => error.code === 'INVALID_FILE');
+  await assert.rejects(service.upload({ mimeType: 'image/jpeg', file: new Uint8Array([1,2,3]) }, { userId: 'usr_1' }), (error) => error.code === 'CONTENT_MISMATCH');
+  await assert.rejects(service.upload({ mimeType: 'image/svg+xml', file: new Uint8Array([1]) }, { userId: 'usr_1' }), (error) => error.code === 'UNSUPPORTED_TYPE');
 });
 
 test('Upload compensates registration failure, reports technical failure and logs no content or secrets', async () => {
