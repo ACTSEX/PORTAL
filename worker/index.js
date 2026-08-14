@@ -18,6 +18,11 @@ import { BloggerError, validateBloggerUrl } from '../business/blogger.js';
 import { createAsaas, AsaasError } from '../business/payments/gateways/asaas.js';
 import { createPayments, PaymentsError } from '../business/payments.js';
 import { createBoosts, BoostsError } from '../business/boosts.js';
+import { resolvePremiumEligibility } from '../business/plans.js';
+import { AdminError, createAdminOperations, requireAdmin } from '../business/admin.js';
+import { adminDocument } from '../frontend/admin/template.js';
+import { adminCss } from '../frontend/admin/styles.js';
+import { adminJs } from '../frontend/admin/app.js';
 
 const APEX = new Set(['acompanhantesex.com', 'www.acompanhantesex.com', 'localhost', '127.0.0.1']);
 const JSON_CACHE = 'public, max-age=60, s-maxage=300, stale-while-revalidate=86400';
@@ -76,7 +81,8 @@ async function ownData(db, user) {
     WHERE s.user_id = ? AND s.status = 'active' AND pl.active = 1`, [user.id]);
   let social = {}; try { social = JSON.parse(profile?.social_links_json ?? '{}'); } catch { /* Invalid legacy JSON is not exposed. */ }
   const blogger = await db.first('SELECT url, status, last_synced_at, last_error_code FROM blogger_integrations WHERE user_id = ?', [user.id]);
-  return { user: { id: user.id, email: user.email }, profile: profile ? { displayName: profile.display_name, bio: profile.bio, phone: profile.phone, website: profile.website_url, instagram: social.instagram ?? null, whatsapp: social.whatsapp ?? null } : null, plan: subscription?.code?.toUpperCase() ?? 'STANDARD', blogger: blogger ? { url: blogger.url, status: blogger.status, lastSyncAt: blogger.last_synced_at, syncError: Boolean(blogger.last_error_code) } : null };
+  const eligibility = await resolvePremiumEligibility(db, user.id);
+  return { user: { id: user.id, email: user.email }, profile: profile ? { displayName: profile.display_name, bio: profile.bio, phone: profile.phone, website: profile.website_url, instagram: social.instagram ?? null, whatsapp: social.whatsapp ?? null } : null, plan: eligibility.premium || subscription?.code?.toLowerCase() === 'premium' ? 'PREMIUM' : (subscription?.code?.toUpperCase() ?? 'STANDARD'), blogger: blogger ? { url: blogger.url, status: blogger.status, lastSyncAt: blogger.last_synced_at, syncError: Boolean(blogger.last_error_code) } : null };
 }
 
 const mediaView = (row) => ({ id: row.id, url: `/media/${row.id}`, mimeType: row.mime_type, size: row.byte_size, position: row.sort_order });
@@ -90,6 +96,21 @@ async function scheduleMediaPublication(app, listing) {
 async function apiResponse(request, env, url) {
   const app = runtime(env);
   try {
+    if (url.pathname.startsWith('/api/admin/')) {
+      const identity = await app.auth.authenticate(request); const actor = requireAdmin(identity);
+      const admin = createAdminOperations({ db: app.db, publications: app.publications, logger: app.logger });
+      if (request.method === 'GET' && url.pathname === '/api/admin/accounts') return apiJson({ accounts: await admin.search(url.searchParams.get('query')) });
+      const match = url.pathname.match(/^\/api\/admin\/accounts\/([A-Za-z0-9_-]{3,128})(?:\/(commercial-condition|suspend|reactivate|republish))?$/);
+      if (!match) return apiJson({ error: 'not_found' }, 404);
+      if (request.method === 'GET' && !match[2]) return apiJson(await admin.detail(match[1]));
+      if (request.method !== 'POST' || !match[2]) return apiJson({ error: 'method_not_allowed' }, 405);
+      validateOrigin(request); const input = await body(request);
+      if (match[2] === 'commercial-condition') return apiJson({ condition: await admin.condition(match[1], input, actor) }, 201);
+      if (Object.keys(input).some((key) => key !== 'reason')) return apiJson({ error: 'invalid_input' }, 400);
+      if (match[2] === 'suspend') return apiJson(await admin.state(match[1], 'suspended', input.reason, actor));
+      if (match[2] === 'reactivate') return apiJson(await admin.state(match[1], 'active', input.reason, actor));
+      return apiJson(await admin.republish(match[1], input.reason, actor));
+    }
     if (request.method === 'POST' && url.pathname === '/api/webhooks/asaas') {
       if (!env.ASAAS_WEBHOOK_TOKEN || !safeEqual(request.headers.get('asaas-access-token'), env.ASAAS_WEBHOOK_TOKEN)) return apiJson({ error: 'unauthorized_webhook' }, 401);
       const declared = Number(request.headers.get('content-length') ?? 0); if (declared > 65536) return apiJson({ error: 'payload_too_large' }, 413);
@@ -222,6 +243,7 @@ async function apiResponse(request, env, url) {
     }
     return apiJson({ error: 'not_found' }, 404);
   } catch (error) {
+    if (error instanceof AdminError) return apiJson({ error: error.code.toLowerCase() }, error.status);
     if (error instanceof AuthError) return apiJson({ error: error.status === 403 ? 'forbidden' : 'unauthenticated' }, error.status);
     if (error instanceof BloggerError) return apiJson({ error: 'invalid_blogger_url' }, 400);
     if (error instanceof UploadError) return apiJson({ error: error.code === 'TECHNICAL_FAILURE' ? 'internal_error' : error.code.toLowerCase() }, error.code === 'TECHNICAL_FAILURE' ? 500 : error.code === 'FILE_TOO_LARGE' ? 413 : 400);
@@ -255,6 +277,8 @@ function asset(path, minisite = false) {
   if (path === '/assets/portal.js') return new Response(portalJs, { headers: { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'public, max-age=86400' } });
   if (path === '/assets/painel.css' && !minisite) return new Response(painelCss, { headers: { 'content-type': 'text/css; charset=utf-8', 'cache-control': 'public, max-age=86400' } });
   if (path === '/assets/painel.js' && !minisite) return new Response(painelJs, { headers: { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'public, max-age=86400' } });
+  if (path === '/assets/admin.css' && !minisite) return new Response(adminCss, { headers: { 'content-type': 'text/css; charset=utf-8', 'cache-control': 'no-store' } });
+  if (path === '/assets/admin.js' && !minisite) return new Response(adminJs, { headers: { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store' } });
   if (path === '/assets/minisite.css' && minisite) return new Response(minisiteCss, { headers: { 'content-type': 'text/css; charset=utf-8', 'cache-control': 'public, max-age=86400' } });
   return null;
 }
@@ -284,6 +308,7 @@ async function apexResponse(request, env, url) {
   const foundAsset = asset(url.pathname);
   if (foundAsset) return foundAsset;
   if (url.pathname === '/painel' || url.pathname === '/painel/') return new Response(painelDocument(), { headers: { ...HTML_HEADERS, 'cache-control': 'no-store' } });
+  if (url.pathname === '/admin' || url.pathname === '/admin/') return new Response(adminDocument(), { headers: { ...HTML_HEADERS, 'cache-control': 'no-store' } });
   const mediaMatch = url.pathname.match(/^\/media\/(med_[0-9a-f-]+)$/i); if (mediaMatch) return mediaResponse(request, env, mediaMatch[1]);
   const dataMatch = url.pathname.match(/^\/data\/(cities|profiles)\/([a-z0-9-]+)$/);
   if (dataMatch) return dataResponse(request, env, dataMatch[1], dataMatch[2]);

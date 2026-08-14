@@ -1,5 +1,11 @@
 # ACTS — arquitetura
 
+## Admin operacional — OPERACIONAL
+
+O frontend separado `/admin` reutiliza a sessão D1 `__Host-acts_session`; a autorização é obtida exclusivamente de uma conta ativa com `users.role = 'admin'`. O fluxo é **ADMIN → D1 → regras business → ACTS_QUEUE quando necessário → publisher → ACTS_DATA**. Busca e detalhe são allowlisted; pagamentos e impulsionamentos são somente leitura.
+
+Condição comercial, suspensão, reativação e republicação exigem Origin same-origin, confirmação visual e auditoria append-only. Condições vigentes (`trial`, `courtesy`, `promotion`, `temporary_free`) são independentes de pagamento e concedem elegibilidade PREMIUM. O admin não confirma pagamentos, não ativa boosts, não impersona usuários e não escreve diretamente no R2; todo efeito público usa o contrato canônico da Queue.
+
 ## Estado oficial
 
 ACTS adota arquitetura **Worker-first**. O Worker `portal` é a entrada HTTP e o ponto de composição do runtime. Pages e Pages Functions não são componentes principais. A implementação mantém as fundações em `core/` e os domínios consolidados em `business/`, com `worker/` como entrada única.

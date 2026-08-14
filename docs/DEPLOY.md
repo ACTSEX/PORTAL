@@ -1,5 +1,9 @@
 # ACTS — deploy e operações
 
+## Bootstrap manual do primeiro administrador
+
+Não há e-mail, senha ou conta administrativa no código. Depois de validar por canal seguro uma conta ativa existente, um operador autorizado pode executar manualmente, no ambiente correto e sob change management, `UPDATE users SET role = 'admin', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'active'`. Deve haver dupla conferência do ambiente e do ID; a aplicação nunca aceita `role` do frontend. A ETAPA 11 não executa essa alteração nem migrations remotas.
+
 ## Estado operacional atual
 
 `wrangler.toml` define o Worker `portal`, entrada `worker/index.js`, domínio principal e wildcard. Os bindings configurados são `ACTS_DB`, `ACTS_MEDIA`, `ACTS_DATA` e `ACTS_QUEUE`. O Worker atual entrega o portal público, projeções em `ACTS_DATA` e o minisite compartilhado; painel, admin e demais jornadas não devem ser presumidos implementados.
