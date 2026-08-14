@@ -1,5 +1,6 @@
 import { deepFreeze, isPlainObject } from '../core/app.js';
 import { cityProjectionKey, profileProjectionKey } from './public-content.js';
+import { BloggerError, syncBlogger } from './blogger.js';
 
 const NAME = /^[a-z][a-z0-9.-]{0,63}$/;
 const TYPES = new Set(['template', 'layout', 'component']);
@@ -149,7 +150,9 @@ export function normalizeCityProjection(input, generatedAt) {
 
 export function normalizeProfileProjection(input, generatedAt) {
   if (!isPlainObject(input) || !SLUG.test(input.slug ?? '') || typeof input.name !== 'string') throw new TypeError('Invalid profile projection');
-  return deepFreeze({ schemaVersion: CONTRACT_VERSION, slug: input.slug, name: input.name, generatedAt, city: allowed(input.city ?? {}, ['slug', 'name']), premium: true, presentation: String(input.presentation ?? ''), categories: clean(input.categories ?? []), services: clean(input.services ?? []), tags: clean(input.tags ?? []), gallery: clean(input.gallery ?? []), contacts: allowed(input.contacts ?? {}, ['phone', 'whatsapp', 'website', 'instagram']) });
+  const projection = { schemaVersion: CONTRACT_VERSION, slug: input.slug, name: input.name, generatedAt, city: allowed(input.city ?? {}, ['slug', 'name']), premium: true, presentation: String(input.presentation ?? ''), categories: clean(input.categories ?? []), services: clean(input.services ?? []), tags: clean(input.tags ?? []), gallery: clean(input.gallery ?? []), contacts: allowed(input.contacts ?? {}, ['phone', 'whatsapp', 'website', 'instagram']) };
+  if (input.blog?.source === 'blogger' && Array.isArray(input.blog.posts)) projection.blog = allowed(input.blog, ['source', 'url', 'posts']);
+  return deepFreeze(projection);
 }
 
 /** Technical publisher. Projection loading and business eligibility stay in modules. */
@@ -224,7 +227,7 @@ export async function consumePublicationBatch(messages, { publish, logger } = {}
 const parse = (value, fallback) => { try { return JSON.parse(value ?? fallback); } catch { return JSON.parse(fallback); } };
 
 /** Minimal authoritative reads needed by the canonical publisher. */
-export function createPublicationReader({ db } = {}) {
+export function createPublicationReader({ db, fetcher = globalThis.fetch, clock = () => new Date() } = {}) {
   if (!db?.first || !db?.all) throw new TypeError('Invalid publication reader database');
   async function loadCity({ cityId, citySlug }) {
     const city = await db.first('SELECT id, slug, public_name FROM cities WHERE id = ? AND slug = ? AND active = 1', [cityId, citySlug]);
@@ -243,18 +246,32 @@ export function createPublicationReader({ db } = {}) {
   }
   async function loadProfile({ profileId, profileSlug }) {
     const row = await db.first(`SELECT l.id, l.slug, l.title, l.description, l.attributes_json, l.city_id,
-      p.display_name, p.bio, p.phone, p.website_url, p.social_links_json, u.status AS user_status,
+      p.display_name, p.bio, p.phone, p.website_url, p.social_links_json, u.status AS user_status, bi.url AS blogger_url,
       c.slug AS city_slug, c.public_name AS city_name, cat.slug AS category_slug,
       CASE WHEN s.id IS NOT NULL AND pl.code = 'premium' AND pl.active = 1 THEN 1 ELSE 0 END AS premium
       FROM listings l JOIN users u ON u.id = l.owner_id LEFT JOIN profiles p ON p.user_id = l.owner_id
       LEFT JOIN cities c ON c.id = l.city_id JOIN categories cat ON cat.id = l.category_id
       LEFT JOIN subscriptions s ON s.user_id = l.owner_id AND s.status = 'active'
       LEFT JOIN plans pl ON pl.id = s.plan_id
+      LEFT JOIN blogger_integrations bi ON bi.user_id = l.owner_id AND bi.status <> 'disabled'
       WHERE l.id = ? AND l.slug = ?`, [profileId, profileSlug]);
     if (!row) return null;
     const media = (await db.all("SELECT id FROM media WHERE listing_id = ? AND media_type = 'image' ORDER BY sort_order, id", [profileId])).results.map((item) => ({ id: item.id, url: `/media/${item.id}` }));
     const attributes = parse(row.attributes_json, '{}'); const social = parse(row.social_links_json, '{}');
-    return { slug: row.slug, name: row.display_name || row.title, premium: Boolean(row.premium), active: row.user_status === 'active', suspended: row.user_status === 'suspended', cityId: row.city_id, city: { slug: row.city_slug, name: row.city_name }, presentation: row.bio || row.description, categories: [row.category_slug], services: attributes.services ?? [], tags: attributes.tags ?? [], gallery: media, contacts: { phone: row.phone, website: row.website_url, instagram: social.instagram, whatsapp: social.whatsapp } };
+    const source = { slug: row.slug, name: row.display_name || row.title, premium: Boolean(row.premium), active: row.user_status === 'active', suspended: row.user_status === 'suspended', cityId: row.city_id, city: { slug: row.city_slug, name: row.city_name }, presentation: row.bio || row.description, categories: [row.category_slug], services: attributes.services ?? [], tags: attributes.tags ?? [], gallery: media, contacts: { phone: row.phone, website: row.website_url, instagram: social.instagram, whatsapp: social.whatsapp } };
+    if (source.premium) {
+      if (row.blogger_url) {
+        try {
+          source.blog = await syncBlogger({ url: row.blogger_url, fetcher });
+          await db.write('UPDATE blogger_integrations SET status = ?, last_synced_at = ?, last_error_code = NULL, updated_at = ? WHERE user_id = (SELECT owner_id FROM listings WHERE id = ?)', ['active', clock().toISOString(), clock().toISOString(), profileId]);
+        } catch (error) {
+          const code = error instanceof BloggerError ? error.code : 'SYNC_FAILED';
+          await db.write('UPDATE blogger_integrations SET status = ?, last_error_code = ?, updated_at = ? WHERE user_id = (SELECT owner_id FROM listings WHERE id = ?)', ['error', code, clock().toISOString(), profileId]);
+          throw error;
+        }
+      }
+    }
+    return source;
   }
   return Object.freeze({ loadCity, loadProfile });
 }

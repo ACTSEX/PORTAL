@@ -14,6 +14,7 @@ import { createPublicationConsumer, createPublicationReader, createPublisher } f
 import { createPublicationQueue } from '../business/publishing.js';
 import { AuthError, createSessionAuth, sessionCookie, validateOrigin, verifyPassword } from '../core/auth.js';
 import { createUpload, UploadError } from '../business/listings.js';
+import { BloggerError, validateBloggerUrl } from '../business/blogger.js';
 
 const APEX = new Set(['acompanhantesex.com', 'www.acompanhantesex.com', 'localhost', '127.0.0.1']);
 const JSON_CACHE = 'public, max-age=60, s-maxage=300, stale-while-revalidate=86400';
@@ -38,7 +39,8 @@ async function ownData(db, user) {
   const subscription = await db.first(`SELECT pl.code FROM subscriptions s JOIN plans pl ON pl.id = s.plan_id
     WHERE s.user_id = ? AND s.status = 'active' AND pl.active = 1`, [user.id]);
   let social = {}; try { social = JSON.parse(profile?.social_links_json ?? '{}'); } catch { /* Invalid legacy JSON is not exposed. */ }
-  return { user: { id: user.id, email: user.email }, profile: profile ? { displayName: profile.display_name, bio: profile.bio, phone: profile.phone, website: profile.website_url, instagram: social.instagram ?? null, whatsapp: social.whatsapp ?? null } : null, plan: subscription?.code?.toUpperCase() ?? 'STANDARD' };
+  const blogger = await db.first('SELECT url, status, last_synced_at, last_error_code FROM blogger_integrations WHERE user_id = ?', [user.id]);
+  return { user: { id: user.id, email: user.email }, profile: profile ? { displayName: profile.display_name, bio: profile.bio, phone: profile.phone, website: profile.website_url, instagram: social.instagram ?? null, whatsapp: social.whatsapp ?? null } : null, plan: subscription?.code?.toUpperCase() ?? 'STANDARD', blogger: blogger ? { url: blogger.url, status: blogger.status, lastSyncAt: blogger.last_synced_at, syncError: Boolean(blogger.last_error_code) } : null };
 }
 
 const mediaView = (row) => ({ id: row.id, url: `/media/${row.id}`, mimeType: row.mime_type, size: row.byte_size, position: row.sort_order });
@@ -69,6 +71,21 @@ async function apiResponse(request, env, url) {
     }
     if (request.method === 'GET' && url.pathname === '/api/me') {
       const identity = await app.auth.authenticate(request); return apiJson(await ownData(app.db, identity.user));
+    }
+    if (request.method === 'PATCH' && url.pathname === '/api/me/blogger') {
+      validateOrigin(request); const identity = await app.auth.authenticate(request); const input = await body(request);
+      if (Object.keys(input).length !== 1 || !Object.hasOwn(input, 'url') || (input.url !== null && typeof input.url !== 'string')) return apiJson({ error: 'invalid_fields' }, 400);
+      const plan = await app.db.first(`SELECT pl.code FROM subscriptions s JOIN plans pl ON pl.id = s.plan_id WHERE s.user_id = ? AND s.status = 'active' AND pl.active = 1`, [identity.user.id]);
+      if (plan?.code?.toLowerCase() !== 'premium') return apiJson({ error: 'premium_required' }, 403);
+      const listing = await publicationTarget(app.db, identity.user.id); const now = new Date().toISOString();
+      if (input.url === null) await app.db.write('DELETE FROM blogger_integrations WHERE user_id = ?', [identity.user.id]);
+      else {
+        const configuredUrl = validateBloggerUrl(input.url);
+        await app.db.write(`INSERT INTO blogger_integrations (user_id, url, status, created_at, updated_at) VALUES (?, ?, 'pending', ?, ?)
+          ON CONFLICT(user_id) DO UPDATE SET url = excluded.url, status = 'pending', last_error_code = NULL, updated_at = excluded.updated_at`, [identity.user.id, configuredUrl, now, now]);
+      }
+      if (listing) await app.publications.send({ type: 'PUBLICATION_REQUESTED', entity: 'profile', id: listing.id, slug: listing.slug, reason: 'blogger.updated', requestedAt: now });
+      return apiJson({ updated: true, publicationScheduled: Boolean(listing), ...(await ownData(app.db, identity.user)) });
     }
     if (url.pathname === '/api/me/media' && request.method === 'GET') {
       const identity = await app.auth.authenticate(request);
@@ -120,6 +137,7 @@ async function apiResponse(request, env, url) {
     return apiJson({ error: 'not_found' }, 404);
   } catch (error) {
     if (error instanceof AuthError) return apiJson({ error: error.status === 403 ? 'forbidden' : 'unauthenticated' }, error.status);
+    if (error instanceof BloggerError) return apiJson({ error: 'invalid_blogger_url' }, 400);
     if (error instanceof UploadError) return apiJson({ error: error.code === 'TECHNICAL_FAILURE' ? 'internal_error' : error.code.toLowerCase() }, error.code === 'TECHNICAL_FAILURE' ? 500 : error.code === 'FILE_TOO_LARGE' ? 413 : 400);
     if (error instanceof SyntaxError || error instanceof TypeError) return apiJson({ error: 'invalid_input' }, 400);
     app.logger.error('Private API failed', { operation: 'api.private', status: 'failed', route: url.pathname, error });
@@ -214,7 +232,7 @@ export default {
     const db = createDatabase({ binding: env.ACTS_DB, logger });
     const storage = createStorage({ binding: env.ACTS_DATA, logger });
     const publisher = createPublisher({ storage, logger });
-    const reader = createPublicationReader({ db });
+    const reader = createPublicationReader({ db, fetcher: env.BLOGGER_FETCH ?? globalThis.fetch });
     return createPublicationConsumer({ publisher, reader, logger })(batch.messages);
   },
 };

@@ -9,17 +9,19 @@ const schemaPath = 'database/schema.sql';
 const migrationPath = 'database/migrations/0001_initial_schema.sql';
 const paymentMigrationPath = 'database/migrations/0002_payment_event_ordering.sql';
 const cityMigrationPath = 'database/migrations/0003_city_publication_state.sql';
+const bloggerMigrationPath = 'database/migrations/0004_blogger_integrations.sql';
 const schema = readFileSync(schemaPath, 'utf8');
 const migration = readFileSync(migrationPath, 'utf8');
 const paymentMigration = readFileSync(paymentMigrationPath, 'utf8');
 const cityMigration = readFileSync(cityMigrationPath, 'utf8');
+const bloggerMigration = readFileSync(bloggerMigrationPath, 'utf8');
 const expectedTables = [
-  'categories', 'cities', 'city_publication_state', 'comparisons', 'contacts', 'favorites', 'idempotency_records',
+  'blogger_integrations', 'categories', 'cities', 'city_publication_state', 'comparisons', 'contacts', 'favorites', 'idempotency_records',
   'integrations', 'leads', 'listings', 'media', 'notifications', 'payments',
   'plans', 'profiles', 'publication_jobs', 'real_estate_professionals', 'reviews',
   'sessions', 'settings', 'subscriptions', 'users'
 ];
-const initialTables = expectedTables.filter(table => !['cities', 'city_publication_state'].includes(table));
+const initialTables = expectedTables.filter(table => !['cities', 'city_publication_state', 'blogger_integrations'].includes(table));
 
 function sqlite(database, sql) {
   return execFileSync('sqlite3', ['-batch', '-bail', database], {
@@ -49,7 +51,7 @@ test('canonical schema and versioned migrations are present and complete', () =>
   assert.equal((schema.match(/CREATE TABLE /g) ?? []).length, expectedTables.length);
 });
 
-const evolvedSchema = `${migration}\n${paymentMigration}\n${cityMigration}`;
+const evolvedSchema = `${migration}\n${paymentMigration}\n${cityMigration}\n${bloggerMigration}`;
 const cityInsert = `INSERT INTO cities (
   id,country_code,region_key,city_key,canonical_key,public_name,slug,canonicalization_version
 ) VALUES ('city-opaque-00000001','BR','parana','londrina','BR|parana|londrina','Londrina','br-parana-londrina','unicode-17.0.0-v1');`;
@@ -74,11 +76,11 @@ function inventory(database) {
 
 test('snapshot applies cleanly to real SQLite', () => withDatabase(schema, database => {
   assert.deepEqual(lines(database, "PRAGMA foreign_key_check;"), []);
-  assert.equal(lines(database, "SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")[0], '22');
+  assert.equal(lines(database, "SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")[0], '23');
 }));
 
-test('0001 then 0002 then 0003 evolves on real SQLite', () => withDatabase(evolvedSchema, database => {
-  assert.deepEqual(lines(database, "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('cities','city_publication_state') ORDER BY name;"), ['cities', 'city_publication_state']);
+test('0001 through 0004 evolve on real SQLite', () => withDatabase(evolvedSchema, database => {
+  assert.deepEqual(lines(database, "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('blogger_integrations','cities','city_publication_state') ORDER BY name;"), ['blogger_integrations', 'cities', 'city_publication_state']);
 }));
 
 test('immutable migrations 0001 and 0002 retain their approved hashes', () => {
@@ -204,16 +206,16 @@ test('Wrangler uses the official migration directory and applies it idempotently
   const config = readFileSync('wrangler.toml', 'utf8');
   assert.equal((config.match(/^migrations_dir = "database\/migrations"$/gm) ?? []).length, 4);
   assert.deepEqual(execFileSync('find', ['database/migrations', '-maxdepth', '1', '-type', 'f', '-printf', '%f\n'], { encoding: 'utf8' }).trim().split('\n').sort(), [
-    '0001_initial_schema.sql', '0002_payment_event_ordering.sql', '0003_city_publication_state.sql'
+    '0001_initial_schema.sql', '0002_payment_event_ordering.sql', '0003_city_publication_state.sql', '0004_blogger_integrations.sql'
   ]);
   const persistence = mkdtempSync(join(tmpdir(), 'acts-wrangler-migrations-'));
   try {
     const command = ['run', 'db:migrate:local', '--', '--persist-to', persistence];
     const first = execFileSync('npm', command, { encoding: 'utf8' });
-    assert.match(first, /0001_initial_schema\.sql/); assert.match(first, /0002_payment_event_ordering\.sql/); assert.match(first, /0003_city_publication_state\.sql/); assert.doesNotMatch(first, /0004_/);
+    assert.match(first, /0001_initial_schema\.sql/); assert.match(first, /0002_payment_event_ordering\.sql/); assert.match(first, /0003_city_publication_state\.sql/); assert.match(first, /0004_blogger_integrations\.sql/);
     const retry = execFileSync('npm', command, { encoding: 'utf8' }); assert.match(retry, /No migrations to apply/);
     const status = execFileSync('wrangler', ['d1', 'migrations', 'list', 'ACTS_DB', '--local', '--env', 'development', '--persist-to', persistence], { encoding: 'utf8' });
-    assert.match(status, /No migrations to apply/); assert.doesNotMatch(status, /ignored|0004_/i);
+    assert.match(status, /No migrations to apply/); assert.doesNotMatch(status, /ignored/i);
   } finally { rmSync(persistence, { recursive: true, force: true }); }
 });
 

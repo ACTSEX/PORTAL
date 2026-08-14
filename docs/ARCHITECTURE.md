@@ -129,7 +129,7 @@ indicam apenas existência de código:
 | Pagamentos/Asaas | **MÓDULO ISOLADO** | Domínio e adapter testados, sem endpoints/webhook integrados. |
 | Painel do anunciante | **OPERACIONAL** | `/painel` → APIs privadas → D1 → ACTS_QUEUE → publicação em ACTS_DATA. |
 | Admin | **PLANEJADO** | Sem fluxo funcional conectado. |
-| Blogger | **PLANEJADO** | Sem integração funcional. |
+| Blogger no minisite | **OPERACIONAL** | Sync Atom seguro via Queue, projeção em ACTS_DATA e renderização PREMIUM. |
 | Boosts | **PLANEJADO** | Sem implementação de domínio; marcação visual existente não constitui o produto. |
 
 ### Contrato público R2 canônico
@@ -137,3 +137,11 @@ indicam apenas existência de código:
 Publisher e leitor compartilham as keys centralizadas em
 `business/public-content.js`: `cities/{slug}.json` e `profiles/{slug}.json`.
 Não há leitura dupla, fallback legado ou consulta D1 no request público.
+
+## Blogger no minisite — OPERACIONAL
+
+A integração Blogger é exclusiva do plano PREMIUM e mantém o blog sob propriedade do anunciante. O painel persiste somente URL e estado operacional em `blogger_integrations`; posts não são armazenados no D1.
+
+O fluxo canônico é: **Blogger → sync interno pela Queue existente → parser Atom → sanitização allowlist → ProfileProjection → ACTS_DATA (`profiles/{slug}.json`) → Minisite**. A sincronização lê no máximo 10 posts, limita o feed a 512 KiB, usa timeout de 8 segundos e valida cada redirect contra destinos locais, privados, link-local e internos. Domínios personalizados só são aceitos como conteúdo após o feed declarar o gerador Blogger.
+
+O request público do minisite **NÃO consulta Blogger**. Em falha, a mensagem é repetida pela Queue e o objeto válido anterior em ACTS_DATA permanece intacto. A remoção da URL agenda uma nova projeção sem a seção `blog`.
