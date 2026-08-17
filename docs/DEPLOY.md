@@ -50,7 +50,12 @@ Não há e-mail, senha ou conta administrativa no código. Depois de validar por
 
 ## Estado operacional atual
 
-`wrangler.toml` define o Worker `portal`, entrada `worker/index.js`, domínio principal e wildcard. Os bindings configurados são `ACTS_DB`, `ACTS_MEDIA`, `ACTS_DATA` e `ACTS_QUEUE`. O Worker atual entrega o portal público, projeções em `ACTS_DATA` e o minisite compartilhado; painel, admin e demais jornadas não devem ser presumidos implementados.
+`wrangler.toml` define o Worker `portal`, entrada `worker/index.js` e somente a rota
+`acompanhantesex.com/api/*`. Os bindings configurados são `ACTS_DB`,
+`ACTS_MEDIA`, `ACTS_DATA` e `ACTS_QUEUE`. Portal, painel/admin shells, assets e
+minisite compartilhado são estáticos; o Worker atende dados operacionais privados
+e o consumer publica projeções. O wildcard público é configurado fora do Worker,
+pelas Rules descritas em `docs/cloudflare/ETAPA-12D-FINAL-RULES.md`.
 
 Os ambientes nomeados são `development`, `staging` e `production`. Atualmente eles repetem os mesmos nomes e identificador de recursos no arquivo de configuração. **Não presumir isolamento físico:** antes de qualquer escrita remota, confirmar no dashboard/CLI que staging e produção apontam para recursos distintos; se não apontarem, interromper a operação.
 
