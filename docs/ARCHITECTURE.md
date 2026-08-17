@@ -8,7 +8,11 @@ Condição comercial, suspensão, reativação e republicação exigem Origin sa
 
 ## Estado oficial
 
-ACTS adota arquitetura **Worker-first**. O Worker `portal` é a entrada HTTP e o ponto de composição do runtime. Pages e Pages Functions não são componentes principais. A implementação mantém as fundações em `core/` e os domínios consolidados em `business/`, com `worker/` como entrada única.
+ACTS adota arquitetura pública **edge-first**. Static Assets/Pages e os Custom
+Domains dos buckets publicados são a entrada da audiência; o Worker `portal` é
+entrada somente para `acompanhantesex.com/api/*` e para o consumer da Queue. A
+implementação mantém as fundações em `core/` e os domínios em `business/`, sem
+usar o backend operacional para pageviews.
 
 ```text
 core/       infraestrutura independente do negócio
@@ -68,8 +72,8 @@ Toda mutação é confirmada no D1 antes de emitir trabalho derivado. Falha de p
 ```text
 transação Business confirmada → evento ACTS_QUEUE → consumer `queue()` do Worker
 → leitura autoritativa D1 → publisher canônico → projeção pública allowlisted e determinística
-→ `cities/{citySlug}.json` ou `profiles/{profileSlug}.json` em ACTS_DATA
-→ Edge Cache → Worker → Portal ou Minisite
+→ `cities/{citySlug}.json` ou `minisites/{profileSlug}.json` em ACTS_DATA
+→ R2 Custom Domain → Edge Cache → navegador
 ```
 
 Cada publicação substitui o objeto canônico. R2 é reconstruível a partir do D1 e
@@ -79,15 +83,16 @@ nunca constitui fonte de verdade.
 ### Leitura pública
 
 ```text
-navegador → Worker/rota pública → Edge Cache
-          → ACTS_DATA em cache miss → resposta cacheável
+navegador → Static Assets/Edge + JSON publicado
+          → ACTS_DATA via Custom Domain somente em cache miss
 ```
 
-O Worker continua sendo a entrada oficial, mesmo quando a resposta é satisfeita no Edge. O fluxo é sempre `PUBLIC HTTP → ACTS_DATA`, nunca `PUBLIC HTTP → D1`.
+O Worker não participa dessa leitura. O fluxo é sempre
+`PUBLIC HTTP → Edge/origem publicada`, nunca `PUBLIC HTTP → Worker/D1`.
 
 ## Projeções públicas
 
-- `profiles/{profileSlug}.json` contém somente o estado público aprovado de um perfil PREMIUM ativo; perda de elegibilidade remove o objeto.
+- `minisites/{profileSlug}.json` contém somente o estado público aprovado de um perfil PREMIUM ativo; perda de elegibilidade remove o objeto.
 - `cities/{citySlug}.json` contém o necessário para cards, descoberta, filtros e ordenação.
 - As keys são estáveis, o conteúdo é substituído e usa TTL curto com revalidação.
 - Dados privados, linhas D1 completas, segredos, auditoria, pagamentos e moderação interna são proibidos nas projeções.
@@ -122,11 +127,11 @@ indicam apenas existência de código:
 
 | Capacidade | Estado | Evidência/limite atual |
 |---|---|---|
-| Worker único | **OPERACIONAL** | `worker/index.js` é a única entrada HTTP. |
-| Portal | **OPERACIONAL** | Shell e projeções públicas de cidade são servidos pelo Worker. |
-| Minisite | **OPERACIONAL** | Wildcard oficial lê projeção pública de perfil. |
-| ACTS_DATA | **OPERACIONAL** | O leitor público usa `cities/{slug}.json` e `profiles/{slug}.json`. |
-| Edge Cache | **OPERACIONAL** | Cache público fail-open no fluxo de projeções de cidade/perfil. |
+| Worker operacional | **OPERACIONAL** | `worker/index.js` aceita somente a API canônica e consome Queue. |
+| Portal | **OPERACIONAL** | Shell estático; o navegador lê projeções publicadas de cidade. |
+| Minisite | **PREPARADO** | Shell/browser implementados; wildcard e Rules aguardam configuração no Dashboard. |
+| ACTS_DATA | **OPERACIONAL** | Publisher usa `cities/{slug}.json` e `minisites/{slug}.json`. |
+| Edge Cache | **PREPARADO** | Headers/origens definidos; Rules e métricas remotas aguardam configuração. |
 | D1 | **OPERACIONAL** | Consumer assíncrono reconstrói projeções; as rotas públicas não consultam D1. |
 | ACTS_MEDIA / upload de imagens | **OPERACIONAL** | Painel → API autenticada → validação JPEG/PNG/WEBP (10 MB) → ACTS_MEDIA + D1 → ACTS_QUEUE → projeção pública. As imagens são armazenadas como recebidas, inclusive metadados EXIF; não há processamento nesta etapa. |
 | Queue | **OPERACIONAL** | Producer e consumer do Worker transportam pedidos mínimos de city/profile. |
@@ -135,7 +140,7 @@ indicam apenas existência de código:
 | Pagamentos/Asaas | **MÓDULO ISOLADO** | Domínio e adapter testados, sem endpoints/webhook integrados. |
 | Painel do anunciante | **OPERACIONAL** | `/painel` → APIs privadas → D1 → ACTS_QUEUE → publicação em ACTS_DATA. |
 | Admin | **PLANEJADO** | Sem fluxo funcional conectado. |
-| Blogger no minisite | **OPERACIONAL** | Sync Atom seguro via Queue, projeção em ACTS_DATA e renderização PREMIUM. |
+| Blogger no minisite | **OPERACIONAL NO CLIENTE** | Browser busca JSON público, valida URLs e monta DOM com `textContent`; não há proxy Worker. |
 | Impulsionamentos | **OPERACIONAL** | PREMIUM → checkout PIX/Boleto com preço autoritativo → Asaas → webhook autenticado → D1 → ACTS_QUEUE → CityProjection. |
 
 Boosts são compras avulsas, independentes tanto do plano funcional quanto de `commercial_conditions`. O catálogo autoritativo oferece `24h` (R$ 9,90), `7d` (R$ 39,90), `15d` (R$ 69,90) e `30d` (R$ 119,90). STANDARD não pode contratar novos boosts. A ordenação oficial é boost ativo, PREMIUM, e `id` como desempate estável. A projeção inclui somente `boosted` e `boostEndsAt`; o Portal também compara o término com seu relógio para que um objeto em cache não mantenha destaque expirado. Não há cron.
@@ -145,16 +150,16 @@ Condições `normal`, `trial`, `courtesy`, `promotion` e `temporary_free` são r
 ### Contrato público R2 canônico
 
 Publisher e leitor compartilham as keys centralizadas em
-`business/public-content.js`: `cities/{slug}.json` e `profiles/{slug}.json`.
+`business/public-content.js`: `cities/{slug}.json` e `minisites/{slug}.json`.
 Não há leitura dupla, fallback legado ou consulta D1 no request público.
 
 ## Blogger no minisite — OPERACIONAL
 
 A integração Blogger é exclusiva do plano PREMIUM e mantém o blog sob propriedade do anunciante. O painel persiste somente URL e estado operacional em `blogger_integrations`; posts não são armazenados no D1.
 
-O fluxo canônico é: **Blogger → sync interno pela Queue existente → parser Atom → sanitização allowlist → ProfileProjection → ACTS_DATA (`profiles/{slug}.json`) → Minisite**. A sincronização lê no máximo 10 posts, limita o feed a 512 KiB, usa timeout de 8 segundos e valida cada redirect contra destinos locais, privados, link-local e internos. Domínios personalizados só são aceitos como conteúdo após o feed declarar o gerador Blogger.
+O fluxo canônico é: **Minisite → navegador → feed JSON público do Blogger → validação do formato/URLs → DOM seguro**. A projeção `minisites/{slug}.json` contém somente a URL HTTPS configurada. O cliente não injeta HTML editorial: títulos são atribuídos por `textContent` e links passam pela validação de URL segura.
 
-O request público do minisite **NÃO consulta Blogger**. Em falha, a mensagem é repetida pela Queue e o objeto válido anterior em ACTS_DATA permanece intacto. A remoção da URL agenda uma nova projeção sem a seção `blog`.
+O request público do minisite consulta o Blogger diretamente, sujeito a CORS. Feed indisponível, formato inesperado ou URL insegura falha fechado e apenas omite a seção; nunca há proxy, fallback Worker, escrita R2 ou consulta D1 por pageview.
 
 ## Pagamentos Asaas — OPERACIONAL (Etapa 9)
 
