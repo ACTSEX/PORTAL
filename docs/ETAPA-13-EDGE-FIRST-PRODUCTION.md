@@ -406,3 +406,161 @@ Os critérios de PASS não foram demonstrados: em particular não existem prova 
 zero Worker/D1/Queue público, API no Worker, `www` na borda, R2 Custom Domains,
 TLS wildcard, minisite funcional ou Analytics antes/depois. Declarar PASS com os
 dados disponíveis seria inventar evidência de produção.
+
+---
+
+# ETAPA 13C — PROVA FINAL DE PRODUÇÃO
+
+Data da tentativa automatizada e da validação manual: 2026-08-17 (UTC).
+
+## Gate automatizado e histórico do blocker
+
+O primeiro gate da ETAPA 13C foi executado com Node `v22.22.2`, npm `11.4.2` e
+Wrangler `4.123.0`. Não existia variável de ambiente cujo nome começasse com
+`CLOUDFLARE_` ou `CF_`; nenhum valor de credencial foi exibido. O comando
+`npx wrangler whoami` consultou a Cloudflare e respondeu que o usuário não estava
+autenticado.
+
+> **BLOCKER HISTÓRICO DO AMBIENTE CODEX: CLOUDFLARE NÃO AUTENTICADA**
+
+A bateria automatizada foi corretamente interrompida nesse gate. Não houve
+alteração de infraestrutura, deploy, migration D1, mutação, mensagem de Queue,
+publicação, remoção ou purge pelo ambiente Codex.
+
+## Validação manual no Dashboard Cloudflare
+
+Após o bloqueio automatizado, o operador auditou manualmente a zone
+`acompanhantesex.com` no Dashboard Cloudflare. Esta evidência manual atualiza os
+itens de infraestrutura abaixo, mas não substitui medições HTTP, TLS, cache ou
+Analytics que ainda não foram realizadas.
+
+### Comprovado manualmente
+
+- O Worker `portal` recebe a Worker Route `acompanhantesex.com/api/*`. A rota é
+  correta e corresponde ao contrato `/api/* → Worker`.
+- O Custom Domain `acompanhantesex.com` ainda está associado ao Worker `portal`.
+  O apex está comprovado, mas pendente de retirada somente depois que uma origem
+  pública estática puder assumi-lo. Por isso, a home ainda não está comprovada
+  como Worker zero.
+- O bucket R2 `acts-dados` possui o Custom Domain
+  `dados.acompanhantesex.com` ativo e com acesso habilitado.
+- O bucket R2 `acts-midias` possui o Custom Domain
+  `media.acompanhantesex.com` ativo e com acesso habilitado.
+- O DNS wildcard `*.acompanhantesex.com` é um registro A para `192.0.2.1`,
+  proxied pela Cloudflare.
+- No momento da auditoria, `acts-dados` tinha **0 objetos / 0 B** e `acts-midias`
+  tinha **0 objetos / 0 B**.
+
+Os Custom Domains R2 estão prontos, mas os buckets vazios significam que o read
+model público e a mídia pública ainda não foram publicados. Portanto, não há
+prova de city JSON, minisite JSON ou mídia operacional em produção.
+
+### Ainda não comprovado
+
+- home, cidade e minisite com Worker zero;
+- city JSON, minisite JSON e mídia operacionais;
+- D1 zero e Queue zero durante pageviews em produção;
+- shell estático entregue pelo wildcard;
+- TLS wildcard observado em request real;
+- redirect `www` preservando path e query;
+- cache HIT real para JSON ou mídia;
+- Analytics Worker antes/depois da bateria pública.
+
+A existência do wildcard DNS não comprova um minisite funcional: origem, rewrite
+e shell estático continuam pendentes de evidência.
+
+## Tabela de infraestrutura
+
+| Item | Estado real | Evidência |
+|---|---|---|
+| Worker `/api/*` | COMPROVADO / CORRETO | Dashboard: `acompanhantesex.com/api/*` → `portal` |
+| Apex → Worker | COMPROVADO / PENDENTE RETIRADA | Dashboard: Custom Domain `acompanhantesex.com` → `portal` |
+| R2 dados Custom Domain | COMPROVADO / ATIVO | Dashboard: `dados.acompanhantesex.com` → `acts-dados`, acesso habilitado |
+| R2 mídia Custom Domain | COMPROVADO / ATIVO | Dashboard: `media.acompanhantesex.com` → `acts-midias`, acesso habilitado |
+| Bucket dados | VAZIO | `acts-dados`: 0 objetos / 0 B |
+| Bucket mídia | VAZIO | `acts-midias`: 0 objetos / 0 B |
+| Wildcard DNS | COMPROVADO | `*.acompanhantesex.com` → A `192.0.2.1`, proxied |
+| Wildcard entrega estática | NÃO COMPROVADO | origem/rewrite/shell ainda pendentes |
+| Wildcard TLS | NÃO COMPROVADO | nenhum request TLS real medido |
+| WWW redirect | NÃO COMPROVADO | pendente de teste real |
+| Cache JSON | NÃO COMPROVADO | bucket sem objetos; nenhum HIT medido |
+| Cache mídia | NÃO COMPROVADO | bucket sem objetos; nenhum HIT medido |
+| R2 CORS | NÃO COMPROVADO | não incluído na evidência manual fornecida |
+| Analytics Worker | NÃO MEDIDO | acesso automatizado ausente; sem snapshot manual |
+
+## Resultado público atual
+
+| Recurso/pergunta | Estado de produção |
+|---|---|
+| Home usa Worker? | SIM: apex ainda associado ao Worker `portal`; Worker zero não comprovado |
+| Cidade usa Worker? | NÃO COMPROVADO EM PRODUÇÃO |
+| Minisite usa Worker? | NÃO COMPROVADO EM PRODUÇÃO |
+| City JSON | INFRAESTRUTURA R2 COMPROVADA; CONTEÚDO AINDA AUSENTE |
+| Minisite JSON | INFRAESTRUTURA R2 COMPROVADA; CONTEÚDO AINDA AUSENTE |
+| Mídia | INFRAESTRUTURA R2 COMPROVADA; CONTEÚDO AINDA AUSENTE |
+| Pageview consulta D1? | NÃO MEDIDO EM PRODUÇÃO |
+| Pageview envia Queue? | NÃO MEDIDO EM PRODUÇÃO |
+| API usa Worker? | ROTA COMPROVADA: `/api/*` → Worker `portal`; request/Analytics ainda não medidos |
+| KV existe? | Nenhum binding versionado ou recurso criado nesta tarefa; inventário remoto não fornecido |
+
+Não são atribuídos `HTTP 200`, `CF-Ray`, `CF-Cache-Status`, `Age`, `ETag`, TLS,
+redirect ou deltas Analytics, pois essas métricas não foram fornecidas nem
+medidas.
+
+## Analytics e publicação
+
+| Medição | Valor |
+|---|---|
+| Worker Requests antes/depois | NÃO MEDIDO |
+| Requisições públicas controladas | 0 nesta continuação documental |
+| Delta público | NÃO MEDIDO |
+| Requests API controlados | 0 nesta continuação documental |
+| Delta Worker API | NÃO MEDIDO |
+
+Mutação real executada: **não**. D1 atualizado: **não**. Queue enviada:
+**não**. R2 publicado: **não**. JSON observado no Edge: **não**. Migrations D1:
+**nenhuma**. Nenhuma infraestrutura de produção foi alterada nesta continuação.
+
+## Próximo bloqueio operacional
+
+O próximo bloqueio não é a autenticação Cloudflare do ambiente Codex, pois a
+infraestrutura relevante já recebeu auditoria manual parcial. O próximo trabalho
+é **PUBLICAR O CONTEÚDO INICIAL**, começando pelos read models:
+
+```text
+acts-dados
+├── cities/{slug}.json
+└── minisites/{slug}.json
+
+acts-midias
+└── mídias publicadas
+```
+
+Também é necessário identificar e ativar a entrega do shell estático para
+`acompanhantesex.com` e `*.acompanhantesex.com` antes de retirar o apex do Worker.
+A sequência operacional permanece:
+
+```text
+R2 DOMAINS ATIVOS
+        ↓
+PUBLICAR READ MODEL
+        ↓
+ATIVAR ENTREGA ESTÁTICA
+        ↓
+RETIRAR APEX DO WORKER
+        ↓
+TESTAR ZERO WORKER
+```
+
+## Estado da ETAPA 13C
+
+**ETAPA 13C — VALIDAÇÃO MANUAL EM ANDAMENTO**
+
+A infraestrutura R2 e parte do roteamento foram comprovadas. O Edge-First
+completo ainda não foi comprovado porque os buckets estão vazios, o apex continua
+associado ao Worker, o wildcard ainda não possui entrega estática comprovada e
+não existe teste Analytics zero-Worker antes/depois.
+
+**PRÓXIMO BLOQUEIO: PUBLICAÇÃO INICIAL DOS READ MODELS E ENTREGA ESTÁTICA**
+
+**PLANO A: EM VALIDAÇÃO OPERACIONAL**
