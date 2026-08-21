@@ -21,6 +21,7 @@
     "db:migrate:staging": "wrangler d1 migrations apply ACTS_DB --remote --env staging",
     "db:migrate:production": "wrangler d1 migrations apply ACTS_DB --remote --env production",
     "city:backfill": "node scripts/backfill-cities.js",
+    "publish:read-models": "node scripts/publish-read-models.js",
     "deploy:staging": "wrangler deploy --env staging",
     "deploy:production": "wrangler deploy --env production",
     "build:public": "node scripts/build-public.js"

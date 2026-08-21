@@ -233,7 +233,7 @@ export function createPublicationReader({ db, clock = () => new Date() } = {}) {
     const city = await db.first('SELECT id, slug, public_name FROM cities WHERE id = ? AND slug = ? AND active = 1', [cityId, citySlug]);
     if (!city) throw new Error('Authoritative city not found');
     const rows = (await db.all(`SELECT l.id, l.slug, l.title, l.description, l.attributes_json, c.slug AS category_slug,
-      p.user_id AS profile_id, p.display_name, p.bio, m.id AS cover_media_id, m.r2_key AS cover_media_key,
+      p.user_id AS profile_id, p.display_name, p.bio, p.phone, p.website_url, p.social_links_json, m.id AS cover_media_id, m.r2_key AS cover_media_key,
       CASE WHEN u.status = 'active' AND ((s.id IS NOT NULL AND lower(pl.code) = 'premium') OR EXISTS(SELECT 1 FROM commercial_conditions cc WHERE cc.user_id=u.id AND cc.status IN ('active','scheduled') AND cc.type IN ('trial','courtesy','promotion','temporary_free') AND cc.starts_at<=? AND (cc.ends_at IS NULL OR cc.ends_at>?))) THEN 1 ELSE 0 END AS premium,
       (SELECT MAX(b.ends_at) FROM boosts b WHERE b.listing_id = l.id AND b.status = 'active' AND b.starts_at <= ? AND b.ends_at > ?) AS boost_ends_at
       FROM listings l JOIN categories c ON c.id = l.category_id JOIN users u ON u.id = l.owner_id
@@ -242,8 +242,17 @@ export function createPublicationReader({ db, clock = () => new Date() } = {}) {
       LEFT JOIN plans pl ON pl.id = s.plan_id AND pl.active = 1
       LEFT JOIN media m ON m.id = (SELECT id FROM media WHERE listing_id = l.id AND media_type = 'image' ORDER BY sort_order, id LIMIT 1)
       WHERE l.city_id = ? AND l.status = 'published' ORDER BY boost_ends_at IS NULL, premium DESC, l.id`, [clock().toISOString(), clock().toISOString(), clock().toISOString(), clock().toISOString(), cityId])).results;
-    const listings = rows.map((row) => ({ id: row.id, slug: row.slug, profileSlug: row.slug, name: row.display_name || row.title, category: row.category_slug, tags: parse(row.attributes_json, '{}').tags ?? [], coverUrl: row.cover_media_key ? `https://media.acompanhantesex.com/${row.cover_media_key}` : undefined, premium: Boolean(row.premium), boosted: Boolean(row.boost_ends_at), boostEndsAt: row.boost_ends_at ?? undefined, presentation: row.bio || row.description }));
-    return { slug: city.slug, name: city.public_name, categories: [...new Set(listings.map((item) => item.category))], tags: [...new Set(listings.flatMap((item) => item.tags))], listings };
+    const listings = rows.map((row) => {
+      const attributes = parse(row.attributes_json, '{}'); const social = parse(row.social_links_json, '{}');
+      const coverUrl = row.cover_media_key ? `https://media.acompanhantesex.com/${row.cover_media_key}` : undefined;
+      return { id: row.id, slug: row.slug, profileSlug: row.slug, name: row.display_name || row.title, category: row.category_slug,
+        directory: /^dir[123]$/.test(String(attributes.directory ?? '').toLowerCase()) ? String(attributes.directory).toLowerCase() : undefined,
+        tags: Array.isArray(attributes.tags) ? attributes.tags : [], coverUrl, premium: Boolean(row.premium), boosted: Boolean(row.boost_ends_at), boostEndsAt: row.boost_ends_at ?? undefined,
+        publicAge: Number.isInteger(attributes.publicAge) ? attributes.publicAge : undefined, shortCall: typeof attributes.shortCall === 'string' ? attributes.shortCall : undefined,
+        presentation: row.bio || row.description, services: Array.isArray(attributes.services) ? attributes.services : [], gallery: coverUrl ? [{ id: row.cover_media_id, url: coverUrl }] : [],
+        contacts: { phone: row.phone, website: row.website_url, instagram: social.instagram, whatsapp: social.whatsapp } };
+    });
+    return { slug: city.slug, name: city.public_name, directories: ['dir1', 'dir2', 'dir3'], categories: [...new Set(listings.map((item) => item.category))], tags: [...new Set(listings.flatMap((item) => item.tags))], listings };
   }
   async function loadProfile({ profileId, profileSlug }) {
     const row = await db.first(`SELECT l.id, l.slug, l.title, l.description, l.attributes_json, l.city_id,
