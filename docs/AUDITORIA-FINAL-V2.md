@@ -25,3 +25,7 @@ Não foi encontrado login falso, segredo, dado de cartão, escrita pública sem 
 ## Estado de saída
 
 Nenhum CRÍTICO ou ALTO permanece conhecido. Isso **não equivale a pronto para produção**: secrets, environments protegidos, validação documental de rotas, testes em navegador/dispositivo e homologação são bloqueios externos obrigatórios.
+
+## Correção pré-implantação posterior ao PR #5
+
+A revisão posterior identificou cinco bloqueios operacionais: PUT capaz de sobrescrever manifestos, inventário chamado de backup, `plan` sem leitura remota, artifact em caminho divergente e Wrangler ausente da instalação reproduzível. A correção separa `check` local, `plan` por metadados e `apply` create-only; salva sempre `reports/bootstrap-report.json`; e fixa Wrangler 4.35.0 em cada chamada por `npm exec`, sem deixar dependência ausente no lockfile. O inventário não é descrito como backup. A aptidão do apply depende de toda a validação automatizada permanecer verde e da proteção externa do environment `production-r2`.

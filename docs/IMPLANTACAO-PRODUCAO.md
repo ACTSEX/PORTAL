@@ -5,7 +5,9 @@ Proteja environments `production` e `production-r2` com revisores; configure sec
 ## TESTAR
 `npm ci && npm run check && npm audit --audit-level=high`; homologação completa com flags falsas.
 ## PUBLICAR R2
-Execute workflow em `check`, depois `plan`; revise hashes/inventário. Somente após aprovação use `apply` e frase exata. Seeds primeiro; conteúdo explicitamente autorizado; ponteiros/manifestos por último; sem exclusões.
+No workflow `Bootstrap e publicação R2`, execute `check` e revise o artifact `relatorio-r2`: essa etapa valida localmente os oito seeds, sem rede ou secrets. Depois execute `plan`, que faz somente `HEAD` das oito chaves em `acts-private` e `acts-public` e as classifica como ausente, igual ou diferente. O inventário contém apenas chaves e metadados, não conteúdo, e **não é backup restaurável**.
+
+Somente após os testes e a aprovação do plano use `apply` na `main`, com `entrada_cliente` vazia e a frase `PUBLICAR-V2-NO-R2`. O apply aborta antes da primeira escrita se qualquer chave existir e cada criação usa `If-None-Match: *`; uma corrida retorna `412 PreconditionFailed` e interrompe sem sobrescrever. Não há COPY nem DELETE.
 ## IMPLANTAR WORKER
 Na `main`, workflow manual, frase `IMPLANTAR-WORKER-PORTAL`, aprovação do environment; ele testa, builda, dry-run e só então deploya.
 ## CONFIGURAR ROTAS

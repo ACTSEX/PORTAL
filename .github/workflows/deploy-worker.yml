@@ -22,5 +22,5 @@ jobs:
       - run: npm run dry-run
         env: { CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}', CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}' }
       - run: printf '### Worker portal\nBranch: `%s`\nCommit: `%s`\nDry-run aprovado. Ambiente protegido liberou o deploy.\n' "$GITHUB_REF_NAME" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
-      - run: npx wrangler deploy
+      - run: npm exec --yes --package=wrangler@4.35.0 -- wrangler deploy
         env: { CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}', CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}' }
