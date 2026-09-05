@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://portal.local/schemas/financeiro.schema.json",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "provedor",
+    "habilitado",
+    "ambiente",
+    "cobrancaAutomatica",
+    "clienteId",
+    "historico"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "provedor": {
+      "const": "asaas"
+    },
+    "habilitado": {
+      "const": false
+    },
+    "ambiente": {
+      "const": "desativado"
+    },
+    "cobrancaAutomatica": {
+      "const": false
+    },
+    "clienteId": {
+      "type": "string"
+    },
+    "historico": {
+      "type": "array"
+    }
+  },
+  "additionalProperties": false
+}

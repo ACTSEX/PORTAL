@@ -1,0 +1,19 @@
+{
+  "name": "portal-v2",
+  "version": "2.0.0-rodada.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "lint": "node scripts/lint.mjs",
+    "validate:config": "node scripts/validate-config.mjs",
+    "validate:architecture": "node scripts/validate-architecture.mjs",
+    "test": "node --test",
+    "build": "node scripts/build.mjs",
+    "check": "npm run lint && npm run validate:config && npm run validate:architecture && npm test && npm run build",
+    "dry-run": "wrangler deploy --dry-run --outdir dist/worker-dry-run"
+  },
+  "devDependencies": {}
+}

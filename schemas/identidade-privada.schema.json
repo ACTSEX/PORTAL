@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://portal.local/schemas/identidade-privada.schema.json",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "clienteId",
+    "nomeCivil",
+    "cpf",
+    "dataNascimento",
+    "nacionalidade",
+    "sexoCadastral",
+    "googleSub",
+    "gmail",
+    "emailVerificado"
+  ],
+  "properties": {
+    "schemaVersion": {},
+    "clienteId": {},
+    "nomeCivil": {},
+    "cpf": {},
+    "dataNascimento": {},
+    "nacionalidade": {},
+    "sexoCadastral": {},
+    "googleSub": {},
+    "gmail": {},
+    "emailVerificado": {}
+  },
+  "additionalProperties": false
+}

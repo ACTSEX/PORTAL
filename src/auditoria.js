@@ -1,0 +1,1 @@
+export function criarEventoProtegido({ valorAnterior, valorNovo, superadminId, justificativa, ocorridoEm }) { if (!superadminId || !justificativa || !ocorridoEm) throw new TypeError('Auditoria incompleta'); return { valorAnterior, valorNovo, superadminId, justificativa, ocorridoEm }; }

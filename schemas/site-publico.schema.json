@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://portal.local/schemas/site-publico.schema.json",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "canonicalPath",
+    "perfilPath",
+    "cidade",
+    "diretorio",
+    "categoria",
+    "slug"
+  ],
+  "properties": {
+    "schemaVersion": {},
+    "canonicalPath": {},
+    "perfilPath": {},
+    "cidade": {},
+    "diretorio": {},
+    "categoria": {},
+    "slug": {}
+  },
+  "additionalProperties": false
+}

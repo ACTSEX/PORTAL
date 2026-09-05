@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://portal.local/schemas/shard.schema.json",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "cidade",
+    "diretorio",
+    "categoria",
+    "shard",
+    "totalShards",
+    "anuncios"
+  ],
+  "properties": {
+    "schemaVersion": {},
+    "cidade": {},
+    "diretorio": {},
+    "categoria": {},
+    "shard": {},
+    "totalShards": {},
+    "anuncios": {}
+  },
+  "additionalProperties": false
+}

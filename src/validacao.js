@@ -1,0 +1,2 @@
+export function calcularIdade(dataNascimento, hoje = new Date()) { const nascimento = new Date(`${dataNascimento}T00:00:00Z`); if (Number.isNaN(nascimento.valueOf())) throw new TypeError('Data inválida'); let idade = hoje.getUTCFullYear() - nascimento.getUTCFullYear(); if (hoje.getUTCMonth() < nascimento.getUTCMonth() || (hoje.getUTCMonth() === nascimento.getUTCMonth() && hoje.getUTCDate() < nascimento.getUTCDate())) idade--; return idade; }
+export function validarMaioridade(dataNascimento, hoje) { return calcularIdade(dataNascimento, hoje) >= 18; }

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://portal.local/schemas/formulario.schema.json",
+  "type": "object",
+  "required": [
+    "versao",
+    "id",
+    "natureza",
+    "secoes"
+  ],
+  "properties": {
+    "versao": {
+      "const": 1
+    },
+    "id": {
+      "type": "string"
+    },
+    "natureza": {
+      "enum": [
+        "privada",
+        "publica"
+      ]
+    },
+    "secoes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "titulo",
+          "ordem",
+          "campos"
+        ],
+        "properties": {
+          "campos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "tipo",
+                "rotulo",
+                "obrigatorio",
+                "ordem",
+                "publicacao",
+                "ajuda",
+                "limites",
+                "opcoes",
+                "condicoes",
+                "diretoriosPermitidos",
+                "planosPermitidos"
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

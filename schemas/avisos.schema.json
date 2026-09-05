@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://portal.local/schemas/avisos.schema.json",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "clienteId",
+    "avisos"
+  ],
+  "properties": {
+    "schemaVersion": {},
+    "clienteId": {},
+    "avisos": {}
+  },
+  "additionalProperties": false
+}

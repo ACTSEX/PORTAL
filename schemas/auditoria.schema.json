@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://portal.local/schemas/auditoria.schema.json",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "eventoId",
+    "clienteId",
+    "campo",
+    "valorAnterior",
+    "valorNovo",
+    "superadminId",
+    "justificativa",
+    "ocorridoEm"
+  ],
+  "properties": {
+    "schemaVersion": {},
+    "eventoId": {},
+    "clienteId": {},
+    "campo": {},
+    "valorAnterior": {},
+    "valorNovo": {},
+    "superadminId": {},
+    "justificativa": {},
+    "ocorridoEm": {}
+  },
+  "additionalProperties": false
+}
