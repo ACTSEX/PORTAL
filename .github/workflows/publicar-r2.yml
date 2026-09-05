@@ -1,0 +1,42 @@
+name: Bootstrap e publicação R2
+on:
+  workflow_dispatch:
+    inputs:
+      modo: { description: 'Modo sem escrita por padrão', required: true, default: check, type: choice, options: [check, plan, apply] }
+      confirmacao: { description: 'Apply: PUBLICAR-V2-NO-R2', required: false, type: string }
+      entrada_cliente: { description: 'Arquivo local versionado explicitamente autorizado (opcional)', required: false, type: string }
+permissions: { contents: read }
+concurrency: { group: portal-r2-production, cancel-in-progress: false }
+jobs:
+  r2:
+    environment: production-r2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run validate:config
+      - name: Check/plan (nunca escreve)
+        if: inputs.modo != 'apply'
+        run: node scripts/bootstrap-r2.mjs "$MODO" | tee bootstrap-report.json
+        env: { MODO: '${{ inputs.modo }}' }
+      - name: Barreiras de apply
+        if: inputs.modo == 'apply'
+        run: test "$GITHUB_REF" = refs/heads/main && test "$CONFIRMACAO" = PUBLICAR-V2-NO-R2 && test -z "$ENTRADA" && test -n "$R2_ACCESS_KEY_ID" && test -n "$R2_SECRET_ACCESS_KEY"
+        env: { CONFIRMACAO: '${{ inputs.confirmacao }}', ENTRADA: '${{ inputs.entrada_cliente }}', R2_ACCESS_KEY_ID: '${{ secrets.R2_ACCESS_KEY_ID }}', R2_SECRET_ACCESS_KEY: '${{ secrets.R2_SECRET_ACCESS_KEY }}' }
+      - name: Inventário/backup anterior obrigatório
+        if: inputs.modo == 'apply'
+        run: mkdir -p reports && aws s3api list-objects-v2 --endpoint-url "https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com" --bucket acts-private > reports/acts-private-before.json && aws s3api list-objects-v2 --endpoint-url "https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com" --bucket acts-public > reports/acts-public-before.json
+        env: { AWS_ACCESS_KEY_ID: '${{ secrets.R2_ACCESS_KEY_ID }}', AWS_SECRET_ACCESS_KEY: '${{ secrets.R2_SECRET_ACCESS_KEY }}', AWS_DEFAULT_REGION: auto, CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}' }
+      - name: Publicar seeds sem exclusão (manifestos por último)
+        if: inputs.modo == 'apply'
+        run: |
+          set -euo pipefail
+          node scripts/bootstrap-r2.mjs check > reports/bootstrap-plan.json
+          find bootstrap/private -name manifesto.json -print0 | sort -z | while IFS= read -r -d '' f; do key=${f#bootstrap/private/}; aws s3api put-object --endpoint-url "$ENDPOINT" --bucket acts-private --key "$key" --body "$f" --checksum-algorithm SHA256; done
+          find bootstrap/public -name manifesto.json -print0 | sort -z | while IFS= read -r -d '' f; do key=${f#bootstrap/public/}; aws s3api put-object --endpoint-url "$ENDPOINT" --bucket acts-public --key "$key" --body "$f" --checksum-algorithm SHA256; done
+        env: { AWS_ACCESS_KEY_ID: '${{ secrets.R2_ACCESS_KEY_ID }}', AWS_SECRET_ACCESS_KEY: '${{ secrets.R2_SECRET_ACCESS_KEY }}', AWS_DEFAULT_REGION: auto, ENDPOINT: 'https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com' }
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: relatorio-r2, path: 'reports/*.json', if-no-files-found: ignore }

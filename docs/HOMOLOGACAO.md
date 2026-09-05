@@ -1,0 +1,5 @@
+# Homologação V2
+
+Bloqueios: environments/secrets configurados, origem do apex decidida, amostra anônima, conta de teste Google e navegador/dispositivo real. Validar 360, 390, 412, 430 px, tablet e desktop: foco/teclado/rótulos, formulários, filtros, rolagem e voltar; nenhuma quebra horizontal. DevTools Network: vídeo somente após interação, WebP nos cards, imagens abaixo da dobra lazy, apenas shard do diretório/cidade, sem carga de todas as cidades. Executar fluxo completo login → cadastro/maioridade/documentos → aprovação → anúncio/mídias → preview → publicação falsa → shard/card/subpasta/subdomínio → aniversário/vencimento/suspensão/rollback. Inspecionar público/logs contra PII.
+
+Orçamento verificável: shell público HTML+CSS+JS ≤100 KiB não comprimido (teste automatizado); zero `preload=auto`; sem dependência runtime. Medir e registrar, sem inventar: bytes transferidos, LCP, CLS, INP, requests iniciais e Lighthouse em cada classe de viewport. Critério: todos os testes/build verdes, rotas comprovadas por Tail, flags ainda falsas e aprovação formal.

@@ -1,0 +1,14 @@
+name: Validar cron V2
+on: { workflow_dispatch: {}, pull_request: { paths: ['src/cron.js', 'wrangler.toml', 'tests/rodada4.test.js'] } }
+permissions: { contents: read }
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: node --test tests/rodada4.test.js
+      - run: test "${CRON_ENABLED:-false}" = false
+      - run: echo 'Validação somente; este workflow não configura triggers nem executa deploy.' >> "$GITHUB_STEP_SUMMARY"

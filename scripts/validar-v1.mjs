@@ -1,0 +1,1 @@
+import {args,load,validate,report} from './migracao-lib.mjs';const a=args(),issues=validate(await load(a.input)),result={modo:a.mode,valido:issues.length===0,issues};console.log(JSON.stringify(result,null,2));if(a.mode==='convert')await report('validacao-v1',result,a.output);if(issues.length)process.exitCode=2;
