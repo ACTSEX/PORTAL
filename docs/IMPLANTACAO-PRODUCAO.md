@@ -5,7 +5,9 @@ Proteja environments `production` e `production-r2` com revisores; configure sec
 ## TESTAR
 `npm ci && npm run check && npm audit --audit-level=high`; homologação completa com flags falsas.
 ## PUBLICAR R2
-No workflow `Bootstrap e publicação R2`, execute `check` e revise o artifact `relatorio-r2`: essa etapa valida localmente os oito seeds, sem rede ou secrets. Depois execute `plan`, que faz somente `HEAD` das oito chaves em `acts-private` e `acts-public` e as classifica como ausente, igual ou diferente. O inventário contém apenas chaves e metadados, não conteúdo, e **não é backup restaurável**.
+No workflow `Bootstrap e publicação R2`, execute `check` e revise o artifact `relatorio-r2`: essa etapa valida localmente os sete manifestos do bootstrap atual, sem rede ou secrets. Depois execute `plan`, que faz somente `HEAD` das sete chaves em `acts-private` e `acts-public` e as classifica como ausente, igual ou diferente. O inventário contém apenas chaves e metadados, não conteúdo, e **não é backup restaurável**.
+
+O oitavo objeto, `midias/clientes/manifesto.json`, é um marcador legado que pode existir no R2 remoto. O bootstrap não deve sobrescrevê-lo nem removê-lo. Sua remoção é feita exclusivamente pelo workflow protegido `Corrigir estrutura de mídias no R2`, após revisar o modo `plan` e aprovar o environment `production-r2`.
 
 Somente após os testes e a aprovação do plano use `apply` na `main`, com `entrada_cliente` vazia e a frase `PUBLICAR-V2-NO-R2`. O apply aborta antes da primeira escrita se qualquer chave existir e cada criação usa `If-None-Match: *`; uma corrida retorna `412 PreconditionFailed` e interrompe sem sobrescrever. Não há COPY nem DELETE.
 ## IMPLANTAR WORKER

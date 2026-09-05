@@ -1,0 +1,61 @@
+name: Corrigir estrutura de mídias no R2
+on:
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: check local; plan somente leitura; apply protegido
+        required: true
+        default: check
+        type: choice
+        options: [check, plan, apply]
+      confirmacao:
+        description: 'Apply: REMOVER-MARCADOR-MIDIAS-RAIZ'
+        required: false
+        type: string
+permissions: { contents: read }
+concurrency: { group: corrigir-midias-raiz-r2, cancel-in-progress: false }
+jobs:
+  migracao:
+    environment: production-r2
+    runs-on: ubuntu-latest
+    env:
+      REPORT_PATH: reports/media-marker-migration-report.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Check local sem rede ou secrets
+        if: inputs.modo == 'check'
+        run: node scripts/remover-marcador-midias-raiz.mjs check
+      - name: Plan remoto somente leitura
+        if: inputs.modo == 'plan'
+        run: node scripts/remover-marcador-midias-raiz.mjs plan
+        env: &r2-read-credentials
+          R2_ACCESS_KEY_ID: '${{ secrets.R2_ACCESS_KEY_ID }}'
+          R2_SECRET_ACCESS_KEY: '${{ secrets.R2_SECRET_ACCESS_KEY }}'
+          AWS_ACCESS_KEY_ID: '${{ secrets.R2_ACCESS_KEY_ID }}'
+          AWS_SECRET_ACCESS_KEY: '${{ secrets.R2_SECRET_ACCESS_KEY }}'
+          AWS_DEFAULT_REGION: auto
+          CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}'
+      - name: Remover exclusivamente o marcador autorizado
+        if: inputs.modo == 'apply'
+        run: node scripts/remover-marcador-midias-raiz.mjs apply
+        env:
+          <<: *r2-read-credentials
+          CONFIRMATION: '${{ inputs.confirmacao }}'
+      - name: Resumo seguro
+        if: always() && hashFiles('reports/media-marker-migration-report.json') != ''
+        shell: bash
+        run: |
+          node -e '
+            const fs=require("fs"),r=JSON.parse(fs.readFileSync(process.env.REPORT_PATH));
+            const lines=["### Correção de mídias no R2",`Modo: \`${r.modo}\``,`Branch: \`${r.branch||process.env.GITHUB_REF_NAME}\``,`Bucket: \`${r.bucket}\``,`Prefixo: \`${r.prefixoExaminado}\``,`Chave autorizada: \`${r.chaveAutorizada}\``,`Objetos encontrados: ${r.quantidadeObjetos}`,`Resultado: \`${r.resultado}\``,`Remote reads: ${r.remoteReads}`,`Writes: ${r.writes}`,`Deletes: ${r.deletes}`,`Overwrites: ${r.overwrites}`];
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,lines.join("\n")+"\n");'
+      - name: Anexar relatório
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-correcao-midias-r2
+          path: reports/media-marker-migration-report.json
+          if-no-files-found: warn

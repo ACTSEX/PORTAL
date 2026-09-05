@@ -9,7 +9,7 @@ const credentials = { R2_ACCESS_KEY_ID: 'id-not-real', R2_SECRET_ACCESS_KEY: 'se
 const applyEnv = { ...credentials, GITHUB_REF: 'refs/heads/main', CONFIRMATION: 'PUBLICAR-V2-NO-R2' };
 
 test('workflows manuais protegem apply, environments e não excluem', async () => {
-  for (const file of ['deploy-worker.yml', 'publicar-r2.yml', 'reconciliar-rotas.yml']) {
+  for (const file of ['corrigir-midias-raiz-r2.yml', 'deploy-worker.yml', 'publicar-r2.yml', 'reconciliar-rotas.yml']) {
     assert.match(await readFile(`.github/workflows/${file}`, 'utf8'), /workflow_dispatch/);
   }
   const workflow = await readFile('.github/workflows/publicar-r2.yml', 'utf8');
@@ -17,6 +17,22 @@ test('workflows manuais protegem apply, environments e não excluem', async () =
   assert.match(workflow, /PUBLICAR-V2-NO-R2/);
   assert.match(workflow, /path: 'reports\/bootstrap-report\.json'/);
   assert.doesNotMatch(workflow, /delete-object|\bs3\s+rm\b/);
+});
+
+test('workflow da migração tem dispatch, environment, guardas, relatório e exclusão exata', async () => {
+  const workflow = await readFile('.github/workflows/corrigir-midias-raiz-r2.yml', 'utf8');
+  assert.match(workflow, /name: Corrigir estrutura de mídias no R2/);
+  assert.match(workflow, /workflow_dispatch:[\s\S]*options: \[check, plan, apply\]/);
+  assert.match(workflow, /environment: production-r2/);
+  assert.match(workflow, /REMOVER-MARCADOR-MIDIAS-RAIZ/);
+  assert.match(workflow, /inputs\.modo == 'apply'/);
+  assert.match(workflow, /if: always\(\)[\s\S]*actions\/upload-artifact@v4/);
+  assert.match(workflow, /reports\/media-marker-migration-report\.json/);
+  assert.doesNotMatch(workflow, /--recursive|\bs3\s+rm\b/);
+  const checkStep = workflow.match(/- name: Check local sem rede ou secrets[\s\S]*?(?=\n      - name:)/)?.[0] || '';
+  assert.doesNotMatch(checkStep, /secrets\.|R2_ACCESS_KEY_ID|CLOUDFLARE_ACCOUNT_ID/);
+  const planStep = workflow.match(/- name: Plan remoto somente leitura[\s\S]*?(?=\n      - name:)/)?.[0] || '';
+  assert.doesNotMatch(planStep, /delete-object|put-object|\bs3\s+rm\b/);
 });
 
 test('check é local, não usa rede, não escreve e gera o relatório correto', async () => withReport(async (reportPath) => {
