@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {readFile,access} from 'node:fs/promises';
+test('documentos e shells existem',async()=>{for(const p of ['ARQUITETURA.md','docs/TESTES-E-ACEITE.md','frontend/painel/index.html','frontend/publico/index.html'])await access(p)});test('hierarquia e isolamento são normativos',async()=>{const s=await readFile('ARQUITETURA.md','utf8');assert.match(s,/CIDADE → DIRETÓRIO → CATEGORIA → ANÚNCIO/);assert.match(s,/não existe feed global/)});

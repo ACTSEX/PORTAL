@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://portal.local/schemas/manifesto.schema.json",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "versao",
+    "clienteId",
+    "arquivos",
+    "publicarPorUltimo"
+  ],
+  "properties": {
+    "schemaVersion": {},
+    "versao": {},
+    "clienteId": {},
+    "arquivos": {},
+    "publicarPorUltimo": {}
+  },
+  "additionalProperties": false
+}

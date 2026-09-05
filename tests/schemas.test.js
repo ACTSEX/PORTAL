@@ -1,0 +1,1 @@
+import test from 'node:test';import {execFileSync}from'node:child_process';test('configurações e exemplos passam nos schemas',()=>execFileSync(process.execPath,['scripts/validate-config.mjs'],{stdio:'pipe'}));

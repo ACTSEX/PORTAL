@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import worker from '../src/worker.js';
+test('GET /api/health tem contrato mínimo',async()=>{const r=await worker.fetch(new Request('https://local/api/health'),{},{});assert.equal(r.status,200);assert.deepEqual(await r.json(),{ok:true,service:'portal',version:'2.0.0-rodada.1',asaasEnabled:false})});test('outras rotas falham controladamente',async()=>{const r=await worker.fetch(new Request('https://local/api/login'),{},{});assert.equal(r.status,404);assert.equal((await r.json()).code,'NOT_IMPLEMENTED')});

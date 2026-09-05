@@ -1,0 +1,12 @@
+# Rotas e domínios são administrados separadamente; não os alterar nesta rodada.
+name = "portal"
+main = "src/worker.js"
+compatibility_date = "2026-09-05"
+
+[[r2_buckets]]
+binding = "acts_private"
+bucket_name = "acts-private"
+
+[[r2_buckets]]
+binding = "acts_public"
+bucket_name = "acts-public"

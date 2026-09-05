@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://portal.local/schemas/config-diretorios.schema.json",
+  "type": "object",
+  "required": [
+    "versao",
+    "diretorios"
+  ],
+  "properties": {
+    "versao": {
+      "const": 1
+    },
+    "diretorios": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3
+    }
+  },
+  "additionalProperties": false
+}
