@@ -22,5 +22,7 @@
     "bootstrap:r2": "node scripts/bootstrap-r2.mjs check",
     "migrate:check": "node scripts/validar-v1.mjs check"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "wrangler": "4.35.0"
+  }
 }
