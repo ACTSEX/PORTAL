@@ -25,7 +25,7 @@ test('check é local, não usa rede, não escreve e gera o relatório correto', 
   assert.equal(report.remoteReads, 0);
   assert.equal(report.writes, 0);
   assert.equal(report.deletes, 0);
-  assert.equal(report.total, 8);
+  assert.equal(report.total, 7);
   assert.deepEqual(JSON.parse(await readFile(reportPath, 'utf8')), report);
 }));
 
@@ -41,9 +41,9 @@ test('plan só lê e classifica ausente, igual e diferente', async () => withRep
     putCreateOnly() { writes++; }
   };
   const report = await execute('plan', { env: credentials, remote, reportPath });
-  assert.equal(reads, 8);
+  assert.equal(reads, 7);
   assert.equal(writes, 0);
-  assert.equal(report.remoteReads, 8);
+  assert.equal(report.remoteReads, 7);
   assert.equal(report.counts.ausente, 1);
   assert.ok(report.counts.existente_igual >= 1);
   assert.ok(report.counts.existente_diferente >= 1);
@@ -60,7 +60,7 @@ test('apply recusa branch, confirmação e entrada de cliente', async () => with
 test('apply aborta antes da primeira escrita se qualquer chave existe', async () => withReport(async (reportPath) => {
   const remote = noExistingRemote();
   remote.head = () => ({ ContentLength: 1, ETag: 'existente' });
-  await assert.rejects(execute('apply', { env: applyEnv, remote, reportPath }), /bloqueado por 8 objeto/);
+  await assert.rejects(execute('apply', { env: applyEnv, remote, reportPath }), /bloqueado por 7 objeto/);
   assert.equal(remote.writes, 0);
   const report = JSON.parse(await readFile(reportPath, 'utf8'));
   assert.equal(report.resultado, 'bloqueado_objetos_existentes');
@@ -119,3 +119,14 @@ async function withReport(callback) {
   try { return await callback(join(directory, 'reports/bootstrap-report.json')); }
   finally { await rm(directory, { recursive: true, force: true }); }
 }
+
+test('correção do marcador é manual, protegida e operável pelo navegador',async()=>{
+  const workflow=await readFile('.github/workflows/corrigir-midias-r2.yml','utf8');
+  assert.match(workflow,/name: Corrigir estrutura de mídias/);
+  assert.match(workflow,/workflow_dispatch:/);
+  assert.match(workflow,/options: \[check, plan, apply\]/);
+  assert.match(workflow,/environment: production-r2/);
+  assert.match(workflow,/REMOVER-MARCADOR-MIDIAS-RAIZ/);
+  assert.match(workflow,/upload-artifact@v4/);
+  assert.doesNotMatch(workflow,/\bs3\s+rm\b|--recursive/);
+});

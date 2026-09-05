@@ -20,7 +20,8 @@
     "test:public": "node --test tests/rodada4.test.js tests/performance.test.js",
     "test:workflows": "node --test tests/workflows.test.js",
     "bootstrap:r2": "node scripts/bootstrap-r2.mjs check",
-    "migrate:check": "node scripts/validar-v1.mjs check"
+    "migrate:check": "node scripts/validar-v1.mjs check",
+    "migration:root-media-marker:check": "node scripts/remover-marcador-midias-raiz.mjs check"
   },
   "devDependencies": {}
 }

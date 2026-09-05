@@ -1,1 +1,1 @@
-{"schemaVersion":1,"clienteId":"cli_001","slug":"nome-artistico","nomeArtistico":"Nome Artístico","idade":36,"diretorio":"mulheres","cidadePrincipal":"londrina","cidadesAtendimento":["londrina"],"categorias":[],"midiasManifesto":"/dados/clientes/cli_001/manifest.json"}
+{"schemaVersion":1,"clienteId":"cli_001","slug":"nome-artistico","nomeArtistico":"Nome Artístico","idade":36,"diretorio":"mulheres","cidadePrincipal":"londrina","cidadesAtendimento":["londrina"],"categorias":[],"midiasManifesto":"clientes/cli_001/dados/midias.json"}

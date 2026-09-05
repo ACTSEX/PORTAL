@@ -5,8 +5,8 @@
 1. O navegador recodifica foto/capa em WebP, mede e calcula SHA-256; vídeo/áudio compatível também recebe hash.
 2. O Worker autentica sessão, CSRF/Origin, proprietário, tipo, tamanho e limite do plano; cria reserva de dez minutos e nome/chave do servidor.
 3. O navegador faz `PUT` no endpoint autenticado de streaming do Worker.
-4. O Worker confere tamanho e magic bytes (`RIFF…WEBP` ou ISO BMFF `ftyp`) antes de gravar em `acts_private/clientes/{id}/uploads-temporarios/{uploadId}/`.
-5. A finalização relê bytes, confere hash e limite e cria manifesto autoritativo em `rascunho/midias.json`; é idempotente.
+4. O Worker confere tamanho e magic bytes (`RIFF…WEBP` ou ISO BMFF `ftyp`) antes de gravar em `acts_private/clientes/{id}/midias/uploads-temporarios/{uploadId}/`.
+5. A finalização relê bytes, confere hash e limite e cria manifesto autoritativo em `rascunho-publico/midias.json`; é idempotente.
 
 Foi escolhido fallback funcional por streaming privado no Worker: Workers/R2 bindings não oferecem uma URL pré-assinada sem implementar AWS SigV4 e credenciais adicionais. Nenhuma credencial permanente chega ao browser. Uma integração futura opcional poderá usar `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID` e `R2_SECRET_ACCESS_KEY`, exclusivamente como secrets.
 

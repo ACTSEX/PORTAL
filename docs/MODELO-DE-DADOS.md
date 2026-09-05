@@ -6,4 +6,4 @@ A chave estável é `clienteId`. Identidade e operacional privados são separado
 
 Na Rodada 2, todo documento privado mutável contém `schemaVersion`, `revision`, `clienteId`, `criadoEm` e `atualizadoEm`. Identidade e operacional ficam nos caminhos normativos; documentos têm manifesto semântico; avisos formam documento revisionado. Sessões e vínculos Google ficam sob `sistema/`. Índices de Google e CPF são HMAC e não revelam seus valores. Auditoria é um objeto imutável por evento.
 
-Na Rodada 3, `rascunho/perfil.json`, `rascunho/site.json` e `rascunho/midias.json` são privados e revisionados. Reservas temporárias têm estado e expiração; o manifesto mantém `proximoId`, itens ordenados e órfãos recuperáveis.
+Na Rodada 3, `rascunho-publico/perfil.json`, `rascunho-publico/site.json` e `rascunho-publico/midias.json` são privados e revisionados. Reservas temporárias têm estado e expiração; o manifesto mantém `proximoId`, itens ordenados e órfãos recuperáveis.

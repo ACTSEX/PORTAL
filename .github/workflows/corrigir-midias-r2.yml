@@ -1,0 +1,69 @@
+name: Corrigir estrutura de mídias
+
+on:
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: 'check local; plan inventaria; apply remove somente o marcador validado'
+        required: true
+        default: check
+        type: choice
+        options: [check, plan, apply]
+      confirmacao:
+        description: 'Para apply, digite REMOVER-MARCADOR-MIDIAS-RAIZ'
+        required: false
+        type: string
+
+permissions: { contents: read }
+concurrency: { group: corrigir-midias-r2-production, cancel-in-progress: false }
+
+jobs:
+  corrigir:
+    environment: production-r2
+    runs-on: ubuntu-latest
+    env:
+      REPORT_PATH: reports/media-marker-migration.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Verificar implementação local
+        if: inputs.modo == 'check'
+        run: node scripts/remover-marcador-midias-raiz.mjs check
+      - name: Inventariar prefixo sem excluir
+        if: inputs.modo == 'plan'
+        run: node scripts/remover-marcador-midias-raiz.mjs plan
+        env:
+          R2_ACCESS_KEY_ID: '${{ secrets.R2_ACCESS_KEY_ID }}'
+          R2_SECRET_ACCESS_KEY: '${{ secrets.R2_SECRET_ACCESS_KEY }}'
+          AWS_ACCESS_KEY_ID: '${{ secrets.R2_ACCESS_KEY_ID }}'
+          AWS_SECRET_ACCESS_KEY: '${{ secrets.R2_SECRET_ACCESS_KEY }}'
+          AWS_DEFAULT_REGION: auto
+          CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}'
+      - name: Remover exclusivamente o marcador validado
+        if: inputs.modo == 'apply'
+        run: node scripts/remover-marcador-midias-raiz.mjs apply
+        env:
+          R2_ACCESS_KEY_ID: '${{ secrets.R2_ACCESS_KEY_ID }}'
+          R2_SECRET_ACCESS_KEY: '${{ secrets.R2_SECRET_ACCESS_KEY }}'
+          AWS_ACCESS_KEY_ID: '${{ secrets.R2_ACCESS_KEY_ID }}'
+          AWS_SECRET_ACCESS_KEY: '${{ secrets.R2_SECRET_ACCESS_KEY }}'
+          AWS_DEFAULT_REGION: auto
+          CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}'
+          CONFIRMATION: '${{ inputs.confirmacao }}'
+      - name: Resumo da operação
+        if: always() && hashFiles('reports/media-marker-migration.json') != ''
+        run: |
+          node -e '
+            const fs=require("fs"),r=JSON.parse(fs.readFileSync(process.env.REPORT_PATH));
+            const lines=["### Correção da estrutura de mídias",`Modo: \`${r.mode}\``,`Branch: \`${r.branch||process.env.GITHUB_REF_NAME}\``,`Bucket: \`${r.bucket}\``,`Chave exata: \`${r.key}\``,`Objetos sob o prefixo: ${r.objectsUnderPrefix.length}`,`Writes: ${r.writes}`,`Deletes: ${r.deletes}`,`Status: \`${r.status}\`];
+            if(r.errorCode) lines.push(`Bloqueio: \`${r.errorCode}\``);
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,lines.join("\n")+"\n");'
+      - name: Anexar relatório para revisão
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-correcao-midias-r2
+          path: reports/media-marker-migration.json
+          if-no-files-found: warn
