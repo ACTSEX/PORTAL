@@ -31,7 +31,7 @@ jobs:
       - name: Plan remoto somente leitura
         if: inputs.modo == 'plan'
         run: node scripts/remover-marcador-midias-raiz.mjs plan
-        env: &r2-read-credentials
+        env:
           R2_ACCESS_KEY_ID: '${{ secrets.R2_ACCESS_KEY_ID }}'
           R2_SECRET_ACCESS_KEY: '${{ secrets.R2_SECRET_ACCESS_KEY }}'
           AWS_ACCESS_KEY_ID: '${{ secrets.R2_ACCESS_KEY_ID }}'
@@ -42,7 +42,12 @@ jobs:
         if: inputs.modo == 'apply'
         run: node scripts/remover-marcador-midias-raiz.mjs apply
         env:
-          <<: *r2-read-credentials
+          R2_ACCESS_KEY_ID: '${{ secrets.R2_ACCESS_KEY_ID }}'
+          R2_SECRET_ACCESS_KEY: '${{ secrets.R2_SECRET_ACCESS_KEY }}'
+          AWS_ACCESS_KEY_ID: '${{ secrets.R2_ACCESS_KEY_ID }}'
+          AWS_SECRET_ACCESS_KEY: '${{ secrets.R2_SECRET_ACCESS_KEY }}'
+          AWS_DEFAULT_REGION: auto
+          CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}'
           CONFIRMATION: '${{ inputs.confirmacao }}'
       - name: Resumo seguro
         if: always() && hashFiles('reports/media-marker-migration-report.json') != ''
