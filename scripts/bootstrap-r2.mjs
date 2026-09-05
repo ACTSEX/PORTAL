@@ -33,8 +33,8 @@ export async function localInventory(root = resolve('bootstrap')) {
       etagMd5: createHash('md5').update(raw).digest('hex')
     });
   }
-  if (objects.length !== 8 || objects.some(({ key }) => !key.endsWith('/manifesto.json'))) {
-    throw new Error('Esperados exatamente 8 manifestos');
+  if (objects.length !== 7 || objects.some(({ key }) => !key.endsWith('/manifesto.json'))) {
+    throw new Error('Esperados exatamente 7 manifestos; midias/ raiz é proibido');
   }
   return objects;
 }

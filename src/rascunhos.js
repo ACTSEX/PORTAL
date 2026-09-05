@@ -1,6 +1,7 @@
 import { auditar } from './auditoria.js';
 import { loadClient } from './clientes.js';
 import { httpError } from './auth/session.js';
+import { privatePaths } from './paths.js';
 
 const PROFILE_FIELDS = new Set(['revision','formVersion','step','nomeArtistico','apresentacao','cidadePrincipal','cidadesAtendimento','bairroPublico','categorias','caracteristicas','servicos','disponibilidade','contatoPublico']);
 const SITE_FIELDS = new Set(['revision','formVersion','step','titulo','descricao','urlExterna','corDestaque']);
@@ -36,5 +37,5 @@ function safeUrl(value) { let url; try { url = new URL(value); } catch { throw h
 function exact(value, allowed) { if (!value || typeof value !== 'object' || Array.isArray(value)) throw httpError(400, 'BODY_INVALID'); for (const key of Object.keys(value)) if (!allowed.has(key)) throw httpError(422, 'UNKNOWN_FIELD'); }
 function empty(clienteId, type) { return { schemaVersion: 2, formVersion: 2, clienteId, revision: 0, estado: 'rascunho', tipo: type }; }
 function event(session, acao, revision, metadados = {}) { return { clienteId: session.clienteId, acao, ator: session.googleSub, papel: session.role, revision, metadados }; }
-export const profileKey = (id) => `clientes/${id}/rascunho/perfil.json`;
-export const siteKey = (id) => `clientes/${id}/rascunho/site.json`;
+export const profileKey = (id) => privatePaths.rascunho(id,'perfil.json');
+export const siteKey = (id) => privatePaths.rascunho(id,'site.json');

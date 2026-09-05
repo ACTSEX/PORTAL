@@ -2,19 +2,20 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://portal.local/schemas/midias.schema.json",
   "type": "object",
-  "required": [
-    "schemaVersion",
-    "clienteId",
-    "proximoId",
-    "ordem",
-    "itens"
-  ],
+  "required": ["schemaVersion", "clienteId", "itens"],
   "properties": {
-    "schemaVersion": {},
-    "clienteId": {},
-    "proximoId": {},
-    "ordem": {},
-    "itens": {}
+    "schemaVersion": { "const": 2 },
+    "clienteId": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+    "revision": { "type": "integer", "minimum": 0 },
+    "proximoId": { "type": "integer", "minimum": 1 },
+    "ordem": { "type": "array" },
+    "orfaos": { "type": "array", "items": { "$ref": "#/$defs/item" } },
+    "itens": { "type": "array", "items": { "$ref": "#/$defs/item" } }
+  },
+  "$defs": {
+    "mediaPath": { "type": "string", "pattern": "^clientes/[A-Za-z0-9_-]+/midias/(fotos|videos|audios)/[^/]+$" },
+    "derivative": { "type": "object", "required": ["arquivo"], "properties": { "arquivo": { "$ref": "#/$defs/mediaPath" } }, "additionalProperties": true },
+    "item": { "type": "object", "required": ["id", "tipo", "arquivo"], "properties": { "id": { "type": "string" }, "tipo": { "enum": ["foto", "video", "audio"] }, "arquivo": { "$ref": "#/$defs/mediaPath" }, "miniatura": { "$ref": "#/$defs/derivative" }, "capa": { "$ref": "#/$defs/derivative" } }, "additionalProperties": true }
   },
   "additionalProperties": false
 }

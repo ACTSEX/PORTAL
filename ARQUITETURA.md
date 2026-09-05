@@ -64,6 +64,6 @@ Cadastro, índice HMAC de CPF, documentos, avisos, sessões e eventos imutáveis
 
 ## 11. Rodada 3 — rascunhos e mídias privadas
 
-O formulário de projeção pública é renderizado por `config/formulario-publico.json`, mas seus documentos continuam exclusivamente em `acts_private`, sob `clientes/{clienteId}/rascunho/`. Perfil, site e manifesto usam revisão otimista. O diretório vem da identidade operacional, categorias são filtradas por ele e a cidade inicial é somente Londrina. A configuração comercial pendente é fail-closed.
+O formulário de projeção pública é renderizado por `config/formulario-publico.json`, mas seus documentos continuam exclusivamente em `acts_private`, sob `clientes/{clienteId}/rascunho-publico/`. Perfil, site e manifesto usam revisão otimista. O diretório vem da identidade operacional, categorias são filtradas por ele e a cidade inicial é somente Londrina. A configuração comercial pendente é fail-closed.
 
-Toda mídia entra em `uploads-temporarios`, é validada por conteúdo, hash, tamanho, reserva, proprietário e plano, e somente então é copiada logicamente para `rascunho/midias/`. Fotos/capas são WebP, vídeos MP4 H.264/AAC e áudio M4A/AAC. O Worker não transcodifica. A projeção pública existe como interface desativada; não há qualquer escrita em `acts_public`, publicação ou cron.
+Toda mídia entra em `uploads-temporarios`, é validada por conteúdo, hash, tamanho, reserva, proprietário e plano, e somente então é copiada logicamente para `midias/{fotos,videos,audios}/`. Fotos/capas são WebP, vídeos MP4 H.264/AAC e áudio M4A/AAC. O Worker não transcodifica. A projeção pública existe como interface desativada; não há qualquer escrita em `acts_public`, publicação ou cron.

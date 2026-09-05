@@ -21,7 +21,7 @@ jobs:
       - run: npm run build
       - run: npm run dry-run
         env: { CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}', CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}' }
-      - name: Resumo do dry-run
+      - name: "Resumo do dry-run"
         run: |
           {
             echo "### Worker portal"
