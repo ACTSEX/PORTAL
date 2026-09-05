@@ -1,28 +1,24 @@
-# PORTAL V2
+# PORTAL V2 — Rodada 2
 
-Fundação da V2 do **Acompanhantes EX**, organizada como monólito modular: um Worker privado `portal`, um painel responsivo, um template público, três diretórios e dois buckets R2. Esta Rodada 1 entrega arquitetura, contratos, shells e validação local; não entrega autenticação, cadastro funcional, processamento/publicação de mídia, cron operacional ou integração ativa com Asaas.
-
-`ARQUITETURA.md` é a autoridade normativa. Em caso de divergência, os documentos especializados devem ser corrigidos para segui-lo.
+Núcleo privado do **Acompanhantes EX** em um único Cloudflare Worker `portal`: login Google OIDC, sessões privadas, cadastro, documentos de identificação, painel compartilhado de CLIENTE/SUPERADMIN, avisos, plano manual e auditoria. `ARQUITETURA.md` é a autoridade normativa.
 
 ## Desenvolvimento local
 
-Requer Node.js 22+.
+Requer Node.js 22+. Todos os testes usam `MemoryPrivateStorage`; não acessam R2 real.
 
 ```bash
 npm ci
-npm run check
+npm run lint
+npm run test
 npm run build
-npm run dry-run
+npm run check
+npm run dry-run # apenas empacota; nunca publica
 ```
 
-O build reproduzível gera `dist/{worker,painel,publico}`; `dist/` não é versionado. `dry-run` apenas empacota o Worker e não publica. É proibido executar deploy nesta etapa.
+O build gera `dist/{worker,painel,publico}`. O shell público continua sem anúncios; a aplicação privada única fica em `/painel/`. A definição do formulário vem de `config/formulario-cadastro-privado.json`, não do HTML.
 
-## Superfícies desta rodada
+## Configuração obrigatória futura
 
-- `GET /api/health`: única rota implementada.
-- qualquer outra rota: resposta controlada `404 NOT_IMPLEMENTED`.
-- frontends: avisos estáticos honestos, sem ações funcionais.
-- Asaas: contrato desativado e sem transporte de rede.
-- R2: bindings declarados, mas nenhuma escrita é implementada.
+Secrets: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `CPF_INDEX_SECRET`, `SUPERADMIN_GOOGLE_SUBS`; variável `APP_ORIGIN`. Sem todos os itens do login, `/api/auth/google/config` informa **Configuração Google pendente** e nenhum login é aceito. Consulte [configuração Google](docs/CONFIGURAR-GOOGLE.md), [operação SUPERADMIN](docs/OPERAR-SUPERADMIN.md) e [escopo da Rodada 2](docs/RODADA-2.md).
 
-Consulte [ARQUITETURA.md](ARQUITETURA.md), [plano](docs/PLANO-DE-IMPLANTACAO.md) e [aceite](docs/TESTES-E-ACEITE.md).
+Asaas permanece `{ provedor: "asaas", habilitado: false, ambiente: "desativado", cobrancaAutomatica: false }`; não existe cliente HTTP para o provedor. Não há deploy automático.

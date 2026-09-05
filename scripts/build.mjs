@@ -4,5 +4,7 @@ await mkdir('dist/worker', { recursive: true });
 await cp('src', 'dist/worker/src', { recursive: true });
 await cp('package.json', 'dist/worker/package.json');
 await cp('frontend/painel', 'dist/painel', { recursive: true });
+await mkdir('dist/painel/config', { recursive: true });
+await cp('config/formulario-cadastro-privado.json', 'dist/painel/config/formulario-cadastro-privado.json');
 await cp('frontend/publico', 'dist/publico', { recursive: true });
 console.log('Build concluído: dist/worker, dist/painel, dist/publico');

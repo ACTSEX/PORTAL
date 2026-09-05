@@ -1,0 +1,3 @@
+import test from'node:test';import assert from'node:assert/strict';import {MemoryPrivateStorage,validateKey}from'../src/storage.js';
+test('storage falso bloqueia traversal e create-only evita duplicidade',async()=>{const s=new MemoryPrivateStorage();assert.throws(()=>validateKey('../cpf'));await s.put('sistema/cpf/hash.json',{clienteId:'a'},{createOnly:true});await assert.rejects(()=>s.put('sistema/cpf/hash.json',{clienteId:'b'},{createOnly:true}),e=>e.code==='REVISION_CONFLICT')});
+test('mock não possui acts_public nem acesso R2 real',()=>{const s=new MemoryPrivateStorage();assert.equal(s.bucket,undefined);assert.equal('acts_public'in s,false)});

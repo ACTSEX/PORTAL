@@ -54,4 +54,10 @@ Asaas nasce estritamente desativado (`habilitado=false`, `ambiente=desativado`, 
 
 Bindings existentes: `acts_private → acts-private` e `acts_public → acts-public`. Rotas, DNS e domínios são administrados separadamente e não estão no Wrangler. As rotas observadas são `acompanhantesex.com/api/*`, `*.acompanhantesex.com/*` e o domínio de produção `acompanhantesex.com`. `public.acompanhantesex.com` pode coincidir com o wildcard; exclusão e precedência precisam ser validadas antes da produção V2.
 
-Nenhum objeto R2, binding remoto, rota ou domínio é criado/alterado nesta rodada.
+Nenhum binding remoto, rota ou domínio é criado/alterado pela aplicação.
+
+## 10. Rodada 2 — núcleo privado
+
+A Rodada 2 mantém o monólito `portal` e implementa OIDC Authorization Code com PKCE, troca no Worker e validação criptográfica do ID token. Estado e nonce são transações de uso único em `acts_private`; sessões opacas também ficam no bucket privado. `googleSub` é o vínculo estável e a autorização SUPERADMIN vem exclusivamente de `SUPERADMIN_GOOGLE_SUBS`.
+
+Cadastro, índice HMAC de CPF, documentos, avisos, sessões e eventos imutáveis de auditoria são privados. Objetos de auditoria são um por evento porque anexar a um NDJSON no R2 causaria regravação concorrente. Reservas create-only protegem índices exclusivos; documentos mutáveis usam `revision`. Uploads de identificação passam pelo Worker, com máximo de 5 MiB e magic bytes JPEG, PNG ou WebP. Nesta rodada não há qualquer escrita em `acts_public`, publicação, cron, transformação pública ou transporte Asaas.

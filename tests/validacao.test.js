@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {calcularIdade,diretorioParaSexo,normalizarCpf,validarCpf}from'../src/validacao.js';
+test('CPF normaliza e valida dígitos; rejeita inválido e sequência',()=>{assert.equal(normalizarCpf('529.982.247-25'),'52998224725');assert.equal(validarCpf('529.982.247-25'),true);assert.equal(validarCpf('52998224724'),false);assert.equal(validarCpf('11111111111'),false)});
+test('maioridade respeita aniversário ainda não ocorrido em Brasília',()=>{assert.equal(calcularIdade('2008-09-05',new Date('2026-09-05T12:00:00Z')),18);assert.equal(calcularIdade('2008-09-06',new Date('2026-09-05T12:00:00Z')),17)});
+test('ano bissexto é validado corretamente',()=>{assert.equal(calcularIdade('2008-02-29',new Date('2026-02-28T15:00:00Z')),17);assert.equal(calcularIdade('2008-02-29',new Date('2026-03-01T15:00:00Z')),18);assert.throws(()=>calcularIdade('2007-02-29'))});
+test('diretórios são exatos',()=>{assert.equal(diretorioParaSexo('feminino'),'mulheres');assert.equal(diretorioParaSexo('masculino'),'homens');assert.equal(diretorioParaSexo('transex'),'transex');assert.throws(()=>diretorioParaSexo('outro'))});
