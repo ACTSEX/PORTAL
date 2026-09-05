@@ -13,12 +13,14 @@ import { cancel, finish, manifest, moderate, principal, receive, remove, reorder
 import { PUBLICATION } from './config.js';
 import { publishClient, rollback, flags } from './publicacao.js';
 import { auditPublic, reconcile } from './cron.js';
+import { obterEstadoAsaas, processarWebhookAsaas, reprocessarWebhook } from './financeiro/asaas.js';
 
 export async function route(request, env = {}) {
   try {
     const url = new URL(request.url); const path = url.pathname;
-    if (request.method === 'GET' && path === '/api/health') return json({ ok: true, service: SERVICE.name, version: SERVICE.version, asaasEnabled: ASAAS_STATE.habilitado });
+    if (request.method === 'GET' && path === '/api/health') return json({ ok: true, service: SERVICE.name, version: SERVICE.version, asaasEnabled: obterEstadoAsaas(env).habilitado });
     const storage = privateStorage(env);
+    if (request.method === 'POST' && path === '/api/webhooks/asaas') return success(await processarWebhookAsaas(request, env, storage));
     if (request.method === 'GET' && path === '/api/auth/google/config') return json({ ok: true, configured: googleConfigurado(env), status: googleConfigurado(env) ? 'Disponível' : 'Configuração Google pendente', scopes: ['openid', 'email', 'profile'] });
     if (request.method === 'GET' && path === '/api/auth/google/start') return Response.redirect(await iniciarGoogle(storage, env), 302);
     if (request.method === 'GET' && path === '/api/auth/google/callback') { const google = await concluirGoogle(storage, env, url.searchParams, env.__googleProvider); const account = await findOrCreate(storage, google, env, request); const { session, cookie } = await criarSessao(storage, { clienteId: account.operational.clienteId, googleSub: google.googleSub, role: account.operational.role }); await auditar(storage, { clienteId: session.clienteId, acao: 'login', ator: session.googleSub, papel: session.role, revision: account.operational.revision }); return new Response(null, { status: 302, headers: { location: `${env.APP_ORIGIN}/painel/`, 'set-cookie': cookie, 'cache-control': 'no-store' } }); }
@@ -64,14 +66,16 @@ export async function route(request, env = {}) {
       if (request.method === 'GET' && action.startsWith('documentos/')) { const kind = action.slice(11); const manifest = (await loadClient(storage, clienteId)).manifest; const item = manifest?.arquivos?.[kind]; if (!item || !storage.bucket) throw httpError(404, 'DOCUMENT_NOT_FOUND'); const object = await storage.bucket.get(item.key); return new Response(object.body, { headers: { 'content-type': item.mime, 'cache-control': 'private, no-store', 'content-disposition': 'inline', 'x-content-type-options': 'nosniff' } }); }
     }
     if(request.method==='GET'&&path==='/api/superadmin/tarefas')return success(await values(storage,'sistema/publicacao/tarefas/'));
+    if(request.method==='GET'&&path==='/api/superadmin/financeiro/asaas/eventos')return success(await values(storage,'sistema/asaas/eventos/'));
+    const retryWebhook=path.match(/^\/api\/superadmin\/financeiro\/asaas\/eventos\/([^/]+)\/reprocessar$/);if(request.method==='POST'&&retryWebhook){exigirRecente(session);return success(await reprocessarWebhook(storage,retryWebhook[1],session));}
     if(request.method==='GET'&&path==='/api/superadmin/aniversarios')return success(await matchingValues(storage,/\/aniversarios\//));
     if(request.method==='GET'&&path==='/api/superadmin/vencimentos')return success(await matchingValues(storage,/\/operacional\/vencimento\.json$/));
     if(request.method==='POST'&&path==='/api/superadmin/rede/auditar')return success(await auditPublic(publicStorage(env)));
     if(request.method==='POST'&&path==='/api/superadmin/rede/reconciliar')return success(await reconcile(storage,async()=>{}));
     return json({ ok: false, code: 'NOT_FOUND' }, 404);
-  } catch (error) { return json({ ok: false, code: error.code || error.message || 'INTERNAL_ERROR' }, error.status || 500); }
+  } catch (error) { const status=Number.isInteger(error.status)&&error.status>=400&&error.status<600?error.status:500; return json({ ok: false, code: status===500?'INTERNAL_ERROR':(error.code||'REQUEST_FAILED') }, status); }
 }
-async function body(request) { const length = Number(request.headers.get('content-length') || 0); if (length > 1024 * 1024) throw httpError(413, 'BODY_TOO_LARGE'); let value; try { value = await request.json(); } catch { throw httpError(400, 'JSON_INVALID'); } return value; }
+async function body(request) { const limit=1024*1024; const length = Number(request.headers.get('content-length') || 0); if (length > limit) throw httpError(413, 'BODY_TOO_LARGE'); let value; try { const text=await request.text();if(new TextEncoder().encode(text).byteLength>limit)throw httpError(413,'BODY_TOO_LARGE');value=JSON.parse(text); } catch(error) { if(error.code)throw error;throw httpError(400, 'JSON_INVALID'); } return value; }
 function success(data) { return json({ ok: true, data }); }
 function jsonCookie(data, cookie) { const response = json(data); response.headers.set('set-cookie', cookie); return response; }
 function protectedForOwner(identity) { const { cpf, ...rest } = identity; return { ...rest, cpfMascarado: `***.***.***-${cpf.slice(-2)}` }; }

@@ -1,0 +1,1 @@
+{"schemaVersion":2,"applyDefault":false,"routes":[{"pattern":"acompanhantesex.com/api/*","script":"portal"},{"pattern":"public.acompanhantesex.com/*","script":null},{"pattern":"*.acompanhantesex.com/*","script":"portal"}],"notes":"O apex estático requer origem separada; não é alterado automaticamente."}

@@ -1,0 +1,3 @@
+# Incidentes
+
+Classifique severidade, preserve logs redigidos/inventários, desative a flag mínima e acione responsável. Suspeita de segredo: revogar/rotacionar, invalidar sessões e auditar acesso. Publicação privada: desligar escrita/V2, restaurar ponteiro, manter objeto para evidência com acesso restrito. Cobrança duplicada: desligar Asaas/automação, não estornar sem autorização, conciliar por idempotency/event IDs. Mistura de shard: retirar ponteiro, reconstruir por diretório e testar. Rota: restaurar export e observar Tail. Documentar linha do tempo, causa, dados afetados, correção, prevenção e comunicação LGPD; nunca incluir CPF, token, documento ou stack pública.

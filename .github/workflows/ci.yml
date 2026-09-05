@@ -1,4 +1,4 @@
-name: CI
+name: CI V2
 on:
   pull_request:
   push:
@@ -8,11 +8,20 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
+        with: { node-version: 22, cache: npm }
       - run: npm ci
+      - run: npm run lint
+      - run: npm run validate:config
+      - run: npm run test
+      - run: npm run test:integration
+      - run: npm run test:security
+      - run: npm run test:public
+      - run: npm run test:workflows
+      - run: npm run build
       - run: npm run check
+      - run: npm audit --audit-level=high
+      - run: npm run audit:v2

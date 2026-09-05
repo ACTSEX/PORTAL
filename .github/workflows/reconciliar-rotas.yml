@@ -1,0 +1,31 @@
+name: Reconciliar rotas Cloudflare
+on:
+  workflow_dispatch:
+    inputs:
+      modo: { required: true, default: check, type: choice, options: [check, plan, apply] }
+      confirmacao: { required: false, description: 'Apply: APLICAR-ROTAS-V2-ACOMPANHANTESEX', type: string }
+permissions: { contents: read }
+concurrency: { group: portal-routes-production, cancel-in-progress: false }
+jobs:
+  routes:
+    environment: production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exigir main e confirmação somente no apply
+        if: inputs.modo == 'apply'
+        run: test "$GITHUB_REF" = refs/heads/main && test "$CONFIRMACAO" = APLICAR-ROTAS-V2-ACOMPANHANTESEX
+        env: { CONFIRMACAO: '${{ inputs.confirmacao }}' }
+      - name: Consultar estado atual (check/plan/apply)
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_ZONE_ID"; mkdir -p reports
+          curl --fail-with-body --silent --show-error -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/zones/$CLOUDFLARE_ZONE_ID/workers/routes" > reports/routes-before.json
+          cp config/rotas-cloudflare.json reports/routes-desired.json
+        env: { CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}', CLOUDFLARE_ZONE_ID: '${{ secrets.CLOUDFLARE_ZONE_ID }}' }
+      - name: Aplicar exatamente o plano (sem DNS)
+        if: inputs.modo == 'apply'
+        run: node scripts/reconciliar-rotas.mjs apply --current reports/routes-before.json --confirmation "$CONFIRMACAO"
+        env: { CONFIRMACAO: '${{ inputs.confirmacao }}', CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}', CLOUDFLARE_ZONE_ID: '${{ secrets.CLOUDFLARE_ZONE_ID }}' }
+      - uses: actions/upload-artifact@v4
+        with: { name: relatorio-rotas, path: reports }

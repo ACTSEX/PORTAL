@@ -1,0 +1,10 @@
+{
+  "$schema": "https://acompanhantesex.com/schemas/bootstrap-manifesto.schema.json",
+  "schemaVersion": 2,
+  "versao": "2.0.0",
+  "ambiente": "nao-configurado",
+  "criadoEm": "2026-09-05T00:00:00.000Z",
+  "finalidade": "Materializar prefixo public/dados/clientes sem dados de clientes",
+  "estado": "bootstrap",
+  "objetos": []
+}

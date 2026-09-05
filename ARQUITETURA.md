@@ -48,7 +48,7 @@ Mobile-first (aproximadamente 95% móvel): fotos/capas WebP, vídeos MP4 H.264/A
 
 Cron futuro recuperará pendências, processará idade/aniversários e vencimentos diariamente, reconciliará rede, fará auditoria completa semanal, em lotes com checkpoint e idempotência, além de gatilho manual no SUPERADMIN.
 
-Asaas nasce estritamente desativado (`habilitado=false`, `ambiente=desativado`, `cobrancaAutomatica=false`). Rodadas futuras preveem sandbox, cliente, cobrança, assinatura, Pix, boleto, link, webhook, idempotência, conciliação, histórico e controle manual; produção exige ativação explícita.
+Asaas permanece estritamente desativado (`habilitado=false`, `ambiente=desativado`, `cobrancaAutomatica=false`). A Rodada 5 inclui adaptador, contratos e webhook idempotente para homologação futura, sempre bloqueados sem `ASAAS_ENABLED=true`, ambiente válido e secrets; produção e cobrança automática exigem ativações explícitas e separadas.
 
 ## 9. Cloudflare preservada
 
@@ -60,7 +60,7 @@ Nenhum binding remoto, rota ou domínio é criado/alterado pela aplicação.
 
 A Rodada 2 mantém o monólito `portal` e implementa OIDC Authorization Code com PKCE, troca no Worker e validação criptográfica do ID token. Estado e nonce são transações de uso único em `acts_private`; sessões opacas também ficam no bucket privado. `googleSub` é o vínculo estável e a autorização SUPERADMIN vem exclusivamente de `SUPERADMIN_GOOGLE_SUBS`.
 
-Cadastro, índice HMAC de CPF, documentos, avisos, sessões e eventos imutáveis de auditoria são privados. Objetos de auditoria são um por evento porque anexar a um NDJSON no R2 causaria regravação concorrente. Reservas create-only protegem índices exclusivos; documentos mutáveis usam `revision`. Uploads de identificação passam pelo Worker, com máximo de 5 MiB e magic bytes JPEG, PNG ou WebP. Nesta rodada não há qualquer escrita em `acts_public`, publicação, cron, transformação pública ou transporte Asaas.
+Cadastro, índice HMAC de CPF, documentos, avisos, sessões e eventos imutáveis de auditoria são privados. Objetos de auditoria são um por evento porque anexar a um NDJSON no R2 causaria regravação concorrente. Reservas create-only protegem índices exclusivos; documentos mutáveis usam `revision`. Uploads de identificação passam pelo Worker, com máximo de 5 MiB e magic bytes JPEG, PNG ou WebP. Escritas em `acts_public`, publicação e cron continuam exigindo flags explícitas; o transporte Asaas existe, mas nenhuma chamada é possível no estado padrão desativado.
 
 ## 11. Rodada 3 — rascunhos e mídias privadas
 
