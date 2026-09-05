@@ -93,11 +93,21 @@ test('relatório não contém credenciais', async () => withReport(async (report
   assert.doesNotMatch(raw, /id-not-real|secret-not-real|account-not-real|Authorization|access.key/i);
 }));
 
-test('dry-run usa Wrangler local somente para empacotar', async () => {
+test('Wrangler é integralmente travado no lock ou usa npm exec com versão exata', async () => {
   const pkg = JSON.parse(await readFile('package.json', 'utf8'));
-  assert.equal(pkg.devDependencies.wrangler, '4.35.0');
-  assert.match(pkg.scripts['dry-run'], /^wrangler deploy --dry-run\b/);
-  assert.doesNotMatch(pkg.scripts['dry-run'], /&&|;|\bwrangler deploy\s*$/);
+  const lock = JSON.parse(await readFile('package-lock.json', 'utf8'));
+  const deploy = await readFile('.github/workflows/deploy-worker.yml', 'utf8');
+  const localDependency = pkg.devDependencies.wrangler === '4.35.0'
+    && lock.packages['']?.devDependencies?.wrangler === '4.35.0'
+    && lock.packages['node_modules/wrangler']?.version === '4.35.0';
+  const pinnedExec = pkg.devDependencies.wrangler === undefined
+    && lock.packages['']?.devDependencies?.wrangler === undefined
+    && !lock.packages['node_modules/wrangler']
+    && /^npm exec --yes --package=wrangler@4\.35\.0 -- wrangler deploy --dry-run\b/.test(pkg.scripts['dry-run']);
+  assert.ok(localDependency || pinnedExec, 'Wrangler deve estar completo no lock ou ausente e fixado no npm exec');
+  assert.doesNotMatch(pkg.scripts['dry-run'], /latest|&&|;|\bnpx\s+wrangler|\bwrangler deploy\s*$/);
+  assert.match(deploy, /npm exec --yes --package=wrangler@4\.35\.0 -- wrangler deploy/);
+  assert.doesNotMatch(deploy, /npx wrangler deploy|package=wrangler@(?!4\.35\.0)/);
 });
 
 function noExistingRemote() {

@@ -13,7 +13,7 @@
     "test": "node --test",
     "build": "node scripts/build.mjs",
     "check": "npm run lint && npm run validate:config && npm run validate:architecture && npm test && npm run build",
-    "dry-run": "wrangler deploy --dry-run --outdir dist/worker-dry-run",
+    "dry-run": "npm exec --yes --package=wrangler@4.35.0 -- wrangler deploy --dry-run --outdir dist/worker-dry-run",
     "audit:v2": "node scripts/audit-v2.mjs",
     "test:integration": "node --test tests/integration-v2.test.js",
     "test:security": "node --test tests/security.test.js tests/asaas.test.js",
@@ -22,7 +22,5 @@
     "bootstrap:r2": "node scripts/bootstrap-r2.mjs check",
     "migrate:check": "node scripts/validar-v1.mjs check"
   },
-  "devDependencies": {
-    "wrangler": "4.35.0"
-  }
+  "devDependencies": {}
 }
