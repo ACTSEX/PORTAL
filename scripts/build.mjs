@@ -6,5 +6,8 @@ await cp('package.json', 'dist/worker/package.json');
 await cp('frontend/painel', 'dist/painel', { recursive: true });
 await mkdir('dist/painel/config', { recursive: true });
 await cp('config/formulario-cadastro-privado.json', 'dist/painel/config/formulario-cadastro-privado.json');
+await cp('config/formulario-publico.json', 'dist/painel/config/formulario-publico.json');
+await cp('config/midias.json', 'dist/painel/config/midias.json');
+await cp('config/categorias.json', 'dist/painel/config/categorias.json');
 await cp('frontend/publico', 'dist/publico', { recursive: true });
 console.log('Build concluído: dist/worker, dist/painel, dist/publico');

@@ -5,6 +5,7 @@ export class R2PrivateStorage {
   async get(key) { validateKey(key); const object = await this.bucket.get(key); return object ? JSON.parse(await object.text()) : null; }
   async put(key, value, options = {}) { validateKey(key); const body = JSON.stringify(value); const onlyIf = options.createOnly ? { etagDoesNotMatch: '*' } : undefined; const result = await this.bucket.put(key, body, { httpMetadata: { contentType: 'application/json' }, onlyIf }); if (options.createOnly && !result) throw conflict(); return value; }
   async putBytes(key, bytes, contentType) { validateKey(key); return this.bucket.put(key, bytes, { httpMetadata: { contentType } }); }
+  async getBytes(key) { validateKey(key); const object = await this.bucket.get(key); return object ? new Uint8Array(await object.arrayBuffer()) : null; }
   async delete(key) { validateKey(key); await this.bucket.delete(key); }
   async list(prefix) { validateKey(prefix); const result = await this.bucket.list({ prefix }); return result.objects.map(({ key }) => key); }
 }
@@ -13,7 +14,8 @@ export class MemoryPrivateStorage {
   constructor() { this.data = new Map(); this.byteWrites = []; }
   async get(key) { validateKey(key); const value = this.data.get(key); return value === undefined ? null : structuredClone(value); }
   async put(key, value, options = {}) { validateKey(key); if (options.createOnly && this.data.has(key)) throw conflict(); this.data.set(key, structuredClone(value)); return value; }
-  async putBytes(key, bytes, contentType) { validateKey(key); this.byteWrites.push({ key, bytes: new Uint8Array(bytes), contentType }); this.data.set(key, { binary: true, contentType }); }
+  async putBytes(key, bytes, contentType) { validateKey(key); const copy = new Uint8Array(bytes); this.byteWrites.push({ key, bytes: copy, contentType }); this.data.set(key, { binary: true, contentType, bytes: copy }); }
+  async getBytes(key) { validateKey(key); const value = this.data.get(key); return value?.binary ? new Uint8Array(value.bytes) : null; }
   async delete(key) { validateKey(key); this.data.delete(key); }
   async list(prefix) { validateKey(prefix); return [...this.data.keys()].filter((key) => key.startsWith(prefix)); }
 }

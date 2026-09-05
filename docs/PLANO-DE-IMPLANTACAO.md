@@ -7,3 +7,5 @@
 5. **Rodada 5 — Asaas desativado, testes, migração e implantação**: adaptador ainda off, ensaio, aceite e ativação controlada posterior.
 
 Cada rodada exige revisão de ameaça, testes, build, PR sem merge automático e aceite antes da seguinte.
+
+Estado após a Rodada 3: rascunho e pipeline privado implementados; publicação, CORS real, promoção para `acts-public`, portal definitivo, índices e cron continuam bloqueados para a Rodada 4.

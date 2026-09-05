@@ -1,6 +1,6 @@
-# PORTAL V2 — Rodada 2
+# PORTAL V2 — Rodada 3
 
-Núcleo privado do **Acompanhantes EX** em um único Cloudflare Worker `portal`: login Google OIDC, sessões privadas, cadastro, documentos de identificação, painel compartilhado de CLIENTE/SUPERADMIN, avisos, plano manual e auditoria. `ARQUITETURA.md` é a autoridade normativa.
+Aplicação privada do **Acompanhantes EX** em um único Cloudflare Worker `portal`: base da Rodada 2 mais formulário público configurável, rascunhos privados, prévia autenticada e pipeline privado de fotos WebP, vídeos MP4 e áudios M4A com limites fail-closed. `ARQUITETURA.md` é a autoridade normativa.
 
 ## Desenvolvimento local
 
@@ -15,7 +15,7 @@ npm run check
 npm run dry-run # apenas empacota; nunca publica
 ```
 
-O build gera `dist/{worker,painel,publico}`. O shell público continua sem anúncios; a aplicação privada única fica em `/painel/`. A definição do formulário vem de `config/formulario-cadastro-privado.json`, não do HTML.
+O build gera `dist/{worker,painel,publico}`. O shell público continua sem anúncios; a aplicação privada única fica em `/painel/`. As definições dos formulários vêm de `config/formulario-cadastro-privado.json` e `config/formulario-publico.json`, não do HTML. Toda mídia e rascunho permanece em `acts-private`; publicação e escrita em `acts-public` estão desativadas.
 
 ## Configuração obrigatória futura
 
