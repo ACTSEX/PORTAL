@@ -29,6 +29,9 @@ test('workflow da migração tem dispatch, environment, guardas, relatório e ex
   assert.match(workflow, /if: always\(\)[\s\S]*actions\/upload-artifact@v4/);
   assert.match(workflow, /reports\/media-marker-migration-report\.json/);
   assert.doesNotMatch(workflow, /--recursive|\bs3\s+rm\b/);
+  assert.doesNotMatch(workflow, /(^|[\s[{,])&[A-Za-z0-9_-]+(?=\s|$)/m, 'workflow não deve usar anchors YAML');
+  assert.doesNotMatch(workflow, /(^|[\s[{,])\*[A-Za-z0-9_-]+(?=\s|$)/m, 'workflow não deve usar aliases YAML');
+  assert.doesNotMatch(workflow, /^\s*<<:/m, 'workflow não deve usar merge keys YAML');
   const checkStep = workflow.match(/- name: Check local sem rede ou secrets[\s\S]*?(?=\n      - name:)/)?.[0] || '';
   assert.doesNotMatch(checkStep, /secrets\.|R2_ACCESS_KEY_ID|CLOUDFLARE_ACCOUNT_ID/);
   const planStep = workflow.match(/- name: Plan remoto somente leitura[\s\S]*?(?=\n      - name:)/)?.[0] || '';
