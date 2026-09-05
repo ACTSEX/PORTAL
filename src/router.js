@@ -8,6 +8,9 @@ import { uploadDocument } from './documentos.js';
 import { createNotice, readNotice } from './avisos.js';
 import { auditar } from './auditoria.js';
 import { NullCepService } from './cep.js';
+import { getDraft, saveDraft } from './rascunhos.js';
+import { cancel, finish, manifest, moderate, principal, receive, remove, reorder, reserve } from './uploads.js';
+import { PUBLICATION } from './config.js';
 
 export async function route(request, env = {}) {
   try {
@@ -19,8 +22,7 @@ export async function route(request, env = {}) {
     if (request.method === 'GET' && path === '/api/auth/google/callback') { const google = await concluirGoogle(storage, env, url.searchParams, env.__googleProvider); const account = await findOrCreate(storage, google, env, request); const { session, cookie } = await criarSessao(storage, { clienteId: account.operational.clienteId, googleSub: google.googleSub, role: account.operational.role }); await auditar(storage, { clienteId: session.clienteId, acao: 'login', ator: session.googleSub, papel: session.role, revision: account.operational.revision }); return new Response(null, { status: 302, headers: { location: `${env.APP_ORIGIN}/painel/`, 'set-cookie': cookie, 'cache-control': 'no-store' } }); }
     const session = await obterSessao(request, storage); if (!session) throw httpError(401, 'AUTH_REQUIRED');
     if (request.method === 'GET' && path === '/api/auth/session') return json({ ok: true, data: { clienteId: session.clienteId, role: session.role, csrfToken: session.csrf, expiresAt: session.expiresAt } });
-    if (request.method === 'POST') validarMutacao(request, session, env.APP_ORIGIN);
-    if (request.method === 'PUT') validarMutacao(request, session, env.APP_ORIGIN);
+    if (['POST','PUT','DELETE'].includes(request.method)) validarMutacao(request, session, env.APP_ORIGIN);
     if (request.method === 'POST' && path === '/api/auth/logout') { await auditar(storage, { clienteId: session.clienteId, acao: 'logout', ator: session.googleSub, papel: session.role, revision: session.revision }); return jsonCookie({ ok: true }, await logout(request, storage)); }
     if (request.method === 'POST' && path === '/api/auth/logout-all') { await logoutAll(storage, session.googleSub); await auditar(storage, { clienteId: session.clienteId, acao: 'sessoes_encerradas', ator: session.googleSub, papel: session.role, revision: session.revision }); return jsonCookie({ ok: true }, await logout(request, storage)); }
     if (request.method === 'GET' && path === '/api/cadastro/cep') return success(await (env.__cepService || new NullCepService()).consultar(url.searchParams.get('cep')));
@@ -30,10 +32,23 @@ export async function route(request, env = {}) {
     if (request.method === 'POST' && path === '/api/cadastro/documentos') return success(await uploadDocument(storage, session, request));
     if (request.method === 'GET' && path === '/api/painel/resumo') return success(publicSummary(await loadClient(storage, session.clienteId)));
     if (request.method === 'GET' && path === '/api/painel/avisos') return success((await loadClient(storage, session.clienteId)).notices || { revision: 0, avisos: [] });
+    if (request.method === 'GET' && path === '/api/painel/perfil-publico') return success((await getDraft(storage, session.clienteId)).perfil);
+    if (request.method === 'PUT' && path === '/api/painel/perfil-publico') return success(await saveDraft(storage, session, 'perfil', await body(request), { validate: url.searchParams.get('validar') === '1' }));
+    if (request.method === 'GET' && path === '/api/painel/site') return success((await getDraft(storage, session.clienteId)).site);
+    if (request.method === 'PUT' && path === '/api/painel/site') return success(await saveDraft(storage, session, 'site', await body(request), { validate: url.searchParams.get('validar') === '1' }));
+    if (request.method === 'GET' && path === '/api/painel/midias') return success(await manifest(storage, session.clienteId));
+    if (request.method === 'POST' && path === '/api/painel/uploads/reservar') return success(await reserve(storage, session, await body(request)));
+    const uploadMatch = path.match(/^\/api\/painel\/uploads\/([^/]+)\/(conteudo|finalizar|cancelar)$/); if (uploadMatch) { const [, uploadId, action] = uploadMatch; if (request.method === 'PUT' && action === 'conteudo') return success(await receive(storage, session, uploadId, request)); if (request.method === 'POST' && action === 'finalizar') return success(await finish(storage, session, uploadId)); if (request.method === 'POST' && action === 'cancelar') return success(await cancel(storage, session, uploadId)); }
+    if (request.method === 'PUT' && path === '/api/painel/midias/ordem') return success(await reorder(storage, session, await body(request)));
+    const mediaMatch = path.match(/^\/api\/painel\/midias\/([^/]+)(?:\/(principal|arquivo))?$/); if (mediaMatch) { const [, id, action] = mediaMatch; if (request.method === 'PUT' && action === 'principal') return success(await principal(storage, session, id, await body(request))); if (request.method === 'DELETE' && !action) return success(await remove(storage, session, id, await body(request))); if (request.method === 'GET' && action === 'arquivo') { const item=(await manifest(storage,session.clienteId)).itens.find((x)=>x.id===id); if(!item)throw httpError(404,'MEDIA_NOT_FOUND'); const bytes=await storage.getBytes(item.arquivo); if(!bytes)throw httpError(404,'MEDIA_NOT_FOUND'); return new Response(bytes,{headers:{'content-type': item.tipo==='video'?'video/mp4':item.tipo==='audio'?'audio/mp4':'image/webp','cache-control':'private, no-store','x-content-type-options':'nosniff'}}); } }
+    if (request.method === 'GET' && path === '/api/painel/preview') { const client=await loadClient(storage,session.clienteId); const draft=await getDraft(storage,session.clienteId); const media=await manifest(storage,session.clienteId); return success({ ...draft, midias:media.itens.map((x)=>({...x,url:`/api/painel/midias/${x.id}/arquivo`})), tema:{mulheres:'pink',homens:'royal',transex:'lilás'}[client.operational.diretorio], publicacao:PUBLICATION, indexacao:'bloqueada' }); }
     const readMatch = path.match(/^\/api\/painel\/avisos\/([^/]+)\/lido$/); if (request.method === 'POST' && readMatch) return success(await readNotice(storage, session, readMatch[1], (await body(request)).revision));
     if (path.startsWith('/api/superadmin/')) requireAdmin(session);
     if (request.method === 'GET' && path === '/api/superadmin/clientes') { if (url.searchParams.has('cpf')) { const index = await storage.get(`sistema/cpf/${await hmac(String(url.searchParams.get('cpf')).replace(/\D/g, ''), env.CPF_INDEX_SECRET)}.json`); return success(index ? [publicSummary(await loadClient(storage, index.clienteId))] : []); } return success(await listClients(storage, { q: url.searchParams.get('q'), status: url.searchParams.get('status') })); }
     const adminMatch = path.match(/^\/api\/superadmin\/clientes\/([^/]+)(?:\/(.*))?$/); if (adminMatch) { const [, clienteId, action = ''] = adminMatch; if (request.method === 'GET' && !action) return success(adminView(await loadClient(storage, clienteId)));
+      if (request.method === 'GET' && action === 'rascunho') return success(await getDraft(storage, clienteId));
+      if (request.method === 'GET' && action === 'midias') return success(await manifest(storage, clienteId));
+      const decisionMatch=action.match(/^midias\/([^/]+)\/decisao$/); if(request.method==='POST'&&decisionMatch)return success(await moderate(storage,session,clienteId,decisionMatch[1],await body(request)));
       if (request.method === 'POST' && action === 'decisao') { exigirRecente(session); return success(await decide(storage, session, clienteId, await body(request))); }
       if (request.method === 'PUT' && action === 'dados-protegidos') { exigirRecente(session); return success(await changeProtected(storage, session, clienteId, await body(request))); }
       if (request.method === 'PUT' && action === 'plano') return success(await changePlan(storage, session, clienteId, await body(request)));

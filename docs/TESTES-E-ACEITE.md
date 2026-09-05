@@ -5,3 +5,7 @@
 Aceite exige documentos/árvore, JSON/schema, três diretórios/temas, isolamento hierárquico, bindings exatos, saúde, shells, Asaas off, ausência de segredo/PII pública/chamadas externas/escrita R2, build com três saídas e revisão documental. Evidências Git e PR devem declarar que nenhuma infraestrutura foi alterada.
 
 A Rodada 2 acrescenta testes unitários com storage e provedor Google injetáveis: claims OIDC, replay, sessão/CSRF/Origin, CPF, idade, diretório, cadastro, duplicidade, revisão, bloqueio, autorização, decisões e plano. Testes jamais recebem bindings reais. O dry-run Wrangler apenas empacota e não publica.
+
+## Aceite da Rodada 3
+
+Testes cobrem rascunho/revisão/sanitização/PII, diretório/cidade/categorias, limites fail-closed, assinatura/hash, idempotência, IDs monotônicos, exclusão, ordem e principal única. Storage em memória garante ausência de R2 real e o teste de segurança impede escrita em `acts_public`.

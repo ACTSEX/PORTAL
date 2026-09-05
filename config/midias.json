@@ -1,0 +1,7 @@
+{
+  "versao": 1,
+  "fotos": {"entradaMaxBytes": 12000000, "principal": {"larguraMax": 1200, "alturaMax": 1500, "qualidade": 0.8}, "miniatura": {"larguraMax": 480, "alturaMax": 600, "qualidade": 0.73}, "mime": "image/webp"},
+  "videos": {"maxBytes": 80000000, "resolucaoMax": 720, "fpsPermitidos": [24, 30], "mime": "video/mp4", "codecs": ["avc1", "mp4a"], "duracaoMaxSegundos": 180},
+  "audios": {"maxBytes": 20000000, "duracaoMaxSegundos": 180, "mime": "audio/mp4", "codec": "aac"},
+  "upload": {"reservaSegundos": 600, "retencaoOrfaoDias": 7, "estrategia": "streaming-worker-privado"}
+}

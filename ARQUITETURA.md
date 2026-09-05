@@ -61,3 +61,9 @@ Nenhum binding remoto, rota ou domínio é criado/alterado pela aplicação.
 A Rodada 2 mantém o monólito `portal` e implementa OIDC Authorization Code com PKCE, troca no Worker e validação criptográfica do ID token. Estado e nonce são transações de uso único em `acts_private`; sessões opacas também ficam no bucket privado. `googleSub` é o vínculo estável e a autorização SUPERADMIN vem exclusivamente de `SUPERADMIN_GOOGLE_SUBS`.
 
 Cadastro, índice HMAC de CPF, documentos, avisos, sessões e eventos imutáveis de auditoria são privados. Objetos de auditoria são um por evento porque anexar a um NDJSON no R2 causaria regravação concorrente. Reservas create-only protegem índices exclusivos; documentos mutáveis usam `revision`. Uploads de identificação passam pelo Worker, com máximo de 5 MiB e magic bytes JPEG, PNG ou WebP. Nesta rodada não há qualquer escrita em `acts_public`, publicação, cron, transformação pública ou transporte Asaas.
+
+## 11. Rodada 3 — rascunhos e mídias privadas
+
+O formulário de projeção pública é renderizado por `config/formulario-publico.json`, mas seus documentos continuam exclusivamente em `acts_private`, sob `clientes/{clienteId}/rascunho/`. Perfil, site e manifesto usam revisão otimista. O diretório vem da identidade operacional, categorias são filtradas por ele e a cidade inicial é somente Londrina. A configuração comercial pendente é fail-closed.
+
+Toda mídia entra em `uploads-temporarios`, é validada por conteúdo, hash, tamanho, reserva, proprietário e plano, e somente então é copiada logicamente para `rascunho/midias/`. Fotos/capas são WebP, vídeos MP4 H.264/AAC e áudio M4A/AAC. O Worker não transcodifica. A projeção pública existe como interface desativada; não há qualquer escrita em `acts_public`, publicação ou cron.
