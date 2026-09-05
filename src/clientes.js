@@ -2,6 +2,7 @@ import { auditar } from './auditoria.js';
 import { hmac } from './storage.js';
 import { calcularIdade, diretorioParaSexo, normalizarCpf, textoSeguro, validarCpf } from './validacao.js';
 import { httpError } from './auth/session.js';
+import { privatePaths } from './paths.js';
 
 const INITIAL_STATES = Object.freeze({ conta: 'ativa', cadastro: 'cadastro_incompleto', identidade: 'nao_enviada', documentos: 'nao_enviados', anuncio: 'rascunho', site: 'nao_publicado', portal: 'nao_listado' });
 const DECISIONS = new Set(['aprovado', 'correcao_solicitada', 'reprovado', 'suspenso', 'bloqueado', 'reativado']);
@@ -22,7 +23,7 @@ export async function changePlan(storage, admin, clienteId, body, now = new Date
 export function publicSummary(client) { const o = client.operational; return { clienteId: o.clienteId, revision: o.revision, states: o.states, plan: o.plan, consumption: o.consumption, pendencias: o.pendencias, contato: o.contato, endereco: o.endereco, gmail: o.gmail, directory: o.diretorio, financeiro: { controle: 'manual', pagamentoOnline: false } }; }
 export function adminView(client, now = new Date()) { return { ...client, idade: client.identity ? calcularIdade(client.identity.dataNascimento, now) : null, visualizacao: { somenteLeitura: true, identidadeAssumida: false } }; }
 export function requireAdmin(session) { if (session.role !== 'SUPERADMIN') throw httpError(403, 'SUPERADMIN_REQUIRED'); }
-export async function listClients(storage, query = {}) { const keys = await storage.list('clientes/'); const opKeys = keys.filter((key) => key.endsWith('/operacional/operacional.json')); const clients = await Promise.all(opKeys.map(async (key) => { const operational = await storage.get(key); const identity = await storage.get(idKey(operational.clienteId)); return { ...operational, nomeCivil: identity?.nomeCivil }; })); return clients.filter((c) => (!query.status || c.states.cadastro === query.status) && (!query.q || [c.clienteId, c.gmail, c.nomeCivil].some((v) => v?.toLowerCase().includes(query.q.toLowerCase())))); }
+export async function listClients(storage, query = {}) { const keys = await storage.list('clientes/'); const opKeys = keys.filter((key) => key.endsWith('/dados-privados/operacional.json')); const clients = await Promise.all(opKeys.map(async (key) => { const operational = await storage.get(key); const identity = await storage.get(idKey(operational.clienteId)); return { ...operational, nomeCivil: identity?.nomeCivil }; })); return clients.filter((c) => (!query.status || c.states.cadastro === query.status) && (!query.q || [c.clienteId, c.gmail, c.nomeCivil].some((v) => v?.toLowerCase().includes(query.q.toLowerCase())))); }
 function base(clienteId, timestamp, data) { return { schemaVersion: 2, revision: 1, clienteId, criadoEm: timestamp, atualizadoEm: timestamp, ...data }; }
 function update(current, changes, timestamp) { return { ...current, ...changes, revision: current.revision + 1, atualizadoEm: timestamp }; }
 function checkRevision(current, revision) { if (!current || !Number.isInteger(revision) || revision !== current.revision) throw httpError(409, 'REVISION_CONFLICT'); }
@@ -33,7 +34,7 @@ function contact(body) { return { telefone: textoSeguro(body.telefone, 30), what
 function requestMeta(request) { return { ip: request.headers.get('cf-connecting-ip') || null, userAgent: request.headers.get('user-agent')?.slice(0, 300) || null }; }
 function redact(value) { const copy = structuredClone(value); for (const key of ['cpf', 'dataNascimento', 'googleSub']) if (key in copy) copy[key] = '[PROTEGIDO]'; return copy; }
 function adminSubs(env) { return new Set(String(env.SUPERADMIN_GOOGLE_SUBS || '').split(',').map((v) => v.trim()).filter(Boolean)); }
-const opKey = (id) => `clientes/${id}/operacional/operacional.json`;
-const idKey = (id) => `clientes/${id}/identidade/identidade.json`;
-const docKey = (id) => `clientes/${id}/documentos/manifesto.json`;
-const noticeKey = (id) => `clientes/${id}/avisos/avisos.json`;
+const opKey = (id) => privatePaths.dados(id,'operacional.json');
+const idKey = (id) => privatePaths.dados(id,'identidade.json');
+const docKey = (id) => privatePaths.documento(id,'manifesto.json');
+const noticeKey = (id) => privatePaths.dados(id,'avisos.json');

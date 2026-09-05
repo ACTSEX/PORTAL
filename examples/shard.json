@@ -1,1 +1,1 @@
-{"schemaVersion":1,"cidade":"londrina","diretorio":"mulheres","categoria":null,"shard":1,"totalShards":1,"anuncios":[{"clienteId":"cli_001","perfilPath":"/dados/clientes/cli_001/perfil.json"}]}
+{"schemaVersion":1,"cidade":"londrina","diretorio":"mulheres","categoria":null,"shard":1,"totalShards":1,"anuncios":[{"clienteId":"cli_001","perfilPath":"clientes/cli_001/dados/perfil.json"}]}

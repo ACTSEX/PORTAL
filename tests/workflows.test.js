@@ -25,7 +25,7 @@ test('check é local, não usa rede, não escreve e gera o relatório correto', 
   assert.equal(report.remoteReads, 0);
   assert.equal(report.writes, 0);
   assert.equal(report.deletes, 0);
-  assert.equal(report.total, 8);
+  assert.equal(report.total, 7);
   assert.deepEqual(JSON.parse(await readFile(reportPath, 'utf8')), report);
 }));
 
@@ -41,9 +41,9 @@ test('plan só lê e classifica ausente, igual e diferente', async () => withRep
     putCreateOnly() { writes++; }
   };
   const report = await execute('plan', { env: credentials, remote, reportPath });
-  assert.equal(reads, 8);
+  assert.equal(reads, 7);
   assert.equal(writes, 0);
-  assert.equal(report.remoteReads, 8);
+  assert.equal(report.remoteReads, 7);
   assert.equal(report.counts.ausente, 1);
   assert.ok(report.counts.existente_igual >= 1);
   assert.ok(report.counts.existente_diferente >= 1);
@@ -60,7 +60,7 @@ test('apply recusa branch, confirmação e entrada de cliente', async () => with
 test('apply aborta antes da primeira escrita se qualquer chave existe', async () => withReport(async (reportPath) => {
   const remote = noExistingRemote();
   remote.head = () => ({ ContentLength: 1, ETag: 'existente' });
-  await assert.rejects(execute('apply', { env: applyEnv, remote, reportPath }), /bloqueado por 8 objeto/);
+  await assert.rejects(execute('apply', { env: applyEnv, remote, reportPath }), /bloqueado por 7 objeto/);
   assert.equal(remote.writes, 0);
   const report = JSON.parse(await readFile(reportPath, 'utf8'));
   assert.equal(report.resultado, 'bloqueado_objetos_existentes');
