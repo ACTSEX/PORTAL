@@ -1,6 +1,6 @@
 import { ASAAS_STATE, SERVICE } from './config.js';
 import { json } from './response.js';
-import { privateStorage, hmac } from './storage.js';
+import { privateStorage, publicStorage, hmac } from './storage.js';
 import { concluirGoogle, googleConfigurado, iniciarGoogle } from './auth/google.js';
 import { criarSessao, exigirRecente, logout, logoutAll, obterSessao, validarMutacao, httpError } from './auth/session.js';
 import { adminView, changePlan, changeProtected, decide, findOrCreate, listClients, loadClient, publicSummary, requireAdmin, submitRegistration, updateContact } from './clientes.js';
@@ -11,6 +11,8 @@ import { NullCepService } from './cep.js';
 import { getDraft, saveDraft } from './rascunhos.js';
 import { cancel, finish, manifest, moderate, principal, receive, remove, reorder, reserve } from './uploads.js';
 import { PUBLICATION } from './config.js';
+import { publishClient, rollback, flags } from './publicacao.js';
+import { auditPublic, reconcile } from './cron.js';
 
 export async function route(request, env = {}) {
   try {
@@ -31,6 +33,8 @@ export async function route(request, env = {}) {
     if (request.method === 'PUT' && path === '/api/cadastro/contato-endereco') return success(await updateContact(storage, session, await body(request)));
     if (request.method === 'POST' && path === '/api/cadastro/documentos') return success(await uploadDocument(storage, session, request));
     if (request.method === 'GET' && path === '/api/painel/resumo') return success(publicSummary(await loadClient(storage, session.clienteId)));
+    if (request.method === 'GET' && path === '/api/painel/publicacao/status') return success((await storage.get(`clientes/${session.clienteId}/publicacao/status.json`)) || { status:'nao_publicado', flags:flags(env) });
+    if (request.method === 'POST' && path === '/api/painel/publicacao/solicitar') return success(await publishClient(storage,publicStorage(env),session.clienteId,env,{idempotencyKey:request.headers.get('idempotency-key')}));
     if (request.method === 'GET' && path === '/api/painel/avisos') return success((await loadClient(storage, session.clienteId)).notices || { revision: 0, avisos: [] });
     if (request.method === 'GET' && path === '/api/painel/perfil-publico') return success((await getDraft(storage, session.clienteId)).perfil);
     if (request.method === 'PUT' && path === '/api/painel/perfil-publico') return success(await saveDraft(storage, session, 'perfil', await body(request), { validate: url.searchParams.get('validar') === '1' }));
@@ -54,8 +58,16 @@ export async function route(request, env = {}) {
       if (request.method === 'PUT' && action === 'plano') return success(await changePlan(storage, session, clienteId, await body(request)));
       if (request.method === 'POST' && action === 'avisos') return success(await createNotice(storage, session, clienteId, await body(request)));
       if (request.method === 'GET' && action === 'auditoria') { const keys = await storage.list(`clientes/${clienteId}/auditoria/`); return success(await Promise.all(keys.map((key) => storage.get(key)))); }
+      if(request.method==='POST'&&['publicar','reconstruir'].includes(action))return success(await publishClient(storage,publicStorage(env),clienteId,env,{idempotencyKey:request.headers.get('idempotency-key')}));
+      if(request.method==='POST'&&action==='suspender'){await storage.put(`clientes/${clienteId}/publicacao/status.json`,{status:'suspensa',em:new Date().toISOString()});return success({status:'suspensa'});}
+      if(request.method==='POST'&&action==='rollback')return success(await rollback(publicStorage(env),(await body(request)).publicationId));
       if (request.method === 'GET' && action.startsWith('documentos/')) { const kind = action.slice(11); const manifest = (await loadClient(storage, clienteId)).manifest; const item = manifest?.arquivos?.[kind]; if (!item || !storage.bucket) throw httpError(404, 'DOCUMENT_NOT_FOUND'); const object = await storage.bucket.get(item.key); return new Response(object.body, { headers: { 'content-type': item.mime, 'cache-control': 'private, no-store', 'content-disposition': 'inline', 'x-content-type-options': 'nosniff' } }); }
     }
+    if(request.method==='GET'&&path==='/api/superadmin/tarefas')return success(await values(storage,'sistema/publicacao/tarefas/'));
+    if(request.method==='GET'&&path==='/api/superadmin/aniversarios')return success(await matchingValues(storage,/\/aniversarios\//));
+    if(request.method==='GET'&&path==='/api/superadmin/vencimentos')return success(await matchingValues(storage,/\/operacional\/vencimento\.json$/));
+    if(request.method==='POST'&&path==='/api/superadmin/rede/auditar')return success(await auditPublic(publicStorage(env)));
+    if(request.method==='POST'&&path==='/api/superadmin/rede/reconciliar')return success(await reconcile(storage,async()=>{}));
     return json({ ok: false, code: 'NOT_FOUND' }, 404);
   } catch (error) { return json({ ok: false, code: error.code || error.message || 'INTERNAL_ERROR' }, error.status || 500); }
 }
@@ -63,3 +75,5 @@ async function body(request) { const length = Number(request.headers.get('conten
 function success(data) { return json({ ok: true, data }); }
 function jsonCookie(data, cookie) { const response = json(data); response.headers.set('set-cookie', cookie); return response; }
 function protectedForOwner(identity) { const { cpf, ...rest } = identity; return { ...rest, cpfMascarado: `***.***.***-${cpf.slice(-2)}` }; }
+async function values(storage,prefix){const keys=await storage.list(prefix);return Promise.all(keys.map(k=>storage.get(k)));}
+async function matchingValues(storage,re){const keys=(await storage.list('clientes/')).filter(k=>re.test(k));return Promise.all(keys.map(k=>storage.get(k)));}

@@ -7,7 +7,7 @@ export class R2PrivateStorage {
   async putBytes(key, bytes, contentType) { validateKey(key); return this.bucket.put(key, bytes, { httpMetadata: { contentType } }); }
   async getBytes(key) { validateKey(key); const object = await this.bucket.get(key); return object ? new Uint8Array(await object.arrayBuffer()) : null; }
   async delete(key) { validateKey(key); await this.bucket.delete(key); }
-  async list(prefix) { validateKey(prefix); const result = await this.bucket.list({ prefix }); return result.objects.map(({ key }) => key); }
+  async list(prefix) { if(prefix)validateKey(prefix); const result = await this.bucket.list({ prefix }); return result.objects.map(({ key }) => key); }
 }
 
 export class MemoryPrivateStorage {
@@ -17,10 +17,16 @@ export class MemoryPrivateStorage {
   async putBytes(key, bytes, contentType) { validateKey(key); const copy = new Uint8Array(bytes); this.byteWrites.push({ key, bytes: copy, contentType }); this.data.set(key, { binary: true, contentType, bytes: copy }); }
   async getBytes(key) { validateKey(key); const value = this.data.get(key); return value?.binary ? new Uint8Array(value.bytes) : null; }
   async delete(key) { validateKey(key); this.data.delete(key); }
-  async list(prefix) { validateKey(prefix); return [...this.data.keys()].filter((key) => key.startsWith(prefix)); }
+  async list(prefix) { if(prefix)validateKey(prefix); return [...this.data.keys()].filter((key) => key.startsWith(prefix)); }
 }
 
 export function privateStorage(env) { return env?.__storage || new R2PrivateStorage(env?.acts_private); }
+export function publicStorage(env) { return env?.__publicStorage || new R2PublicStorage(env?.acts_public, env); }
+export class R2PublicStorage extends R2PrivateStorage {
+  constructor(bucket, env={}) { super(bucket); this.env=env; }
+  async put(key,value,options={}) { if(this.env.PUBLICATION_ENABLED!=='true'||this.env.PUBLIC_R2_WRITES_ENABLED!=='true') throw new Error('PUBLIC_R2_WRITES_DISABLED'); return super.put(key,value,options); }
+  async putBytes(key,bytes,type){if(this.env.PUBLICATION_ENABLED!=='true'||this.env.PUBLIC_R2_WRITES_ENABLED!=='true')throw new Error('PUBLIC_R2_WRITES_DISABLED');return super.putBytes(key,bytes,type);}
+}
 export function bindingsDisponiveis(env) { return Boolean(env?.acts_private && env?.acts_public); }
 export function validateKey(key) { if (typeof key !== 'string' || !key || key.startsWith('/') || key.includes('..') || key.includes('\\') || /[\0-\x1f]/.test(key)) throw new TypeError('STORAGE_KEY_INVALID'); return key; }
 export function conflict() { return Object.assign(new Error('REVISION_CONFLICT'), { status: 409, code: 'REVISION_CONFLICT' }); }
