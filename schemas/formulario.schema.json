@@ -9,9 +9,7 @@
     "secoes"
   ],
   "properties": {
-    "versao": {
-      "const": 1
-    },
+    "versao": { "enum": [1, 2] },
     "id": {
       "type": "string"
     },

@@ -1,1 +1,44 @@
-{"versao":1,"id":"cadastro-privado","natureza":"privada","secoes":[{"id":"identidade","titulo":"Identidade privada","ordem":1,"campos":[{"id":"nomeCivil","tipo":"texto","rotulo":"Nome civil","obrigatorio":true,"ordem":1,"publicacao":"privado","ajuda":"Dado protegido; alteração posterior somente pelo SUPERADMIN.","limites":{"status":"pendente"},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]}]}]}
+{
+  "versao": 2,
+  "id": "cadastro-privado",
+  "natureza": "privada",
+  "secoes": [
+    {"id":"identidade","titulo":"Identidade privada","ordem":1,"campos":[
+      {"id":"nomeCivil","tipo":"texto","rotulo":"Nome completo","obrigatorio":true,"ordem":1,"publicacao":"privado","ajuda":"Protegido após o envio.","limites":{"maximo":160},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"cpf","tipo":"cpf","rotulo":"CPF","obrigatorio":true,"ordem":2,"publicacao":"privado","ajuda":"Somente 11 dígitos válidos.","limites":{"tamanho":11},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"dataNascimento","tipo":"data","rotulo":"Data de nascimento","obrigatorio":true,"ordem":3,"publicacao":"privado","ajuda":"É necessário ter 18 anos ou mais.","limites":{},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"nacionalidade","tipo":"texto","rotulo":"Nacionalidade","obrigatorio":true,"ordem":4,"publicacao":"privado","ajuda":"Dado protegido.","limites":{"maximo":80},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"sexoCadastral","tipo":"selecao","rotulo":"Sexo cadastral / diretório","obrigatorio":true,"ordem":5,"publicacao":"privado","ajuda":"Só o SUPERADMIN poderá corrigir após o envio.","limites":{},"opcoes":["feminino","masculino","transex"],"condicoes":[],"diretoriosPermitidos":["mulheres","homens","transex"],"planosPermitidos":[]},
+      {"id":"gmail","tipo":"email-confirmado","rotulo":"Gmail confirmado pelo Google","obrigatorio":true,"ordem":6,"publicacao":"privado","ajuda":"Não pode ser editado aqui.","limites":{},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]}
+    ]},
+    {"id":"contato","titulo":"Contato pessoal","ordem":2,"campos":[
+      {"id":"telefone","tipo":"tel","rotulo":"Telefone pessoal","obrigatorio":true,"ordem":1,"publicacao":"privado","ajuda":"Editável no painel.","limites":{"maximo":30},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"whatsapp","tipo":"tel","rotulo":"WhatsApp pessoal","obrigatorio":true,"ordem":2,"publicacao":"privado","ajuda":"Editável no painel.","limites":{"maximo":30},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"telefoneWhatsapp","tipo":"checkbox","rotulo":"Telefone também é WhatsApp","obrigatorio":false,"ordem":3,"publicacao":"privado","ajuda":"Opcional.","limites":{},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]}
+    ]},
+    {"id":"endereco","titulo":"Endereço privado","ordem":3,"campos":[
+      {"id":"cep","tipo":"cep","rotulo":"CEP","obrigatorio":true,"ordem":1,"publicacao":"privado","ajuda":"A consulta automática é auxiliar; o preenchimento manual permanece disponível.","limites":{"maximo":9},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"pais","tipo":"texto","rotulo":"País","obrigatorio":true,"ordem":2,"publicacao":"privado","ajuda":"Confirme o endereço.","limites":{"maximo":80},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"estado","tipo":"texto","rotulo":"Estado","obrigatorio":true,"ordem":3,"publicacao":"privado","ajuda":"Confirme o endereço.","limites":{"maximo":80},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"municipio","tipo":"texto","rotulo":"Município","obrigatorio":true,"ordem":4,"publicacao":"privado","ajuda":"Confirme o endereço.","limites":{"maximo":120},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"rua","tipo":"texto","rotulo":"Rua","obrigatorio":true,"ordem":5,"publicacao":"privado","ajuda":"Confirme o endereço.","limites":{"maximo":160},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"numero","tipo":"texto","rotulo":"Número","obrigatorio":true,"ordem":6,"publicacao":"privado","ajuda":"Preenchimento manual.","limites":{"maximo":30},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"bairro","tipo":"texto","rotulo":"Bairro","obrigatorio":true,"ordem":7,"publicacao":"privado","ajuda":"Confirme o endereço.","limites":{"maximo":120},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"complemento","tipo":"texto","rotulo":"Complemento","obrigatorio":false,"ordem":8,"publicacao":"privado","ajuda":"Preenchimento manual.","limites":{"maximo":160},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]}
+    ]},
+    {"id":"documentos","titulo":"Documentos privados","ordem":4,"campos":[
+      {"id":"fotoRosto","tipo":"arquivo-imagem","rotulo":"Foto atual e real do rosto","obrigatorio":true,"ordem":1,"publicacao":"privado","ajuda":"Câmera ou galeria; máximo 5 MiB.","limites":{"bytes":5242880},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"tipoDocumento","tipo":"selecao","rotulo":"Tipo do documento","obrigatorio":true,"ordem":2,"publicacao":"privado","ajuda":"Documento oficial.","limites":{},"opcoes":["RG","CNH","outro"],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"documentoFrente","tipo":"arquivo-imagem","rotulo":"Documento — frente","obrigatorio":true,"ordem":3,"publicacao":"privado","ajuda":"Imagem legível; máximo 5 MiB.","limites":{"bytes":5242880},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"documentoVerso","tipo":"arquivo-imagem","rotulo":"Documento — verso","obrigatorio":true,"ordem":4,"publicacao":"privado","ajuda":"Imagem legível; máximo 5 MiB.","limites":{"bytes":5242880},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]}
+    ]},
+    {"id":"aceites","titulo":"Aceites","ordem":5,"campos":[
+      {"id":"maioridade","tipo":"checkbox","rotulo":"Declaro ter 18 anos ou mais","obrigatorio":true,"ordem":1,"publicacao":"privado","ajuda":"A data também será validada.","limites":{},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"veracidade","tipo":"checkbox","rotulo":"Confirmo a veracidade dos dados","obrigatorio":true,"ordem":2,"publicacao":"privado","ajuda":"Obrigatório.","limites":{},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"termos","tipo":"checkbox","rotulo":"Aceito os termos de uso","obrigatorio":true,"ordem":3,"publicacao":"privado","ajuda":"Leia os termos antes de aceitar.","limites":{},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"privacidade","tipo":"checkbox","rotulo":"Aceito a política de privacidade","obrigatorio":true,"ordem":4,"publicacao":"privado","ajuda":"Leia a política antes de aceitar.","limites":{},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"tratamentoDados","tipo":"checkbox","rotulo":"Autorizo o tratamento dos dados","obrigatorio":true,"ordem":5,"publicacao":"privado","ajuda":"Obrigatório para o cadastro privado.","limites":{},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]},
+      {"id":"publicacaoFutura","tipo":"checkbox","rotulo":"Autorizo futura publicação apenas dos dados públicos escolhidos","obrigatorio":true,"ordem":6,"publicacao":"privado","ajuda":"Autorização separada; nada será publicado nesta rodada.","limites":{},"opcoes":[],"condicoes":[],"diretoriosPermitidos":[],"planosPermitidos":[]}
+    ]}
+  ]
+}
