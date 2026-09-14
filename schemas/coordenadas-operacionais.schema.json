@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "fonte",
+    "cidades"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "fonte": {
+      "type": "string"
+    },
+    "cidades": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "paisId",
+          "estadoId",
+          "municipioId",
+          "latitude",
+          "longitude",
+          "fonte",
+          "verificadoEm"
+        ],
+        "properties": {
+          "paisId": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$"
+          },
+          "estadoId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "municipioId": {
+            "type": "integer",
+            "minimum": 1000000,
+            "maximum": 9999999
+          },
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "fonte": {
+            "type": "string",
+            "format": "uri"
+          },
+          "verificadoEm": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      }
+    }
+  }
+}

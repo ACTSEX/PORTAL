@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "versaoCatalogo",
+    "fonte",
+    "documentacao",
+    "endpoints",
+    "coletadoEm",
+    "quantidadeEstados",
+    "quantidadeMunicipios",
+    "arquivos"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "versaoCatalogo": {
+      "type": "string"
+    },
+    "fonte": {
+      "const": "IBGE — API de Localidades"
+    },
+    "documentacao": {
+      "const": "https://servicodados.ibge.gov.br/api/docs/localidades"
+    },
+    "endpoints": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^https://servicodados\\.ibge\\.gov\\.br/api/v1/localidades"
+      }
+    },
+    "coletadoEm": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "quantidadeEstados": {
+      "const": 27
+    },
+    "quantidadeMunicipios": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "arquivos": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sha256",
+          "bytes"
+        ],
+        "properties": {
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    }
+  }
+}

@@ -24,3 +24,14 @@ Somente lotes explícitos após ensaio; checkpoint/comparação; nunca apagar V1
 Após observação, habilite `CRON_ENABLED` em janela própria e monitore idempotência.
 ## ATIVAR ASAAS FUTURAMENTE
 Não faz parte do go-live V2. Projeto separado: sandbox, webhook/conciliação, aprovação jurídica/financeira, secrets por ambiente; habilitar `ASAAS_ENABLED` por último e cobranças automáticas em mudança ainda separada.
+
+## Atualizar catálogo geográfico do IBGE
+
+Execute manualmente o workflow **Atualizar catálogo geográfico do IBGE**:
+
+1. `check`: valida código/fixtures localmente, sem IBGE, R2 ou escrita.
+2. `plan`: consulta somente a API oficial, gera/valida 27 arquivos e oferece snapshot/relatório como artifact; consulta objetos remotos apenas para o plano e não escreve.
+3. Revise fonte, UTC, 27 UFs, quantidade municipal, bytes e hashes.
+4. `apply`: somente em `main`, após aprovação de `production-r2`, com `PUBLICAR-CATALOGO-IBGE`.
+
+O apply usa exclusivamente `acts-public`, compara versão existente antes de escrever, nunca apaga, nunca toca `clientes/`, `midias/` ou `dados/cidades/manifesto.json`, publica objetos versionados primeiro e o ponteiro por último. Cache longo cabe aos versionados; ponteiro e cidades ativas usam revalidação curta. Não execute junto de deploy ou migração.

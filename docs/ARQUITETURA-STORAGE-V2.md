@@ -40,3 +40,7 @@ Não execute novamente o bootstrap: ele é create-only e os oito objetos existen
 O oitavo objeto incorreto tem chave exata `acts-public/midias/clientes/manifesto.json`. A migração `scripts/remover-marcador-midias-raiz.mjs` não roda no bootstrap nem em CI/deploy. Execute primeiro `plan`: ela lista todo o prefixo `midias/`, exige que exista somente essa chave, lê o JSON, confirma `estado=bootstrap`, `ambiente=nao-configurado` e `objetos=[]`, e registra tamanho/hash. Ela falha diante de qualquer mídia ou objeto adicional. Somente depois de revisão, na `main`, rode `apply` com confirmação literal `REMOVER-MARCADOR-MIDIAS-RAIZ`. A exclusão usa `delete-object` para a chave exata, sem remoção recursiva.
 
 Nenhum procedimento deste documento publica, faz deploy ou migra automaticamente.
+
+## Geografia e cidades ativas
+
+**Catálogo completo ≠ cidades ativas.** O catálogo imutável ocupa `dados/geografia/versoes/{versao}/`; `dados/geografia/atual.json` é o ponteiro curto. Já `dados/cidades/manifesto.json` é reconstruído de anúncios publicados. A publicação geográfica não toca `clientes/`, `midias/` nem o índice ativo.
