@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "array",
+  "minItems": 27,
+  "maxItems": 27,
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "id",
+      "paisId",
+      "sigla",
+      "nome",
+      "slug",
+      "municipiosArquivo"
+    ],
+    "properties": {
+      "id": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "paisId": {
+        "type": "string",
+        "pattern": "^[A-Z]{2}$"
+      },
+      "sigla": {
+        "type": "string",
+        "pattern": "^[A-Z]{2}$"
+      },
+      "nome": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^(?!.*[<>]).+$"
+      },
+      "slug": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+      },
+      "municipiosArquivo": {
+        "type": "string",
+        "pattern": "^municipios/[a-z]{2}\\.json$"
+      }
+    }
+  }
+}

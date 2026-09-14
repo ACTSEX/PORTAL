@@ -1,0 +1,72 @@
+name: Atualizar catálogo geográfico do IBGE
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: check não usa rede; plan gera artifact; apply publica após aprovação
+        required: true
+        type: choice
+        options: [check, plan, apply]
+      confirmation:
+        description: Para apply, digite PUBLICAR-CATALOGO-IBGE
+        required: false
+        type: string
+permissions:
+  contents: read
+jobs:
+  catalogo:
+    environment: ${{ inputs.mode == 'apply' && 'production-r2' || '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Check local sem IBGE ou R2
+        if: inputs.mode == 'check'
+        run: node --test tests/geografia.test.js && git diff --check
+      - name: Bloquear apply fora da main
+        if: inputs.mode == 'apply' && github.ref != 'refs/heads/main'
+        run: exit 1
+      - name: Confirmar apply literalmente
+        if: inputs.mode == 'apply'
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: test "$CONFIRMATION" = PUBLICAR-CATALOGO-IBGE
+      - name: Gerar snapshot exclusivamente da API do IBGE
+        if: inputs.mode != 'check'
+        run: node scripts/atualizar-catalogo-ibge.mjs plan artifact/dados/geografia "ibge-$(date -u +%Y-%m-%dT%H%M%SZ)"
+      - name: Instalar cliente S3
+        if: inputs.mode == 'apply'
+        run: pip install --disable-pip-version-check awscli
+      - name: Planejar publicação sem escrita
+        if: inputs.mode == 'plan'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_BUCKET: acts-public
+        run: |
+          pip install --disable-pip-version-check awscli
+          node scripts/publicar-catalogo-geografico.mjs plan artifact/dados/geografia
+      - name: Publicar versão imutável e ponteiro por último
+        if: inputs.mode == 'apply'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_BUCKET: acts-public
+        run: node scripts/publicar-catalogo-geografico.mjs apply artifact/dados/geografia "${{ inputs.confirmation }}"
+      - name: Anexar snapshot e relatório
+        if: inputs.mode != 'check'
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalogo-ibge-${{ inputs.mode }}-${{ github.run_id }}
+          path: |
+            artifact/dados/geografia/
+            reports/catalogo-geografico.json
+          if-no-files-found: error

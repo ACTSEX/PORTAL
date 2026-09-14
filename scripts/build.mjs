@@ -10,4 +10,5 @@ await cp('config/formulario-publico.json', 'dist/painel/config/formulario-public
 await cp('config/midias.json', 'dist/painel/config/midias.json');
 await cp('config/categorias.json', 'dist/painel/config/categorias.json');
 await cp('frontend/publico', 'dist/publico', { recursive: true });
+await cp('acts-public/dados', 'dist/publico/dados', { recursive: true });
 console.log('Build concluído: dist/worker, dist/painel, dist/publico');

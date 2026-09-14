@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "id",
+      "paisId",
+      "estadoId",
+      "estadoSigla",
+      "nome",
+      "slug"
+    ],
+    "properties": {
+      "id": {
+        "type": "integer",
+        "minimum": 1000000,
+        "maximum": 9999999
+      },
+      "paisId": {
+        "type": "string",
+        "pattern": "^[A-Z]{2}$"
+      },
+      "estadoId": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "estadoSigla": {
+        "type": "string",
+        "pattern": "^[A-Z]{2}$"
+      },
+      "nome": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^(?!.*[<>]).+$"
+      },
+      "slug": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+      }
+    }
+  }
+}
